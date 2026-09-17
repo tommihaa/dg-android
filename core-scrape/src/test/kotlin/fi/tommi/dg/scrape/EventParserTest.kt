@@ -1,5 +1,6 @@
 package fi.tommi.dg.scrape
 
+import fi.tommi.dg.domain.EventCondition
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
@@ -24,6 +25,15 @@ class EventParserTest {
         )
         assertEquals("double-repeat, 11 point matches.", event.conditions.first().text)
         assertTrue(event.conditions.last().text.startsWith("Initial pool of 150:00"))
+    }
+
+    @Test
+    fun `muunnelma luetaan Game-ehdosta`() {
+        // `.sgf`-viennin `RU[Crawford]` nojaa tähän: double repeat luopuu Crawfordista.
+        assertEquals(true, event.doubleRepeat)
+        val tavallinen = event.copy(conditions = listOf(EventCondition("Game", "backgammon, 15 point matches.")))
+        assertEquals(false, tavallinen.doubleRepeat)
+        assertNull(event.copy(conditions = emptyList()).doubleRepeat)
     }
 
     @Test

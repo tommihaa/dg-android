@@ -209,6 +209,14 @@ logcatista eikä Tommin muistista, ketju on `LUEMINUT.md`:ssä. Kuoren kanssa mi
 ja oikea polku olivat samat. Erona kuoritestiin `Discard`ia ei tarvittu, koska onnistunut
 siirto pyyhkii odottavan teon itse.
 
+**Kahdeksas todennus 17.9.2026: peilattu lauta Pixel 8a:lla, molemmat kätisyydet.** Sama
+resepti kuin 9.9. tabletilla (`sessio-9-9-yo` 0002 top, 0006 lauta, 0003 kolmantena ja
+`kuori/profiili-vasen.html` asetussivuna), nyt puhelimella jolla on kameralovi. Pixelillä
+ei ole `curl`ia, joten airlock luettiin kuoren lokista: kaikki pyynnöt olivat `TOP`,
+`PROFIILI` tai `OVER`, ei yhtään `ESTETTY`ä eikä muuta. Kätisyys käännettiin asetusruudusta
+ja palautettiin, ja palautus todennettiin `run-as`:lla `dg_handedness.xml`:stä. Tulos
+`docs/KYSYMYKSET.md`:ssä (lovi osuu vain kehykseen ja lokerosarakkeen ulkoreunaan).
+
 **Sama ajo toistettiin samana iltana napin siirron jälkeen** (`sessio-7-9-ilta/0022`,
 ReggiePerrin, omistamaton kuutio kaistan keskellä): nappi piirtyi kaistan keskelle kuution
 päälle, haku kuoresta (`GET /bg/move/5315340/814`) toi kuution takaisin ja napin pois, ja

@@ -118,7 +118,11 @@ class PageViewModelTest {
         // Tommin päätös 15.9.2026: merkitty asema kulkee GNU:n `.sgf`:ssä. Merkki luetaan
         // kannasta ottelun numerolla; toisen ottelun merkki ei tule mukaan.
         val fetcher = RecordingFetcher { path ->
-            if (path == VIENTIPOLKU) DgResponse.Ok(MAT) else DgResponse.Ok(PROFIILI_PAATTYNYT)
+            when (path) {
+                VIENTIPOLKU -> DgResponse.Ok(MAT)
+                TURNAUSPOLKU -> DgResponse.Ok(TURNAUS_BACKGAMMON)
+                else -> DgResponse.Ok(PROFIILI_PAATTYNYT)
+            }
         }
         val malli = malli(fetcher)
 
@@ -130,12 +134,62 @@ class PageViewModelTest {
             advanceUntilIdle()
         }
 
+        // Turnaussivu haetaan rivin omasta linkistä muunnelmaa varten, viennin jälkeen.
+        assertEquals(listOf(POLKU, VIENTIPOLKU, TURNAUSPOLKU), fetcher.requested)
         val ready = malli.export.value as ExportUiState.Ready
         assertEquals("dg-7000034.sgf", ready.fileName)
         assertTrue(ready.text, ready.text.startsWith("(;FF[4]GM[6]"))
         assertTrue(ready.text, ready.text.contains("MI[length:15][game:0][ws:0][bs:0]PW[pelaaja]PB[vastapelaaja32]"))
+        assertTrue(ready.text, ready.text.contains("RU[Crawford]"))
         assertTrue(ready.text, ready.text.contains(";W[41xwmi]C[MARK Move 12: hit or run?]"))
         assertTrue(!ready.text.contains("toinen ottelu"))
+    }
+
+    @Test
+    fun `double repeat -turnauksen sgf ei vaita Crawfordia`() {
+        // Double repeat luopuu Crawfordista (SUBSTANSSI 8), eikä `.mat` kerro muunnelmaa.
+        // Turnaussivun `Game`-ehto on ainoa varma lähde, ja ilman sitä DR-ottelu jossa
+        // tuplausta ei otettu vastaan kirjoitettiin väärällä säännöllä (AVOIMET, 17.9.2026).
+        val fetcher = RecordingFetcher { path ->
+            when (path) {
+                VIENTIPOLKU -> DgResponse.Ok(MAT)
+                TURNAUSPOLKU -> DgResponse.Ok(TURNAUS)
+                else -> DgResponse.Ok(PROFIILI_PAATTYNYT)
+            }
+        }
+        val malli = malli(fetcher)
+
+        runTest(dispatcher) {
+            advanceUntilIdle()
+            malli.export(paattynyt(malli), ExportFormat.SGF)
+            advanceUntilIdle()
+        }
+
+        val ready = malli.export.value as ExportUiState.Ready
+        assertTrue(ready.text, ready.text.startsWith("(;FF[4]GM[6]"))
+        assertTrue(ready.text, !ready.text.contains("RU[Crawford]"))
+    }
+
+    @Test
+    fun `sgf-vientia ei kirjoiteta jos turnaussivu ei tule`() {
+        // Säännön puuttuessa ei arvata: väärällä `RU`-lipulla kirjoitettu tiedosto olisi
+        // huonompi kuin virhe josta voi yrittää uudestaan.
+        val fetcher = RecordingFetcher { path ->
+            when (path) {
+                VIENTIPOLKU -> DgResponse.Ok(MAT)
+                TURNAUSPOLKU -> DgResponse.ServerError(503)
+                else -> DgResponse.Ok(PROFIILI_PAATTYNYT)
+            }
+        }
+        val malli = malli(fetcher)
+
+        runTest(dispatcher) {
+            advanceUntilIdle()
+            malli.export(paattynyt(malli), ExportFormat.SGF)
+            advanceUntilIdle()
+        }
+
+        assertEquals(ExportUiState.Failed(Failure.Server(503)), malli.export.value)
     }
 
     @Test
@@ -589,6 +643,7 @@ class PageViewModelTest {
         """.trimIndent()
 
         const val VIENTIPOLKU = "/bg/export/7000034"
+        const val TURNAUSPOLKU = "/bg/event/900027"
 
         /** Profiili jolla on yksi päättynyt ottelu sivun omalla `Export`-linkillä. */
         val PROFIILI_PAATTYNYT = """
@@ -606,6 +661,19 @@ class PageViewModelTest {
 
         /** Viennin runko, sama muoto kuin `raakasivut/match_export.mat`. */
         val MAT = " 15 point match\n\n Game 1\n pelaaja : 0                    vastapelaaja32 : 0\n  1) 41: 24/23 13/9                  44: 24/20 24/20\n"
+
+        /** Tavallinen turnaus: `Game`-ehto sanoo backgammon, joten ottelu on Crawford. */
+        val TURNAUS_BACKGAMMON = """
+            <html><body>
+            <h2>Sample Marathon</h2>
+            <h3>Conditions of Contest</h3>
+            <h4>Game</h4>backgammon, 15 point matches.
+            <table><caption>Brackets</caption>
+            <tr><th>Round 1<th>Winner
+            <tr><td><a href=/bg/user/17135>ekapelaaja</a><td rowspan=2>&nbsp;
+            </table>
+            </body></html>
+        """.trimIndent()
 
         val TURNAUS = """
             <html><body>

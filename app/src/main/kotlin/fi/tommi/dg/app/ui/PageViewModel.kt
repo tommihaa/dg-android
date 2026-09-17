@@ -635,15 +635,20 @@ class PageViewModel(
                 when (val response = pages.fetch(path)) {
                     is DgResponse.Ok ->
                         MatchExport.read(onPage.id, response.html)
-                            ?.let { ready(it, format) }
+                            ?.let { ready(it, format, onPage.eventPath) }
                             ?: ExportUiState.NotAnExport
-                    is DgResponse.Offline -> ExportUiState.Failed(Failure.Offline)
-                    is DgResponse.ServerError -> ExportUiState.Failed(Failure.Server(response.code))
-                    DgResponse.Sleeping -> ExportUiState.Failed(Failure.Sleeping)
-                    DgResponse.AuthFailed -> ExportUiState.SessionExpired
+                    else -> exportFailed(response)
                 }
             }
         }
+    }
+
+    private fun exportFailed(response: DgResponse): ExportUiState = when (response) {
+        is DgResponse.Ok -> error("Onnistunut vastaus ei ole vika")
+        is DgResponse.Offline -> ExportUiState.Failed(Failure.Offline)
+        is DgResponse.ServerError -> ExportUiState.Failed(Failure.Server(response.code))
+        DgResponse.Sleeping -> ExportUiState.Failed(Failure.Sleeping)
+        DgResponse.AuthFailed -> ExportUiState.SessionExpired
     }
 
     /**
@@ -651,21 +656,32 @@ class PageViewModel(
      * kannasta tässä eikä ruudulta, koska ruutu ei tunne niitä eikä sen tarvitse: vienti on
      * ainoa kohta jossa ottelun merkit ja ottelun tiedosto kohtaavat. Päivä on viennin
      * päivä eikä ottelun, koska tiedosto ei kerro ottelun päivää.
+     *
+     * `RU[Crawford]` luetaan turnaussivulta (`/bg/event/<id>`, rivin oma linkki), koska
+     * `.mat` ei kerro muunnelmaa ja double repeat luopuu Crawfordista. Haku ei kuluta
+     * jonoa. Ilman turnauslinkkiä (ystävyysottelu) tai ilman `Game`-ehtoa ottelu on
+     * Crawford, kuten tavallinen ottelu on; turnaussivun hakuvirhe on viennin virhe eikä
+     * arvaus, koska tiedosto kirjoitettaisiin silloin väärällä säännöllä.
      */
-    private suspend fun ready(export: MatchExport, format: ExportFormat): ExportUiState = when (format) {
-        ExportFormat.MAT -> ExportUiState.Ready(export, export.fileName, export.text)
-        ExportFormat.SGF -> {
-            val match = MatMatch.parse(export.text)
-            if (match == null) {
-                ExportUiState.NotConvertible
-            } else if (match.startsFromSetup) {
-                ExportUiState.SetupPosition
-            } else {
-                val ownMarks = marks.observeAll().first().filter { it.game.matchId == export.id }
-                val date = java.time.Instant.ofEpochMilli(now()).atZone(java.time.ZoneId.systemDefault()).toLocalDate().toString()
-                ExportUiState.Ready(export, sgfFileName(export.id), SgfExport.write(match, ownMarks, self = self(), date = date))
+    private suspend fun ready(export: MatchExport, format: ExportFormat, eventPath: String?): ExportUiState {
+        if (format == ExportFormat.MAT) return ExportUiState.Ready(export, export.fileName, export.text)
+        val match = MatMatch.parse(export.text) ?: return ExportUiState.NotConvertible
+        if (match.startsFromSetup) return ExportUiState.SetupPosition
+
+        var doubleRepeat = false
+        if (eventPath != null) {
+            when (val response = pages.fetch(eventPath)) {
+                is DgResponse.Ok -> doubleRepeat = EventParser.parse(response.html)?.doubleRepeat ?: false
+                else -> return exportFailed(response)
             }
         }
+        val ownMarks = marks.observeAll().first().filter { it.game.matchId == export.id }
+        val date = java.time.Instant.ofEpochMilli(now()).atZone(java.time.ZoneId.systemDefault()).toLocalDate().toString()
+        return ExportUiState.Ready(
+            export,
+            sgfFileName(export.id),
+            SgfExport.write(match, ownMarks, self = self(), date = date, crawford = !doubleRepeat),
+        )
     }
 
     /** Jakovalikko on avattu, joten tiedostoa ei tarjota toista kertaa ruudun piirtyessä. */

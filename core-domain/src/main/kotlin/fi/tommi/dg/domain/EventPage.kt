@@ -21,7 +21,20 @@ data class EventPage(
      * lukien. Nolla kun sivulla ei ole kaaviota.
      */
     val rows: Int = 0,
-)
+) {
+    /**
+     * Onko turnaus double repeat, luettuna `Game`-ehdosta. Mitattu muoto on
+     * `double-repeat, 11 point matches.` (`raakasivut/event_page.html`, 27.8.2026), ja
+     * tavallisen turnauksen ehto sanoo `backgammon`. Null kun sivulla ei ole `Game`-ehtoa,
+     * jolloin kutsuja ei tiedä muunnelmaa eikä tämä väitä sitä.
+     *
+     * Tarve on `.sgf`-vienti: double repeat luopuu Crawfordista (`SUBSTANSSI.md` kohta 8),
+     * eikä `.mat` kerro muunnelmaa, joten turnaussivu on ainoa varma lähde `RU[Crawford]`ille.
+     */
+    val doubleRepeat: Boolean?
+        get() = conditions.firstOrNull { it.heading.equals("Game", ignoreCase = true) }
+            ?.text?.contains("double-repeat", ignoreCase = true)
+}
 
 /** Yksi sääntökohta: sivun `<h4>`-otsikko ja sen jälkeinen teksti. */
 data class EventCondition(
