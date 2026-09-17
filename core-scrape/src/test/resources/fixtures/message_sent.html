@@ -1,0 +1,32 @@
+<!--
+  Anonymisoitu kopio AIDOSTA lahetyksen kuittaussivusta (proxyn tavut 22.8.2026,
+  POST /bg/sendmsg/<id>). Kayttajanumero ja nimi vaihdettu samaan pariin jota
+  inbox_quick_message.html kayttaa, rakenne sellaisenaan.
+
+  Tama on ensimmainen fixture joka on VASTAUS LAHETYKSEEN eika haetulle sivulle, ja
+  siksi se on olemassa: sovellus ei voinut erottaa onnistunutta lahetysta
+  epaonnistuneesta, koska kumpaakaan ei oltu nahty. Statuskoodi ei kelpaa erottimeksi,
+  koska sivusto vastaa 200 OK:lla myos login-sivulla (ks. DgPages).
+
+  Kaksi piirretta joihin tunnistus voi nojata:
+  1. <TITLE>Message Sent</TITLE>, eli otsikko sanoo lopputuloksen suoraan.
+  2. Runko NIMEAA VASTAANOTTAJAN linkkina. Sita ei toistaiseksi lueta, mutta se on
+     ainoa kohta josta voisi tarkistaa etta viesti meni sille jolle se aiottiin.
+
+  Huomaa etta sivulla on navigointipalkki, jota viestisivuilla ei ole. Se ei ole
+  tunnistuksen perusta, mutta se selittaa miksi tama sivu on 1201 tavua kun
+  saapunut pikaviesti on 411.
+-->
+<HTML><HEAD><TITLE>Message Sent</TITLE></HEAD>
+<BODY BGCOLOR=#FFFFFF>
+Your message has been sent to <a href=/bg/user/91004>vastapelaaja</a>
+<p><a href=/bg/nextgame>Next &gt;&gt;</a>
+<TABLE border=0 cellpadding=0 cellspacing=0 BGCOLOR=#006600><TR><TD VALIGN=top>&nbsp;<IMG SRC=/images/die.gif ALT=DG WIDTH=16 HEIGHT=16 BORDER=0 ALIGN=middle>&nbsp;
+<TD align=center>&nbsp;<A HREF=/bg/top><B><FONT COLOR=#FFFFFF SIZE=-1>Top Page</FONT></B></A>
+<TD width=20 align=center><FONT COLOR=#99FF99>|</FONT><TD align=center><A HREF=/bg/lounge><B><FONT COLOR=#FFFFFF SIZE=-1>Game Lounge</FONT></B></A>
+<TD width=20 align=center><FONT COLOR=#99FF99>|</FONT><TD align=center><A HREF=/bg/forum2><B><FONT COLOR=#FFFFFF SIZE=-1>Discussion</FONT></B></A>
+<TD width=20 align=center><FONT COLOR=#99FF99>|</FONT><TD align=center><A HREF=/links.html><B><FONT COLOR=#FFFFFF SIZE=-1>Links</FONT></B></A>
+<TD width=20 align=center><FONT COLOR=#99FF99>|</FONT><TD align=center><A HREF=/bg/logout><B><FONT COLOR=#FFFFFF SIZE=-1>Log Out</FONT></B></A>
+<TD width=20 align=center><FONT COLOR=#99FF99>|</FONT><TD align=center><A HREF=/help><B><FONT COLOR=#FFFFFF SIZE=-1>Help</FONT></B></A>&nbsp;&nbsp;
+</TD></TR></TABLE>
+</BODY></HTML>

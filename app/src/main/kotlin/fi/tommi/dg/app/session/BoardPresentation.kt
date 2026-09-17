@@ -1,0 +1,101 @@
+package fi.tommi.dg.app.session
+
+import android.content.Context
+import android.content.SharedPreferences
+
+/**
+ * Noppien ja pisteiden esitys, kaksi paikallista valintaa (`docs/ASETUKSET.md` luku 3).
+ *
+ * **Omia kytkimiä eikä [BoardStyle]en sidottuja, ja se on Tommin päätös 27.8.2026.**
+ * Vaihtoehto jossa lautatila olisi määrännyt myös nämä punnittiin ja hylättiin: X-22-laudalla
+ * on voitava pitää sivuston noppaesitys. Sama laji kuin [BoardStyleStore]: laitteen oma maku,
+ * ei lähde koskaan verkkoon.
+ *
+ * **Oletukset ovat nykyinen käytös eivätkä sivuston**, toisin kuin [BoardStyle]lla, ja ero on
+ * tarkoituksellinen: kumpikin kytkin syntyi havainnosta eikä viasta, joten oletuksen
+ * vaihtaminen olisi eri päätös jota ei ole kysytty.
+ */
+enum class DiceStyle {
+    /**
+     * Yksi kuutio jokaista siirtoa kohti: tupla laajenee neljäksi. Kuutiot vähenivät
+     * siirrettäessä 2.9.2026 asti; nyt pelattu kuutio jää paikalleen harmaana (Tommin
+     * tilaus, `Die.spent`). Sovelluksen alkuperäinen esitys ja oletus.
+     */
+    COUNTER,
+
+    /**
+     * Tasan kaksi kuutiota jotka eivät vähene kokoamisen aikana. Sivuston mitattu käytös
+     * (27.8.2026, 2698 kaapattua lautasivua ja jokaisella kaksi noppakuvaa, myös tuplan
+     * kokoamisen keskellä). Harmaus on lisä sivuston esitykseen: pelattu kuutio himmenee,
+     * tuplassa puolikas kerrallaan.
+     */
+    SITE,
+}
+
+enum class ScoreStyle {
+    /** `12-away`, puuttuvat pisteet. Sovelluksen esitys 21.8.2026 alkaen ja oletus. */
+    AWAY,
+
+    /**
+     * Sivun oma pistekenttä sellaisenaan. Rahapelissä away ei ole olemassa, jolloin
+     * molemmat arvot näyttävät tämän; se oli tähänkin asti varareitti.
+     */
+    SITE,
+}
+
+interface DiceStyleStore {
+
+    fun get(): DiceStyle
+
+    fun save(style: DiceStyle)
+}
+
+interface ScoreStyleStore {
+
+    fun get(): ScoreStyle
+
+    fun save(style: ScoreStyle)
+}
+
+class SharedPrefsDiceStyle(private val prefs: SharedPreferences) : DiceStyleStore {
+
+    constructor(context: Context) : this(
+        context.applicationContext.getSharedPreferences(FILE_NAME, Context.MODE_PRIVATE),
+    )
+
+    override fun get(): DiceStyle {
+        val stored = prefs.getString(KEY, null) ?: return DiceStyle.COUNTER
+        // Tuntematon nimi on oletus eikä kaato, sama peruste kuin lautatilan luvussa.
+        return DiceStyle.entries.firstOrNull { it.name == stored } ?: DiceStyle.COUNTER
+    }
+
+    override fun save(style: DiceStyle) {
+        prefs.edit().putString(KEY, style.name).apply()
+    }
+
+    private companion object {
+        const val FILE_NAME = "dg_dice_style"
+        const val KEY = "dice_style"
+    }
+}
+
+class SharedPrefsScoreStyle(private val prefs: SharedPreferences) : ScoreStyleStore {
+
+    constructor(context: Context) : this(
+        context.applicationContext.getSharedPreferences(FILE_NAME, Context.MODE_PRIVATE),
+    )
+
+    override fun get(): ScoreStyle {
+        val stored = prefs.getString(KEY, null) ?: return ScoreStyle.AWAY
+        return ScoreStyle.entries.firstOrNull { it.name == stored } ?: ScoreStyle.AWAY
+    }
+
+    override fun save(style: ScoreStyle) {
+        prefs.edit().putString(KEY, style.name).apply()
+    }
+
+    private companion object {
+        const val FILE_NAME = "dg_score_style"
+        const val KEY = "score_style"
+    }
+}

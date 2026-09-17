@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Sama sisältö kuin data_extraction_rules.xml:ssä, vanhemmalla muodolla. Android vaihtoi
+  muodon API 31:ssä, ja minSdk on 26, joten kumpaakin tarvitaan. Perustelu on kirjoitettu
+  kerran, sinne, eikä sitä toisteta tässä: se vanhenisi eri tahtiin kahdessa paikassa.
+
+  Jos muutat toista tiedostoa, muuta molempia. Eroa ei huomaa mistään, koska laite lukee
+  vain toisen eikä vertaa niitä.
+-->
+<full-backup-content>
+    <include domain="database" path="dg.db" />
+    <include domain="database" path="dg.db-wal" />
+    <include domain="database" path="dg.db-shm" />
+</full-backup-content>

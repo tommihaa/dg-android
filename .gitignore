@@ -1,0 +1,37 @@
+# Tunnukset ja koneen paikalliset polut. EI koskaan versioon.
+local.properties
+
+# Allekirjoitus. Salasanat eivät kuulu versioon, eikä avainvarasto sinne muutenkaan:
+# se pidetään repon ulkopuolella, ja nämä rivit ovat toinen lukko sen varalta että
+# joku kopioi sen tänne.
+keystore.properties
+*.jks
+*.keystore
+
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Android Studio / IntelliJ
+.idea/
+*.iml
+captures/
+
+# Kaapatut sivut sisältävät käyttäjänimiä. Fixtureksi vain anonymisoituna
+# ja tietoisella committilla.
+**/build/captured/
+**/build/live/
+
+# Raakasivut suoraan sivustolta: sisältävät käyttäjänimiä ja pelitilanteita.
+# Vain anonymisoidut fixturet menevät versioon. Ohje jää mukaan.
+/raakasivut/*
+!/raakasivut/LUEMINUT.md
+
+# Kirjeliitteet: kuvakaappauksia oikealta laitteelta, sisältävät käyttäjänimiä.
+# Sama peruste kuin raakasivuilla. Luettelo: docs/YHTEYDENOTTO_HAPE42.md.
+/liitteet/
+
+# Python-valimuisti (tyokalut/)
+__pycache__/
+*.pyc

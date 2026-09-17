@@ -1,0 +1,1197 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name" translatable="false">DG Android</string>
+
+    <string name="login_title">Sign in to DailyGammon</string>
+    <string name="login_username">User name</string>
+    <!--
+      Kentän alle, ei virheilmoitukseen. Foorumilla 4/2021 pelaaja ei päässyt sisään
+      koska hän kirjoitti sähköpostiosoitteen, ja sivusto vastasi vain "unable to
+      login". Virheen jälkeen kerrottuna sama tieto maksaa yhden epäonnistuneen
+      yrityksen; kentän alla se estää sen. Auditoinnin kohta B3.
+    -->
+    <string name="login_username_hint">Your DailyGammon user name, not your email address.</string>
+    <string name="login_password">Password</string>
+    <!--
+      Salasanan näyttäminen on oma nappinsa, ja oletus on piilotettu. Peruste on Tommin
+      26.8.2026: mobiilissa kirjoittaminen on virheille altista, ja piilotettu kenttä tekee
+      lyöntivirheestä näkymättömän kunnes kirjautuminen epäonnistuu. Oletus on silti piilo,
+      koska kenttä on auki myös sivullisen silmille.
+    -->
+    <string name="login_password_show">Show</string>
+    <string name="login_password_hide">Hide</string>
+    <string name="login_submit">Sign in</string>
+    <!--
+      Sanotaan suoraan. Sivustolla ei ole HTTPS:ää lainkaan, ja käyttäjän on saatava tietää
+      se ennen kuin hän kirjoittaa salasanan, ei vasta jälkikäteen.
+    -->
+    <string name="login_cleartext_warning">DailyGammon has no HTTPS at all, so your password travels unencrypted. This is true in a browser too. Do not reuse a password you use elsewhere.</string>
+    <string name="login_failed">The user name or password was not accepted.</string>
+    <!--
+      Eri vika kuin väärä salasana, joten eri teksti. Käyttäjä ei voi korjata tätä
+      kirjoittamalla salasanan uudestaan, ja sen kertominen säästää turhan yrityksen.
+    -->
+    <string name="login_storage_failed">This device could not protect the password, so it was not saved. Signing in would not stay signed in.</string>
+
+    <string name="top_title">Matches</string>
+    <string name="top_refresh">Refresh</string>
+    <string name="top_empty">No matches.</string>
+
+    <!--
+      Teksti kertoo mita tiedetaan ja mita ei, samalla perusteella kuin odottavan teon
+      palkki: yhteys toimi, joten "ei yhteytta" olisi vaara, ja sivun laji ei ole
+      tiedossa, joten syyta ei arvata. Kayttajalle kerrotaan myos ettei mitaan menetetty,
+      koska tyhjalta nayttava ruutu tassa sovelluksessa herattaa juuri sen pelon.
+    -->
+    <string name="top_not_a_match_list">DailyGammon answered with a page this app does not recognise as your match list. Nothing was lost and nothing was sent. Try again.</string>
+    <string name="top_your_turn">Your turn</string>
+
+    <!--
+      Ottelurivin selitteet 4.9.2026 alkaen: taulukon sarakeotsikot muuttuivat
+      rivikohtaisiksi selitteiksi, kun lista lakkasi olemasta taulukko. `col_*` jaivat
+      lajitteluvalintojen nimiksi. Sanat ovat sivuston omia (Grace, Time Pool), koska
+      ne ovat sivuston lukemia.
+    -->
+    <string name="top_sort_by">Sort by</string>
+    <string name="top_versus">vs %1$s</string>
+    <string name="top_value_grace">Grace %1$s</string>
+    <string name="top_value_pool">Pool %1$s</string>
+    <string name="top_value_round">Round %1$s</string>
+    <string name="top_value_length">Length %1$s</string>
+    <string name="top_waiting">Waiting for opponent</string>
+    <string name="top_your_turn_count">It is your turn in %1$d matches</string>
+    <string name="top_your_turn_one">It is your turn in 1 match</string>
+    <string name="top_your_turn_none">It is not your turn in any match</string>
+    <string name="top_signed_in_as">Signed in as %1$s</string>
+
+    <!--
+      Merkittyjen asemien linkki otsakerivillä (Tommin valinta 15.9.2026 illalla:
+      *"Inbox/Matches-paikkaan linkki"*). Aina näkyvissä, myös nollana, koska rivi on
+      sisäänkäynti eikä ilmoitus, ja nolla kertoo että lista on tyhjä eikä piilossa.
+    -->
+    <string name="top_marks_none">No positions marked for analysis</string>
+    <string name="top_marks_one">1 position marked for analysis</string>
+    <string name="top_marks_count">%1$d positions marked for analysis</string>
+
+    <!-- Merkittyjen asemien ruutu, ks. MarksScreen.kt. -->
+    <string name="marks_title">Marked positions</string>
+    <string name="marks_explain">Positions you marked on the board, for the match file you analyse afterwards. Each line names the game by its score and the move number the site showed. Remove a line once you have looked at it.</string>
+    <string name="marks_empty">No marked positions. Mark position on the board adds one.</string>
+    <string name="marks_match_versus">vs %1$s (match %2$s)</string>
+    <string name="marks_match_number">Match %1$s</string>
+    <string name="marks_position">Game at %1$d–%2$d, move %3$d</string>
+    <string name="marks_remove">Remove mark</string>
+
+    <!--
+      Arkiston reunapäivä. Kertoo mihin asti arkisto ulottuu, eli milloin tämä laite
+      viimeksi kirjoitti jotain kantaan.
+
+      Rivi on olemassa siksi että arkisto on ainoa kopio historiasta. Vanhentunut arkisto
+      joka ei näytä reunaansa on vanhentunut hiljaa, ja sama palautus reuna näkyvissä on
+      pelkkä vajaa arkisto. Sama rivi vastaa myös arjen kysymykseen "ehtikö tuo tallentua".
+
+      "Saved" eikä "received": päivä on tallennushetki eikä lähetyshetki. Sivuston oma aika
+      on tulkitsematonta tekstiä, eikä sovellus saa väittää siitä enempää kuin sivu sanoo.
+    -->
+    <string name="archive_edge">Message archive reaches %1$s</string>
+    <!--
+      Tyhjä arkisto sanotaan tyhjäksi eikä jätetä rivi pois. Puuttuva rivi näyttäisi
+      samalta kuin rikkinäinen rivi, ja tyhjyys on tässä oikea vastaus eikä vika.
+    -->
+    <string name="archive_edge_empty">Message archive is empty</string>
+    <!--
+      Kolmas tila, lisätty 5.9.2026. Kantaa ei ole vielä luettu.
+
+      Ennen tätä rivi sanoi sillä hetkellä "Message archive is empty", koska kerääjän
+      alkuarvo oli sama null jolla tyhjä arkisto kerrotaan. Ruutu siis väitti arkiston
+      olevan tyhjä ennen kuin se tiesi asiasta mitään.
+
+      Teksti kertoo mitä tapahtuu eikä väitä arkistosta mitään, ja se katoaa itsestään
+      kun ensimmäinen arvo tulee. Kolme pistettä ovat siinä siksi että rivi on
+      lyhytikäinen. Ilman niitä se luettaisiin lopputilaksi.
+    -->
+    <string name="archive_edge_loading">Reading message archive…</string>
+
+    <!--
+      Tarkoituksella "something", ei "a message". Sivuston lippu kertoo vain että
+      osoitteessa on jotain odottamassa, ja sama ilmoitus tulee myös turnaustiedotteesta.
+      Lupaus henkilöviestistä olisi tässä kohtaa arvaus.
+    -->
+    <string name="top_something_waiting">Something is waiting for you on DailyGammon</string>
+    <string name="top_something_waiting_explain">Opening it consumes it: DailyGammon shows each item once and does not store it. The app saves it before showing it.</string>
+    <!--
+      Vie viestiruutuun, ei hae mitään. Kuluttava nappi on siellä missä arkisto on, koska
+      napin tulos on ymmärrettävä vain sen vieressä mihin se päätyy.
+    -->
+    <string name="top_something_waiting_open">Go to messages</string>
+
+    <!--
+      Keskeytynyt lähetys otteluluettelossa.
+
+      Lisätty 10.8.2026, koska palkki oli saavuttamattomissa juuri siinä tilassa jossa sitä
+      eniten kaipaa: yhteydettömänä käynnistetty sovellus ei pääse lautaruutuun lainkaan,
+      koska se avautuu tähän luetteloon ja luettelo haetaan verkosta.
+
+      Sama sanamuoto kuin lautaruudun palkissa ("may not have gone through"), ja se on
+      tarkoituksellista: kaksi eri sanaa samasta rivistä lukisi kuin kaksi eri tapahtumaa.
+      Napin nimi tulee sivulta sellaisenaan, kuten kaikkialla muuallakin.
+    -->
+    <string name="top_pending_title">%1$s may not have gone through</string>
+    <string name="top_pending_explain">The connection dropped while sending it. Open the match to see what the app knows and to try again.</string>
+    <string name="top_pending_open">Open the match</string>
+
+    <!--
+      Viestiruutu. Ainoa paikka sovelluksessa jossa nappi tekee peruuttamattoman teon, ja
+      tekstit on kirjoitettu sen ympärille.
+
+      Jokainen lopputulos sanoo kuluiko jonosta jotain. Se on tässä ruudussa ainoa tieto
+      jota käyttäjä ei voi tarkistaa mistään muualta: haettua kohdetta ei näytetä toista
+      kertaa, joten epäselvä lause tarkoittaisi epätietoisuutta lopullisesti.
+    -->
+    <string name="messages_title">Messages</string>
+    <!--
+      Sanamuoto ei saa väittää että jotain odottaa (mitattu 9.8.2026 illalla aidolla jonolla).
+      Nappi näkyy aina kun polku on tiedossa, ja polku pysyy tiedossa haun jälkeenkin, koska
+      sivun `Next >>` osoittaa samaan osoitteeseen kuin ennen hakua. Sivu ei siis koskaan
+      kerro olleensa viimeinen, eikä ruutu voi tietää sitä.
+
+      Vanha muoto oli "Take the next item", ja "the next" lupasi kohteen olevan olemassa.
+      Korjaus on **poisto eikä lisäys**: kortista karsittiin lauseita samana päivänä koska se
+      oli liian pitkä, joten selittävä virke maksaisi juuri sitä mitä äsken ostettiin. Kun
+      lupausta ei ole, sitä ei tarvitse selittää pois.
+    -->
+    <string name="messages_queue_heading">Take an item from DailyGammon</string>
+    <!--
+      Kaksi lausetta, ja kumpikaan ei ole poistettavissa (Tommi 9.8.2026: kortti oli liian
+      pitkä, kaksi lausetta siirtyi manuaaliin).
+
+      Ensimmäinen on itse varoitus: se on ainoa syy miksi nappi ei ole tavallinen hakunappi.
+      Toinen on kanonin vaatimus eikä lisäys, sillä yhden laitteen rajaus sanoo että kun
+      kuluttava nappi joskus tulee, sen oman tekstin on kerrottava että avaaminen sitoo
+      kohteen tähän laitteeseen.
+
+      Poistetut kaksi lausetta (tallennus ennen näyttöä, yksi kohde per painallus) sanovat
+      mitä sovellus tekee oikein, eli ovat lupauksia eivätkä varoituksia. Ne asuvat
+      manuaalissa ja otteluluettelon odotusilmoituksessa, joten mitään ei kadonnut.
+    -->
+    <string name="messages_queue_explain">DailyGammon shows each item once and keeps no copy, so fetching one uses it up.\n\nWhatever you take lands in this device\'s archive and nowhere else: another device or a browser would not see it.\n\nThis app never checks the queue on its own, so it cannot tell you what is in there. The notice came from your match list when it was last refreshed, and taking an item does not update it. Pressing the button is the question, not the answer.</string>
+    <string name="messages_queue_fetch">Take an item</string>
+    <string name="messages_queue_fetching">Fetching…</string>
+    <string name="messages_queue_saved">Saved. The message is in the archive below. Whether anything else is waiting is not something this screen can know.</string>
+    <!--
+      Vastauskenttä. Näkyy vain juuri saapuneen viestin kohdalla (Tommin päätös 22.8.2026),
+      eikä arkiston vanhoissa viesteissä.
+
+      Laskuri kertoo rajan, koska raja on sivuston oma eikä sovelluksen valinta: 80 merkkiä
+      luetaan lomakkeelta. Ilman laskuria kenttä lakkaisi ottamasta merkkejä vastaan ilman
+      selitystä, ja se näyttäisi rikkinäiseltä näppäimistöltä.
+    -->
+    <string name="messages_reply_label">Reply</string>
+    <!--
+      Lainausvalinta (30.8.2026): rasti liittää alla näkyvät `> `-rivit lähtevän viestin
+      alkuun, jotta vastaanottaja näkee mihin vastattiin. Esikatselu näyttää lainauksen
+      täsmälleen lähtevässä muodossa, joten teksti ei lupaa mitään mitä ei näy.
+    -->
+    <string name="messages_reply_quote">Quote the message above in your reply</string>
+    <string name="messages_reply_count">%1$d characters</string>
+    <string name="messages_reply_send">Send reply</string>
+    <!--
+      Fraasinappien muokkaus (3.9.2026). Fraasit itse eivät ole täällä, koska ne ovat
+      lähetettävän viestin sisältöä eivätkä UI-tekstiä (ks. PhraseStore). Tallennus lukee
+      kentän tekstin: nappi sanoo sen, jotta käyttäjä tietää mistä fraasi tulee.
+    -->
+    <string name="messages_phrase_save">Save text as phrase</string>
+    <string name="messages_phrase_edit">Edit phrases</string>
+    <string name="messages_phrase_done">Done</string>
+    <!-- Ruudunlukijan nimi poistonapille muokkaustilassa; näkyvä teksti on fraasi ja rasti. -->
+    <string name="messages_phrase_remove">Remove phrase %1$s</string>
+    <!-- Yhteys vastauksen ja vastatun viestin valilla. Tama on taman laitteen tietoa: -->
+    <!-- DailyGammonissa ei ole viestiketjuja, joten sivusto ei tieda naista mitaan. -->
+    <string name="messages_reply_to">In reply to: %1$s</string>
+    <string name="messages_to">to %1$s</string>
+    <string name="messages_answered">You replied to this</string>
+    <string name="messages_reply_sending">Sending…</string>
+    <string name="messages_reply_sent">Sent. Your reply is in the archive below, because DailyGammon does not keep it either.</string>
+    <!--
+      Tuntematon vastaus lähetykseen. EI sanota epäonnistumiseksi, koska sitä ei tiedetä:
+      sivu ei ollut kuittaus eikä kirjautumislomake. Uudelleenlähetys voisi siis tuottaa
+      kaksi viestiä, ja teksti sanoo sen suoraan sen sijaan että kehottaisi yrittämään
+      uudelleen.
+    -->
+    <string name="messages_reply_unconfirmed">DailyGammon did not confirm the send, so this app cannot tell whether your reply arrived. Check on the site before sending it again: sending twice would deliver it twice.</string>
+    <!--
+      Lauta jonossa on tavallinen tilanne eikä vika, ja se sanotaan niin. Käyttäjä ei
+      menettänyt viestiä, koska kohde ei ollut viesti.
+    -->
+    <string name="messages_queue_announcement">That was a DailyGammon announcement, not a personal message, so it was not saved. It is shown below and only here: once you take the next item, it is gone.</string>
+    <string name="messages_queue_was_board">That item was a game board, not a message, so nothing was saved. Play it on the site.</string>
+    <string name="messages_queue_unreadable">DailyGammon returned a page this app could not read as a message, so nothing was saved. Check the site.</string>
+    <!--
+      Vastaanotettu ottelukutsu jonon kärjessä (Tommin päätös 14.9.2026, vaihtoehto 1: kutsuun
+      vastataan sovelluksesta). Kutsu ei kulu eikä sitä tallenneta; napit ovat sivun omat sanat
+      (Accept Invitation, Decline Invitation, Counter Offer) ja tulevat ReceivedInvitationista,
+      joten tässä on vain kehys ja vahvistukset. Vastaussivua ei ole mitattu, joten kuittaus
+      sanoo mitä sivu sanoi eikä väitä lopputulosta; Top Page kertoo sen.
+    -->
+    <string name="messages_queue_invitation">That is an invitation, not a message. It stays in the queue until you answer it, so nothing was saved and nothing was used up.</string>
+    <string name="messages_invitation_sentence">%1$s invites you to play %2$s</string>
+    <string name="messages_invitation_accept_title">Accept the invitation?</string>
+    <string name="messages_invitation_accept_body">A match against %1$s starts on DailyGammon as soon as you confirm, and this app has no way to take it back.</string>
+    <string name="messages_invitation_decline_title">Decline the invitation?</string>
+    <string name="messages_invitation_decline_body">%1$s sees the refusal and your comment, if any, through DailyGammon\'s own queue. The invitation is gone after this.</string>
+    <string name="messages_invitation_reason">Comment to %1$s (optional)</string>
+    <string name="messages_invitation_answered">Answered. DailyGammon says: %1$s</string>
+    <string name="messages_invitation_answered_plain">Answered. Refresh the match list to see what DailyGammon did with it.</string>
+    <!--
+      Ei nappia ilman linkkiä. Osoitetta ei koota, koska väärä osoite ei täällä tuottaisi
+      virhettä vaan peruuttamattoman teon.
+    -->
+    <string name="messages_queue_no_link">Nothing is waiting. This screen only follows the link DailyGammon gives on your match list, so refresh that list to check again.</string>
+    <string name="messages_archive_empty">No messages yet. Everything you take from DailyGammon is kept here, on this device only.</string>
+    <!--
+      Pelaajasuodatin (30.8.2026). "All players" on valikon nollavalinta; tyhjän rajauksen
+      teksti sanoo miksi lista on tyhjä ja mistä pääsee takaisin, koska rajattu tyhjä lista
+      näyttäisi muuten samalta kuin tyhjä arkisto.
+    -->
+    <string name="messages_filter_all">All players</string>
+    <string name="messages_filter_empty">No messages from this player. Pick another name or All players above.</string>
+    <!--
+      Vientinappi on pois kun arkisto on tyhjä (14.8.2026), sama muoto kuin jonon napilla:
+      toiminto jota ei voi tehdä mielekkäästi jätetään pois eikä näytetä toimimattomana.
+      Tyhjä arkisto ei ole virhe eikä sitä selitetä, koska ruudulla lukee jo miksi
+      ("No messages yet").
+    -->
+    <string name="messages_export_action">Export</string>
+    <!--
+      Tuonti (Tommin tilaus 16.9.2026). Nappi on näkyvissä myös tyhjällä arkistolla, toisin
+      kuin Export, koska tyhjä arkisto on juuri se tilanne jossa tuontia tarvitaan: uusi laite.
+      Tulosrivi sanoo luvut, koska tuonti joka ei kirjoittanut mitään näyttäisi muuten samalta
+      kuin tuonti joka kirjoitti kaiken. "Already here" kertoo että ohitus on sääntö eikä vika:
+      tuonti vain lisää eikä koskaan korvaa laitteella jo olevaa. Luku on sanan jäljessä
+      ("messages 1") eikä edessä, koska "1 messages" näkyi laiteajossa 16.9.2026 ja englannin
+      monikko kolmelle luvulle samassa lauseessa vaatisi kolme plurals-resurssia.
+    -->
+    <string name="messages_import_action">Import</string>
+    <string name="import_done">Imported from the file. New on this device: messages %1$d, reminders %2$d, phrases %3$d.</string>
+    <string name="import_nothing_new">Nothing new in that file: everything in it was already here.</string>
+    <string name="import_already_here">Already here and left as they are: messages %1$d.</string>
+    <string name="import_unreadable">Skipped because they could not be read: entries %1$d.</string>
+    <string name="import_other_account">The messages belong to %1$s and will show when that account is signed in.</string>
+    <string name="import_not_archive">That file is not a DG Android archive. Nothing was imported.</string>
+    <string name="import_dismiss">OK</string>
+
+    <!--
+      Varmuuskopio. Teksti sanoo mitä sovellus tietää eikä enempää: se ei väitä mitään
+      Androidin omasta pilvikopiosta, jota mikään rajapinta ei anna lukea. "Not backed up"
+      on siis totuus tämän tiedoston osalta, ei koko laitteen.
+
+      Rivi kertoo kellonajan eikä pelkkää päivää, toisin kuin arkiston reunapäivä: kysymys on
+      onko kopio tuore, ja siihen aamu ja ilta ovat eri vastauksia.
+    -->
+    <string name="backup_off">Archive is not backed up to a file of your own.</string>
+    <string name="backup_on_not_yet">Backup is set up. Nothing written yet.</string>
+    <string name="backup_saved">Archive backed up %1$s</string>
+    <!--
+      Epäonnistuminen kerrotaan ruudulla eikä lokissa, koska hiljaa epäonnistuva varmuuskopio
+      on väärä varmuus. Syytä ei arvata: tiedosto voi olla poistettu, siirretty tai oikeus
+      voi olla mennyt, eikä tallennuskerros erottele niitä.
+    -->
+    <string name="backup_failed">Backup file could not be written. Choose it again.</string>
+    <!--
+      Aika on mukana silloin kun kopio on joskus tehty, ja se on vian kohdalla tärkeämpi tieto
+      kuin ennen vikaa: käyttäjä tarvitsee tietää mistä hetkestä tallessa oleva kopio on, kun
+      uutta ei juuri nyt saatu. Ilman aikaa rivi kertoisi vain että jotain meni rikki.
+    -->
+    <string name="backup_failed_saved">Backup file could not be written. Choose it again. Last copy %1$s</string>
+    <string name="backup_set_up">Back up</string>
+    <string name="backup_now">Save now</string>
+    <!--
+      Kohteen vaihto on oma tekonsa käytössä ollessa: ilman sitä väärään paikkaan valittu
+      tiedosto jäisi lopullisesti, koska valitsin avautuisi vain käyttöönotossa.
+    -->
+    <string name="backup_change">Change file</string>
+
+    <!--
+      Lähettäjätön viesti nimetään lajilla. Ilmoituksella ei ole lähettäjää, ja sijaisnimi
+      olisi sovelluksen väite eikä sivun.
+    -->
+    <!--
+      "Match" eikä "game" (Tommin korjaus 30.8.2026): backgammonissa ottelu (match) koostuu
+      peleistä (game), ja viesti kuuluu otteluun (`matchId`), ei yksittäiseen peliin.
+      Avain säilyy `messages_source_game`-muotoisena, koska se seuraa enumin nimeä
+      (`MessageSource.GAME_MESSAGE`), joka on kannassa eikä liiku.
+    -->
+    <string name="messages_source_game">From a match</string>
+    <string name="messages_source_quick">Quick message</string>
+    <string name="messages_source_announcement">DailyGammon announcement</string>
+    <string name="messages_source_unknown">Unrecognised message</string>
+
+    <!--
+      Sarakeotsikot. Nimet ovat sivuston omia, ja sarakkeet ovat samassa järjestyksessä
+      kuin DailyGammonin taulukossa: käyttäjä lukee samaa listaa kahdessa paikassa, joten
+      oma nimeäminen tekisi vertailusta työtä.
+
+      Grace ja Time Pool on merkitty kääntämättömiksi, vaikka koko käyttöliittymä on
+      englantia (päätös 5.8.2026). Merkintä on tarkoitettu sille hetkelle jolloin joku
+      harkitsee kielen lisäämistä: nämä kaksi ovat sivuston termejä joiden yksikköä ei ole
+      luettu sivulta (ks. Match-mallin kommentti), joten käännös olisi tulkinta siinä missä
+      arvon muuntaminenkin.
+    -->
+    <string name="col_grace" translatable="false">Grace</string>
+    <string name="col_time_pool" translatable="false">Time Pool</string>
+    <string name="col_round">Round</string>
+    <string name="col_length">Length</string>
+    <string name="col_opponent">Opponent</string>
+
+    <!--
+      Lautanäkymä. Sivuston omat termit (Bar, Off, Cube, Move, Pips) on merkitty
+      kääntämättömiksi samasta syystä kuin Grace ja Time Pool: käyttäjä lukee samaa lautaa
+      kahdessa paikassa rinnakkain, ja oma nimeäminen tekisi vertailusta työtä.
+    -->
+    <string name="board_title" translatable="false">Board</string>
+    <string name="board_back">Back</string>
+    <string name="board_off" translatable="false">Off</string>
+    <string name="board_move_number" translatable="false">Move %1$d</string>
+    <!-- Ahtaan paneelin ottelukortti: kierros ja siirto samalla rivillä (16.9.2026). -->
+    <string name="board_round_and_move" translatable="false">%1$s · %2$s</string>
+    <!-- Kuutiomuistutuksen lippu pelaajakortin kuution vieressä; Tommin oma sanamuoto 31.8.2026. -->
+    <string name="board_cube_reminder_flag">Pick me</string>
+    <!-- Pip-luku pelaajakortin kolmantena rivinä; toinen arvo on etumatka etumerkkeineen. -->
+    <string name="board_pips_lead">Pips %1$d (%2$s)</string>
+    <!-- Sama lokerosarakkeessa ilman sanaa, koska sarake on kapea. -->
+    <string name="board_pips_short">%1$d (%2$s)</string>
+    <!--
+      Pistemäärä tulee merkkijonona eikä lukuna, koska sivuston oma Crawford-merkintä on
+      tähti luvun perässä (`6*`) ja se näytetään sellaisenaan.
+    -->
+    <string name="board_score">score %1$s</string>
+    <!--
+      Away-notaatio: paljonko pelaajalta puuttuu ottelun voittoon. Merkintä on analyysin
+      vakiintunutta kieltä eikä sivuston omaa (SUBSTANSSI.md kohta 92), joten se on lyhyt eikä
+      selitetty. Crawford-tähti liitetään perään koodissa, koska se tulee eri kentästä.
+    -->
+    <string name="board_score_away" translatable="false">%1$d-away</string>
+    <string name="board_pip_check_ok" translatable="false">PIP %1$d / %2$d OK</string>
+    <!--
+      Sovelluksen ainoa automaattinen tunnistin hiljaa väärään menneelle jäsennykselle, ja
+      siksi se on käyttäjälle näkyvä eikä lokirivi. Sivun kaksi riippumatonta osaa
+      todistavat toisensa, ja kun ne eivät todista, asema ruudulla voi olla väärä.
+    -->
+    <string name="board_pip_check_failed" translatable="false">PIP MISMATCH %1$d / %2$d vs panel %3$s</string>
+    <string name="board_pip_check_unavailable">PIP hidden</string>
+    <string name="board_checker_check_failed" translatable="false">CHECKER MISMATCH %1$d / %2$d</string>
+    <!--
+      Toimintonappien tekstit tulevat sivulta sellaisinaan (Submit Move, Roll Dice, Double,
+      Accept, Decline), joten niitä ei ole täällä. Nämä kaksi ovat ruudun omia, koska sivu ei
+      anna niille sanaa: peruutuslinkillä on sivulla teksti mutta se on linkki eikä nappi, ja
+      vahvistusruudun selite on sivulla erillistä tekstiä ruudun vieressä.
+    -->
+    <string name="board_undo" translatable="false">Undo Move</string>
+    <!--
+      Skip Game on sivun oma sana ja siksi kääntämätön, kuten Undo Move. Ero muihin sivun
+      komentoihin on ettei tätä lueta linkin tekstistä vaan osoitteesta (ks. BoardParser),
+      joten sana on täällä vaikka se on sivun eikä sovelluksen.
+    -->
+    <string name="board_skip_game" translatable="false">Skip Game</string>
+    <string name="board_verify" translatable="false">Verify %1$s</string>
+    <!--
+      Kuutioteon kolme elettä (Tommin päätös 3.9.2026): sivun oma rasti, nappi, dialogi.
+      Dialogin vahvistusnappi on sivun oma sana (Double, Accept) eikä oma teksti, joten
+      sille ei ole riviä. Verify-huomautus näytetään kun nappia painaa ilman rastia:
+      ilman sitä painallus katoaisi tyhjään, ja sivusto sanoisi saman vasta pyynnön jälkeen
+      punaisella rivillä (Previous move not verified!).
+    -->
+    <string name="board_double_title" translatable="false">Double?</string>
+    <string name="board_double_text" translatable="false">This sends Double to your opponent right away. It cannot be taken back.</string>
+    <string name="board_accept_title" translatable="false">Accept?</string>
+    <string name="board_accept_text" translatable="false">This accepts the double right away. The cube moves to your side at twice its value, and it cannot be taken back.</string>
+    <!--
+      board_rollback_accept_text poistui 8.9.2026. Se syntyi 5.9.2026 luennalle jossa
+      peruutetun sivun Accept olisi peruutuksen hyväksyntä; kaappaus sanoo että sivulla
+      luki "has doubled" ja Accept hyväksyi kuution. Ks. BoardScreen.kt cubeDialogBody.
+    -->
+    <string name="board_verify_first" translatable="false">Tick Verify %1$s first. Nothing was sent.</string>
+    <!--
+      Peruutus on rivi tilannetekstin yläpuolella, ei kortti (Tommin päätös 3.9.2026):
+      ilmiö on pelaajalle tuttu ja toistuu useita kertoja sessiossa. Yksi virke, ei kuittausta.
+    -->
+    <string name="board_rolled_back">Rolled back: your opponent did not play the site\'s guess.</string>
+
+    <!--
+      Top Page on oma lajinsa eikä arvaus: kaikki kolme havaittua ei-lauta-tapausta olivat
+      otteluluettelo (docs/AVOIMET.md, suljettu 29.8.2026). Teksti sanoo mitä saatiin eikä
+      arvaile syitä, koska syy (jono tyhjeni, To Top) ei ole vastauksesta luettavissa.
+    -->
+    <string name="board_top_page">DailyGammon answered with your match list instead of a board: there is nothing more to play here right now. Go back to see the list.</string>
+    <string name="board_wrong_page">This is no longer a board. DailyGammon may have moved on to another game, or the match has ended. Go back and refresh the list.</string>
+    <!--
+      Jonon viestisivu tuli lautapolulla (mitattu 13.9.2026, ks. NotABoardKind.InboxItem).
+      Teksti sanoo kolme asiaa: keneltä, mitä ja että se on jo tallessa, koska sivusto ei
+      säilytä sitä ja käyttäjän on tiedettävä ettei ruudun sulkeminen hukkaa mitään.
+      Vastaus tehdään Inboxista, jossa lomake elää viestin mukana.
+    -->
+    <string name="board_inbox_item_saved">Quick message from %1$s, saved to your archive:\n\n%2$s\n\nYou can reply from the Inbox. Go back to continue playing.</string>
+    <string name="board_invitation">%1$s invites you to a match. DailyGammon put the invitation at the head of its queue, so it comes up here instead of a board. Nothing was saved and nothing was used up: answer it from the Inbox, then go back to continue playing.</string>
+    <string name="board_inbox_item_unsaved">DailyGammon announcement (not archived):\n\n%2$s\n\nGo back to continue playing.</string>
+    <string name="board_different_match">DailyGammon returned a different match (%1$s) than the one you opened, so nothing is shown. Go back and refresh the list.</string>
+    <!--
+      Ohje eikä nappi. Asetuksen vaihtaminen puolesta olisi kirjoitus käyttäjän tilille,
+      ja tämä sovellus ei kirjoita sivustolle mitään.
+    -->
+    <string name="board_mini_scheme">The position could not be read. DailyGammon\'s Mini board scheme leaves out the point numbers, and this app reads the numbers from the page rather than guessing them. Change Board Scheme in your DailyGammon settings to see the board here.</string>
+    <string name="board_unreadable">This page has a board, but the app could not read which match it belongs to, so it will not show a position it cannot verify. Refresh, or open the match on the site.</string>
+    <string name="board_position_unreadable">The position could not be read: the page had a board, but none of the point numbers this app reads. Your board scheme is not the Mini one, so this is not the usual cause and there is nothing to change in your settings. Playing this match on the site still works.</string>
+    <!--
+        Sivuston oma toiminto eikä virhe: se arvaa tulevan aseman ja kysyy siirtoa
+        etukäteen. Teksti sanoo molemmat, koska pelkkä varoitus saisi käyttäjän
+        luulemaan sovellusta rikkinäiseksi, ja pelkkä selitys jättäisi arvatun
+        aseman näyttämään nykytilalta.
+    -->
+    <!--
+      Arvatusta asemasta ei sanota mitään, ja tekstit poistettiin 1.9.2026 Tommin päätöksellä.
+      Muoto ehti olla kolmen virkkeen kortti ja kahden sanan merkintä, ja molemmat kaatuivat
+      samaan: sivusto arvaa vastustajan siirtoja lähes joka siirrolla, joten kyse on kohteen
+      tavallisimmasta tilasta, ja DailyGammonia pelaava tuntee ilmiön ennestään. Poistetut
+      tekstit ovat git-historiassa; lippu jäsennetään yhä (`BoardState.speculative`), eikä
+      ruutu vain piirrä siitä mitään. Ks. `docs/UI.md`.
+    -->
+    <string name="board_path_not_read_only">This match link is not a plain read-only address, so it was not opened. Nothing was requested.</string>
+    <!--
+        Ottelun keskustelu laudan yläpuolella. Nappien tekstit tulevat sivulta eivätkä
+        täältä, joten selite kertoo mitä painallus tekee: viesti lähtee ja ruutu vaihtuu.
+    -->
+    <string name="board_chat_title">Chat</string>
+    <string name="board_chat_with">Chat with %1$s</string>
+    <string name="board_chat_label">Your message</string>
+    <!--
+      Kentän avaus pyydettäessä (Tommin kuittaus 27.8.2026): tyhjä lomake ei piirrä
+      korttia, joten aloitus on oma nappinsa toimintojen joukossa ja Reply kortissa
+      viestin vieressä.
+    -->
+    <string name="board_chat_open">Message</string>
+    <string name="board_chat_reply">Reply</string>
+    <!--
+      Sivuston napin `To Top` näyttöteksti (Tommin päätös 1.9.2026). Paikan nimi tulee
+      `tab_matches`ista eikä ole kirjoitettu tähän uudestaan, jotta välilehden nimi ja napin
+      kohde eivät voi erkaantua toisistaan. Sivusto nimeää teot, sovellus nimeää paikat, ks.
+      `SubmitLabels` ja `docs/UI.md`. Lähetettävä arvo ei muutu.
+    -->
+    <string name="board_submit_to_place">To %1$s</string>
+    <string name="board_chat_quote">Quote previous message</string>
+    <string name="board_chat_send_explain">Next Game and To Top both leave this board, and anything you have written goes with them, because on DailyGammon that is one and the same step.</string>
+    <string name="board_session_expired">Signed out. Go back and sign in again.</string>
+
+    <!--
+      Lähettämättä jäänyt teko.
+
+      Teksti kertoo mitä ei tiedetä eikä mitä tapahtui, ja se on mitattu rajaus: katkennut
+      yhteys voi katketa joko ennen sitä kun palvelin luki pyynnön tai sen jälkeen, joten
+      "your move was not sent" olisi väite jota mikään ei kata. Napin nimi (%1$s) tulee
+      sivulta sellaisenaan, kuten toimintonapeissakin.
+    -->
+    <string name="board_pending_title">%1$s may not have gone through</string>
+    <string name="board_pending_body">The connection dropped while sending, so it is not certain whether the action arrived. Refreshing the board loads the page from DailyGammon again. If the site no longer offers the action, this row goes away and nothing is sent.</string>
+    <string name="board_pending_body_assembled">The connection dropped while sending, so it is not certain whether the move arrived. DailyGammon no longer keeps the move you put together, so the app cannot send it again. Refresh the board: if it is still your turn, make the move once more.</string>
+    <string name="board_pending_gone">DailyGammon no longer offers that action, so nothing was sent and the pending row is gone.</string>
+    <string name="board_unconfirmed_title">Board not confirmed</string>
+    <string name="board_unconfirmed_offline">The connection dropped during your action. The board below is the last position loaded from DailyGammon, from before the attempt, and nothing on it has been confirmed since. It is view-only until the page is reloaded: press Refresh on the board or pull down, or wait for the connection to return and the app reloads it once. The app never repeats your action by itself.</string>
+    <string name="board_unconfirmed_sleeping">DailyGammon answered your action with its backup notice: the site is asleep while its daily backups run. The board below is the last position loaded before the attempt, and nothing on it has been confirmed since. It is view-only until the page is reloaded: press Refresh on the board or pull down in half an hour or so.</string>
+    <string name="board_unconfirmed_server">DailyGammon answered your action with an error (%1$d). The board below is the last position loaded before the attempt, and nothing on it has been confirmed since. It is view-only until the page is reloaded: press Refresh on the board or pull down once the site recovers.</string>
+    <string name="board_unconfirmed_ok">OK</string>
+
+    <!--
+      Katkotilan Refresh-napin vieressä keskikaistalla (Tommin tilaus 8.9.2026,
+      "keskipaneeliin sopisi viereen tieto huonosta yhteydestä"). Dialogi kertoo saman
+      pitkästi, mutta se suljetaan; tämä jää näkyviin niin kauan kuin lauta on vahvistamaton.
+      Lyhyt siksi että kaista on kapea ja teksti on napin vieressä eikä sen sijasta.
+    -->
+    <string name="board_unconfirmed_chip_offline">No connection</string>
+    <string name="board_unconfirmed_chip_server">Site error %1$d</string>
+    <string name="board_unconfirmed_chip_sleeping">Site asleep</string>
+
+    <!--
+      Muistutus itselle, eli pelaajan oma muistiinpano yhden pelin ajaksi. Ei sivuston
+      ominaisuus: selaimen `Reminder`-lohko tulee laajennuksesta, ks. docs/KOHDE.md.
+
+      **Pikanapin teksti on omamme eikä laajennuksen** (Tommin valinta 23.8.2026).
+      Laajennuksessa lukee `Remind Cube Doubling`, ja se on kahden sanan verran sivuston
+      kieltä sellaisesta joka ei ole sivuston teko. Napissa lukee mitä se lisää, ja
+      lisättävä rivi on kirjoitettu siihen muotoon jossa se luetaan tunteja myöhemmin:
+      lause itselle eikä otsikko.
+
+      Nappien sanoja ei tässä oteta sivulta, toisin kuin toimintonapeissa. Ero on että
+      lautasivun napit ovat sivuston tekoja ja tämä ei ole: sivusto ei tiedä tästä mitään,
+      joten sen sanoihin ei ole mitään syytä nojata.
+    -->
+    <string name="board_reminders_title">Reminders</string>
+    <string name="board_reminder_field">Note to yourself</string>
+    <string name="board_reminder_add">Add</string>
+    <string name="board_reminder_cube">Cube reminder</string>
+    <string name="board_reminder_cube_text">Think about doubling</string>
+    <string name="board_reminder_remove">Remove reminder</string>
+    <string name="board_reminder_scope">Kept on this device until this game ends.</string>
+
+    <!--
+      Merkitty asema (Tommin toive 15.9.2026 illalla). Ei muistutus vaikka linkki asuu
+      niiden seassa: merkki elää ottelun yli ja luetaan ottelun jälkeen analyysia varten,
+      ks. fi.tommi.dg.domain.MarkedPosition. Rivi laudan alla sanoo siirtonumeron, koska
+      se on se sana jolla asema löytyy analyysiohjelmasta.
+    -->
+    <string name="board_mark_position">Mark position</string>
+    <string name="board_mark_field">Comment (optional)</string>
+    <string name="board_mark_add">Mark</string>
+    <string name="board_mark_row">Marked for analysis: move %1$d</string>
+    <string name="board_mark_row_note">Marked for analysis: move %1$d, %2$s</string>
+    <string name="board_mark_remove">Remove mark</string>
+    <string name="board_mark_scope">Kept on this device until you remove it. Listed under Matches.</string>
+
+    <!--
+      Asetusnäkymä. Ruutu näyttää omat DailyGammon-asetukset eikä muuta niitä.
+
+      Otsikko on sivuston oma sana (`Personal Preferences` -sivu on osoitteessa
+      /bg/profile), mutta tässä käytetään lyhyempää `Settings`, koska ruudun yläpalkissa on
+      tilaa yhdelle sanalle ja sivuston oma otsikko on `Settings for <nimi>`.
+    -->
+    <string name="settings_title">Settings</string>
+
+    <!--
+      Laiteosio erottuu sivuston lomakkeesta otsikolla ja selitteellä, koska samalla
+      ruudulla on nyt kahdenlaisia asetuksia: nämä eivät lähde koskaan verkkoon, sivuston
+      lomake lähtee kokonaisena. Eroa ei voi nähdä ruudusta ilman että se sanotaan
+      (docs/ASETUKSET.md luku 3).
+    -->
+    <string name="settings_device_section">This device</string>
+    <string name="settings_device_explain">These choices live only on this device. Nothing here is sent to DailyGammon.</string>
+    <string name="settings_board_style">Board look</string>
+    <!--
+      SITE-vaihtoehto sanoo mihin se sitoo (omat DailyGammon-asetukset), koska pelkkä
+      "site colors" ei kertoisi että myös suunta ja pip-luvun näkyvyys seuraavat.
+    -->
+    <string name="settings_board_style_site">Follow my DailyGammon settings</string>
+    <string name="settings_board_style_x22" translatable="false">Monte Carlo X-22</string>
+    <!-- Nimi on Tommin (13.9.2026), koska lähetyslaudan valmistajaa ei todennettu. -->
+    <string name="settings_board_style_monte_carlo_variant" translatable="false">Monte Carlo variant</string>
+    <!--
+      Nopat ja pisteet ovat omia kytkimiään eivätkä lautatilan mukana (Tommin päätös
+      27.8.2026, docs/ASETUKSET.md luku 3). Vaihtoehdot kuvaavat mitä ruudulla näkyy:
+      "as on the site" on mitattu käytös eikä lupaus laajemmasta uskollisuudesta.
+    -->
+    <string name="settings_dice_style">Dice</string>
+    <string name="settings_dice_style_counter">One die for each move, played ones greyed</string>
+    <string name="settings_dice_style_site">Two dice, as on the site, played ones greyed</string>
+    <string name="settings_score_style">Score</string>
+    <string name="settings_score_style_away">Points away from winning (4-away)</string>
+    <string name="settings_score_style_site">Points won, as on the site</string>
+    <!--
+      Pakolliset askeleet (Tommin vaatimus 1.9.2026, lukutapa 2.9.2026: siirto on askel eikä
+      vuoro). Selite nimeää kolme tilannetta joissa askel mitatusti on pakollinen, ja sanoo
+      erikseen ettei lähetys siirry sovellukselle, koska se on koko riskiluokan raja
+      (docs/AVOIMET.md). "Forced" on sivuston oma sana (Submit Forced Move).
+    -->
+    <string name="settings_forced_steps">Forced moves</string>
+    <string name="settings_forced_steps_toggle">Place forced checkers for me</string>
+    <string name="settings_forced_steps_explain">When a checker has only one legal play in every possible turn (coming in from the bar, bearing off, doubles), the app places it before you start. You still choose the rest and press Submit Move yourself. Undo Move clears these as well.</string>
+    <!--
+      Ahne uloskanto (Tommin tilaus 2.9.2026). "Greedy" on sivuston oma sana (Submit Greedy
+      Bearoff), ja selite sanoo missä tämä eroaa sivustosta: sivusto tarjoaa nappinsa vain kun
+      ahne vuoro on yksikäsitteinen, tämä poimii myös yhteisen osan kun vaihtoehtoja on.
+    -->
+    <string name="settings_greedy_bearoff_toggle">Bear off greedily for me</string>
+    <!--
+      Noppien painallus tekona (Tommin tilaus 4.9.2026). Kaksi kytkintä eikä yksi, koska teot
+      ovat eri painoisia: vaihto on peruttavissa, lähetys päättää vuoron. Selitteet sanovat
+      ehdon pelaajan sanoin (nopat harmaita, nopat koskematta) ja sen rajan jota kysymykset
+      4.9. tarkensivat: lähetys toimii aina kun vuoro on täysi, myös silloin kun toinen noppa
+      jää pelaamatta.
+    -->
+    <string name="settings_dice_tap">Tapping the dice</string>
+    <string name="settings_dice_submit_toggle">Submit the move by tapping the dice</string>
+    <string name="settings_dice_submit_explain">When your turn is complete and the dice have gone grey, tapping them sends the move, exactly as Submit Move does. A turn where only one die can be played counts as complete, so tapping sends it too. There is no confirmation, the same as the button.</string>
+    <string name="settings_dice_swap_toggle">Swap the dice by tapping them</string>
+    <string name="settings_dice_swap_explain">Before you pick up the first checker, while no die has gone grey, tapping the dice swaps their order the way Swap Dice does. Nothing is sent to DailyGammon, and tapping again swaps back. Doubles cannot be swapped.</string>
+    <!--
+      Pystylukko (Tommin päätös 2.9.2026): lukuruudut pystyyn oletuksena, lauta vaakaan aina.
+      Selite nimeää tilanteen jossa lukko haittaa (tabletti kädessä vaakana, jono tyhjenee).
+    -->
+    <string name="settings_orientation">Screen orientation</string>
+    <string name="settings_portrait_lock_toggle">Keep lists and messages upright</string>
+    <string name="settings_portrait_lock_explain">The board is always landscape. With this on, everything else stays portrait; turn it off if you hold the tablet sideways and do not want it to rotate when you return to the match list.</string>
+    <string name="settings_handedness">Handedness</string>
+    <string name="settings_left_handed_toggle">I move the checkers with my left hand</string>
+    <string name="settings_left_handed_explain">The side panel goes to your other hand, so one hand moves checkers while the other reaches the buttons. Right-handed keeps the panel on the left, which is the default.</string>
+    <!--
+      Taustakuvio (Tommin päätökset 6.9.2026): kuvio on kytkin oletuksena pois molemmissa
+      teemoissa, ja sumi-e on vaalean teeman alakytkin. Selitteet kertovat sen mitä ruudulta
+      ei näe: taivas arvotaan joka ruudun avauksessa, tummassa myös paletti ja hahmo.
+    -->
+    <string name="settings_background">Background</string>
+    <string name="settings_pattern_toggle">Pattern behind the lists</string>
+    <string name="settings_pattern_explain">Cubes at the bottom turn into creatures as they rise, and every screen you open gets a new sky. In the light theme it is drawn in ink; in the dark theme each screen picks its own colours and creature: birds, fish, mushrooms, leaves or stars. Text always sits on a plain surface, so reading is the same either way.</string>
+    <string name="settings_sumi_e_toggle">Vermilion birds and a moon (light theme)</string>
+    <string name="settings_sumi_e_explain">With the pattern on in the light theme, the birds are painted in vermilion and a moon hangs behind them.</string>
+    <!--
+      Taustakuvat tyhjään tilaan (Tommin päätökset 15.9.2026): kansio on itse kytkin, kuvat
+      ovat aina kokonaisia ja määrä seuraa tilasta. Selite sanoo että kuvat luetaan tältä
+      laitteelta, koska se on syy suositella laitteen kansiota pilven sijaan.
+    -->
+    <string name="settings_wallpaper">Pictures below the lists</string>
+    <string name="settings_wallpaper_off">No folder chosen. Pick a folder on this device, and its pictures fill the room left below the lists.</string>
+    <string name="settings_wallpaper_on">Pictures come from %1$s on this device.</string>
+    <string name="settings_wallpaper_explain">Pictures are shown whole, never cropped: one, two or three at a time depending on how much room is left, and every screen you open picks new ones. Text stays on its plain surface, and the board never shows them.</string>
+    <string name="settings_wallpaper_choose">Choose folder</string>
+    <string name="settings_wallpaper_change">Change folder</string>
+    <string name="settings_wallpaper_clear">Stop showing</string>
+    <string name="settings_greedy_bearoff_explain">Once there is no contact, the app places the play that bears off the most checkers. If several plays bear off equally many, it places only what they have in common and leaves the choice to you. Submit Move stays yours.</string>
+
+    <string name="settings_owner">DailyGammon settings for %1$s</string>
+    <!--
+      Sanotaan ennen ensimmäistä valintaruutua eikä sen jälkeen. Lukija saa tietää ettei
+      tässä muuteta mitään ennen kuin hän on yrittänyt koskea ruutuun.
+
+      Perustelu on mukana ("does not write"), koska ilman sitä rajoitus näyttää
+      keskeneräisyydeltä. Se ei ole keskeneräisyys: asetuslomake lähettää kaikki kentät
+      kerralla, joten väärin luettu sivu tuhoaisi asetukset lähetyksessä.
+    -->
+    <!--
+      POISTETTU KÄYTÖSTÄ 25.8.2026, ei poistettu tiedostosta.
+
+      Ruutu oli lukutila 25.8.2026 asti, ja tämä teksti oli sen ilmoitus. Sopimusmuutos on
+      kirjattu (docs/UI.md, docs/ASETUKSET.md luku 5) ja ruutu kirjoittaa nyt. Teksti jää
+      tähän siksi, että se sanoo ääneen sen perustelun jonka takia rajoitus oli olemassa;
+      perustelu ei kumoutunut vaan maksettiin neljällä vartiolla ja kolmella luvulla.
+    -->
+    <string name="settings_read_only">This is a read-only view. The app does not write anything to DailyGammon, so change these on the site itself.</string>
+    <!--
+      Korvaa yllä olevan ruudulla. Sanoo lähetyksen muodon eikä rajoitusta: koko lomake
+      lähtee aina, joten yhden ruudun raksitus lähettää silti kaikki kentät. Tämä on
+      käyttäjälle merkitsevä tieto eikä toteutusyksityiskohta, koska se selittää miksi
+      napin vieressä lukee muuttuvien asetusten määrä.
+    -->
+    <string name="settings_whole_form">DailyGammon saves this form as a whole, so every field is sent even if you change one. The app reads the page again before and after sending, and only a matching read-back counts as saved.</string>
+    <!-- Sivuston oma napin teksti, ei käännös. Käyttäjä etsii sivustolta samaa sanaa. -->
+    <string name="settings_submit" translatable="false">Update Preferences</string>
+    <string name="settings_changes_none">Nothing changed yet.</string>
+    <!--
+      Yksikkö ja monikko erikseen olisi oikein, mutta plurals vaatisi kaikki kielet ja
+      sovellus on yksikielinen (englanti). Muoto on siksi luku ja substantiivi.
+    -->
+    <string name="settings_changes_count">%1$d setting(s) will change.</string>
+    <!--
+      Kahden valintaruudun vieressä: ne muuttavat /bg/nextgamen käyttäytymistä, eli sitä
+      kuluttavaa reittiä jonka varassa viestiarkisto on. Sanotaan tässä, koska manuaali ei
+      ole näkyvissä sillä hetkellä kun ruutua raksitetaan (docs/ASETUKSET.md kohta C).
+    -->
+    <string name="settings_queue_explain">This one changes what the "Play!" queue hands out, and that queue is what the message archive reads from.</string>
+    <string name="settings_restore">Fill in the first reading</string>
+    <!--
+      Palautus täyttää lomakkeen eikä lähetä sitä, ja se sanotaan ääneen: lähettävä palautus
+      olisi kirjoitus jota käyttäjä ei nähnyt ennen kuin se tapahtui.
+    -->
+    <string name="settings_restore_explain">This puts back the settings as they were the first time the app read them. It only fills the form; nothing is sent until you press Update Preferences.</string>
+
+    <string name="settings_saved_title">Saved</string>
+    <string name="settings_not_saved_title">Not saved</string>
+    <string name="settings_saved">DailyGammon now reads back exactly what was sent.</string>
+    <string name="settings_not_sent_offline">Nothing was sent, so nothing changed on DailyGammon. You appear to be offline.</string>
+    <string name="settings_not_sent_sleeping">Nothing was sent, so nothing changed on DailyGammon. The site is asleep while its daily backups run; try again in half an hour or so.</string>
+    <string name="settings_not_sent_server">Nothing was sent, so nothing changed on DailyGammon. The site answered with an error (%1$d).</string>
+    <!--
+      Vaarallisin haara ja ainoa joka pyytää tarkistamaan selaimella. Teksti ei väitä
+      tietävänsä mitä sivustolla nyt on, koska se on juuri se mitä ei tiedetä.
+    -->
+    <string name="settings_mismatch">The form was sent, but reading the page back gave something else. Your settings on DailyGammon may not be what this screen shows. Check them in a browser.</string>
+    <!--
+      Lomake ei ole enää se josta ruutu piirrettiin. Oikea teko on päivittää eikä yrittää
+      uudelleen, ja se sanotaan tekona eikä diagnoosina.
+    -->
+    <string name="settings_blocked_form_changed">Nothing was sent. The settings page changed since this screen was drawn, so the app refused to send fields it had not read. Refresh and try again.</string>
+    <string name="settings_blocked_internal">Nothing was sent. The app could not build a submission it trusted for this page.</string>
+    <string name="dialog_ok">OK</string>
+    <!--
+      Vahvistusdialogin peruutusnappi. Neljä dialogia (loungen Join ja Sign Up, profiilin
+      Invite ja Ignore) käytti tähän `lounge_join_confirm_cancel`ia, eli nimi lupasi loungea
+      ja tekstiä luettiin profiililta. Sana on sama kaikissa, joten jaettu nimi on oikein;
+      väärin oli se että nimi kertoi yhden käyttöpaikan. Ks. `dialog_ok` yllä.
+    -->
+    <string name="dialog_cancel">Cancel</string>
+    <!--
+      Sivu saapui muttei ollut asetussivu. Sama muoto kuin lautanäkymän vastaavassa: kerro
+      mitä tapahtui ja mitä käyttäjä voi tehdä, älä väitä vikaa jota ei tiedetä.
+    -->
+    <string name="settings_wrong_page">DailyGammon did not return the settings page. Your session may have changed. Try again.</string>
+    <string name="settings_empty">The settings page had no preferences on it.</string>
+
+    <!--
+      Sanoo mitä tiedetään ja kehottaa tarkistamaan, muttei väitä mitään lähetyksen
+      kohtalosta. Tässä luki 10.8.2026 asti "Nothing was sent.", ja se on lupaus jota
+      verkkokerros ei voi pitää: katkos vastausta luettaessa jättää teon voimaan
+      palvelimella. Väärä suunta olisi juuri se, että pelaaja luulee siirtoa
+      tekemättömäksi ja tekee sen toiseen kertaan.
+
+      Sama teksti kattaa sekä haun että teon (Tommin valinta 10.8.2026), joten se ei saa
+      puhua siirrosta: lautaruutu päätyy tähän tilaan myös pelkästä sivunlatauksesta.
+    -->
+    <string name="error_offline">No connection. Refresh to see what actually happened.</string>
+    <string name="error_server">DailyGammon answered with an error (%1$d).</string>
+    <!-- Sivusto nukkuu varmuuskopion ajan (DgResponse.Sleeping, mitattu 11.9.2026). Katko on
+         lähes päivittäinen, joten sävy on tiedote eikä virhe. -->
+    <string name="error_sleeping">DailyGammon is asleep while its daily backups run. Nothing was lost. Come back in half an hour or so and refresh.</string>
+    <string name="error_auth">Signed out. Sign in again.</string>
+
+    <!--
+      Uloskirjautuminen on Info-välilehden viimeinen rivi 4.9.2026 alkaen, ei enää
+      otteluluettelon yläpalkissa Refreshin vieressä (`docs/UI.md`). Selite kertoo mitä
+      teko vie mukanaan ja mitä se ei vie: arkisto on laitteella eikä istunnossa.
+    -->
+    <string name="action_sign_out">Sign out</string>
+    <string name="action_sign_out_summary">Forget your credentials on this device; your stored messages stay</string>
+
+    <!--
+      Otteluluettelon toinen nappi `Refresh`in vieressä. Sana eikä ratas (Tommin päätös
+      4.9.2026): palkissa ei ole yhtään ikonia, joten mikään ei jää arvattavaksi.
+    -->
+    <string name="top_settings">Settings</string>
+
+    <!--
+      Otteluluettelon kaksi listaa (Tommin tilaus 4.9.2026). `Your turn` on sivuston omat
+      sanat (*It is your turn in N matches*) ja jo rivien merkintä, joten sama asia
+      sanotaan yhdellä tavalla. `Tournaments` siirtyi tänne Loungesta.
+    -->
+    <string name="matches_segment_your_turn">Your turn</string>
+    <string name="matches_segment_tournaments">Tournaments</string>
+
+    <!--
+      Manuaali. Näkymättömät eleet on sanottava jossain: arvattava ele ei ole ele. Teksti
+      puhuu pelaajalle, koska kanoni rajaa kohderyhmän niin.
+
+      Sanamuodossa on kaksi tietoista valintaa. Eleet kerrotaan tekoina eikä nimillä
+      ("pull down", ei "pull-to-refresh"), koska nimi on vasta löytämisen jälkeen hyödyllinen.
+      Ja se mitä sovellus ei tee sanotaan ääneen lupauksena eikä puutteena.
+
+      Lautaosio kirjoitettiin uusiksi 24.8.2026. Tässä luki siihen asti että lauta on
+      lukutilassa eikä ruudulla ole nappeja, ja se lakkasi olemasta totta 10.8.2026 kun
+      toimintonapit tulivat. Jäljelle jäänyt lupaus on kapeampi mutta yhä lupaus: mikään
+      ei lähde sivustolle ilman painallusta, ja avaaminen ei kuluta vuoroa.
+
+      Nappien nimet ovat sivuston omia sanoja (Roll Dice, Submit Move, Double), koska
+      pelaaja lukee samoja nappeja kahdessa paikassa. Kokoamisen kuvaus kattaa myös
+      varareitin: kun paikallista kokoamista ei voi käyttää, napautukset kulkevat sivulle
+      yksi kerrallaan, ja manuaali ei saa luvata paikallisuutta jota ruutu ei aina pidä.
+    -->
+    <!--
+      Pelaajan manuaali (App Help). Kirjoitettu uusiksi 15.9.2026 Tommin tilauksesta: tekstin on
+      oltava luotettavaa myös kun sovellus jaetaan tai menee Play-kauppaan. Jokainen väite
+      vastaa koodin nykytilaa, ja `HelpConsistencyTest` vartioi että välilehdet, lajittelunapit,
+      lautatyylit ja laiteasetusten kytkimet ovat tässä nimeltä. Käyttäjälle näkyvän toiminnon
+      muutos päivittää tämän samassa commitissa, ks. `docs/OHJE.md`.
+    -->
+    <string name="help_title">How to use this app</string>
+
+    <string name="help_group_about">What this app is</string>
+    <string name="help_q_about">What does this app do with my DailyGammon account?</string>
+    <string name="help_a_about">This app signs in to dailygammon.com with your own DailyGammon account and shows you the same pages the site shows in a browser: your match list, the board, the lounge, the forum and your messages. DailyGammon has no separate interface for apps, so everything here is read from the site\'s pages, and everything you do here is the same request a browser would send.\n\nWhat the app adds on top of the site is listed in the next group.</string>
+
+    <string name="help_group_differences">What is different from the DailyGammon site</string>
+    <string name="help_q_d_messages">Your messages are kept on this device.</string>
+    <string name="help_a_d_messages">DailyGammon shows each message once and keeps no copy of it. Every message you take is saved on this device before it appears on screen. The archive is yours alone: it is on this device only, and the developer of this app has no way to see it.</string>
+    <string name="help_q_d_session">A dropped connection does not sign you out.</string>
+    <string name="help_a_d_session">The app signs in again quietly when the site asks for it, so a lost connection costs you nothing but the wait.</string>
+    <string name="help_q_d_sort">You can sort the match list your way.</string>
+    <string name="help_a_d_sort">The Sort by buttons order the list by Grace, Time Pool, Round, Length or Opponent, and a third tap on the same button brings back the site\'s own order. Your choice is kept on this device.</string>
+    <string name="help_q_d_local">Your taps stay on this device until you press Submit Move.</string>
+    <string name="help_a_d_local">Undo Move takes a tap back before anything has left the device. In the browser every click goes to the site at once.</string>
+    <string name="help_q_d_place">The app can place checkers for you.</string>
+    <string name="help_a_d_place">Place forced checkers for me and Bear off greedily for me only place; the move still leaves this device when you send it, and Undo Move takes their checkers back like any other.</string>
+    <string name="help_q_d_tournament">A tournament row names the opponent and the round.</string>
+    <string name="help_a_d_tournament">The site\'s tournament page does not say who you are playing. The app fills it in from your match list and from what it last saw of that match, without asking DailyGammon for more.</string>
+    <string name="help_q_d_archive">You can filter, export, back up and import your archive.</string>
+    <string name="help_a_d_archive">Both sides of the chat and your replies are saved. The player menu filters the archive to one correspondent, Export writes it to a file, Back up keeps a file current and Import reads such a file back. These are yours to use; nobody else, the developer included, can reach your archive.</string>
+    <string name="help_q_d_accounts">Each DailyGammon account on this device has its own archive.</string>
+    <string name="help_a_d_accounts">If more than one account signs in on this device, each one sees only the messages it took from DailyGammon, and Export and Back up write only that account\'s archive. Sign out keeps every archive on the device; they come back when the same account signs in again. Phrases, reminders and the device settings are shared by all accounts.</string>
+    <string name="help_q_d_reminders">Reminders for a game live on this device.</string>
+    <string name="help_a_d_reminders">They are notes to yourself, kept until the game ends. Cube reminder is one of them, and while it is set the robot on the cube lights its eyes.</string>
+    <string name="help_q_d_look">The board can look different from the browser.</string>
+    <string name="help_a_d_look">Follow my DailyGammon settings matches the browser. The two Monte Carlo looks colour the checkers by your role, not by the site\'s colour, and until someone doubles the cube shows a robot instead of a 1.</string>
+    <string name="help_q_d_confirm">Join, Sign up, Double, Accept and forum posts ask you to confirm first.</string>
+    <string name="help_a_d_confirm">None of them can be taken back on DailyGammon, so the app asks before it sends. Without your confirmation nothing is sent.</string>
+    <string name="help_q_d_marks">You can mark a position to look at after the match.</string>
+    <string name="help_a_d_marks">Mark position sits next to Reminders on the board. It saves the game score and the move number the site shows, with a comment from you if you want one, and keeps it on this device until you remove it. The field is called Comment because that is the word GNU Backgammon, BGBlitz and eXtreme Gammon use for the same thing, and your comment goes into the match file as it is. The list is under Matches, next to your name, grouped by match, so when you analyse the match file later you know which moves to look at first. Nothing is sent to DailyGammon.\n\nA finished match on your profile has two links: Share .mat file hands on the site\'s own match file, and Share .sgf for GNU Backgammon writes the same match in GNU\'s format with your marks as comments, your comment as the comment text. A mark saves the position on the board as well, and the export replays the game to find the move that position belongs to, so the comment sits on the move you marked. A mark made before this, or on a board the app could not read, goes at the start of its game with the site\'s move number, which is not the game\'s move number; step to the position from there. GNU Backgammon shows a comment in its annotation panel; other programs read the .sgf but not the comment. Nackgammon matches and double repeat matches with a repeated game are not written as .sgf, because the export only knows the normal starting position; share the .mat file for those.</string>
+    <string name="help_q_d_unconfirmed">The board tells you when an action may not have arrived.</string>
+    <string name="help_a_d_unconfirmed">If the connection drops while an action is on its way, the board shows a Board not confirmed notice and never repeats your action by itself. Refresh to see what DailyGammon did.</string>
+
+    <string name="help_group_tabs">The five tabs</string>
+    <string name="help_q_tabs">What is on each tab?</string>
+    <string name="help_a_tabs">Matches is your match list, with Refresh and Settings at the top. Lounge shows matches waiting for opponents and tournaments open for sign-up. Forum is the site\'s discussion board. Inbox is your message archive and the place where new items are taken from DailyGammon. Info holds this text, the site\'s own Help and Links, the site\'s Resignation Page and Sign out.\n\nTapping a player\'s name opens their profile, and a tournament name opens the tournament page, both read from the site. From a profile you can send that player a message; it is saved to your archive because DailyGammon does not keep it.</string>
+
+    <string name="help_group_matches">Matches and tournaments</string>
+    <string name="help_q_order">Why is the match list in this order?</string>
+    <string name="help_a_order">DailyGammon lists your matches in its own order, and that order is a deadline order: the matches nearest to running out of time come first. The app keeps that order until you ask for another one.\n\nThe Sort by buttons are Grace, Time Pool, Round, Length and Opponent. Tap one to sort by it, tap it again to reverse, and tap it a third time to return to the order DailyGammon itself uses. An arrow on the button shows the direction. Your choice is kept on this device, so a button with an arrow means the list is no longer in deadline order.</string>
+    <string name="help_q_open">Does opening a match use up my turn?</string>
+    <string name="help_a_open">No. Opening a match shows the board and does not use up your turn. The list is reloaded when you come back after playing, since your row has changed; a look without a move leaves it as it was, and Refresh is there when you want it fresh.</string>
+    <string name="help_q_tournaments">Why does a tournament row say waiting for your turn?</string>
+    <string name="help_a_tournaments">Tournaments lists the tournaments you are in. A row with an active game shows the round and the opponent. Your wins are shown only when the round is not known, because the round already tells how far you are.\n\nThe tournament page itself does not say who the opponent is, and the app does not ask DailyGammon for more: the round and the name come from your match list when it is your turn, and otherwise from what the app last saw of that match, marked waiting for your turn. A remembered round can be one behind if the opponent has since finished a game, and the line above the list says when the app last saw them, so you can decide whether Refresh is worth pressing. Refresh on Tournaments reads your tournament list and your profile, so after it every row is current. The first time the list opens on a fresh install, the app reads your profile once by itself.</string>
+
+    <string name="help_group_board">Playing on the board</string>
+    <string name="help_q_move">How do I move and send a move?</string>
+    <string name="help_a_move">When it is your turn, the board offers the same actions as the site, under the site\'s own names: Roll Dice, Submit Move, Double and the rest. Tap a highlighted point to move a checker from it.\n\nYour taps are collected on this device and nothing is sent until you press Submit Move; Undo Move takes a tap back before anything has left the device. If you turn on Submit the move by tapping the dice in Settings, tapping the dice once the turn is complete sends the move too, exactly as Submit Move does. When the app cannot verify the position against the page, each tap goes to DailyGammon one at a time instead, exactly as in the browser.</string>
+    <string name="help_q_forced">Can the app place checkers for me?</string>
+    <string name="help_a_forced">Two settings let the app place checkers for you: Place forced checkers for me and Bear off greedily for me. They only place; the move still leaves this device when you send it, and Undo Move takes their checkers back like any other.</string>
+    <string name="help_q_double">How do Double and Accept work?</string>
+    <string name="help_a_double">Double and Accept cannot be taken back, so they take three steps: tick the site\'s own Verify box, press the button, then confirm. Without the tick nothing is sent. Tapping the cube is the same press: Double when you can double, Accept when a double is offered to you.</string>
+    <string name="help_q_unconfirmed">What does Board not confirmed mean?</string>
+    <string name="help_a_unconfirmed">If the connection drops or the site answers with an error while an action is on its way, the board shows a Board not confirmed notice. The position below it is the last one loaded before the attempt, nothing on it has been confirmed since, and the app never repeats your action by itself. Refresh to see what DailyGammon did.</string>
+    <string name="help_q_gestures">How do I refresh the board or go back?</string>
+    <string name="help_a_gestures">Drag downwards anywhere on the board to load the position again from DailyGammon. The Refresh button does the same.\n\nTo leave the board, use Back. When the screen is large enough for the board, the system bar stays on view and Back is always there. When the bars would cost the board its size, or a bar at the side would narrow the panel, they are hidden: swipe from the right edge towards the left, which either goes back or brings the bar into view, and Back is on it. You can also swipe downwards from the top edge to bring the status bar into view for a moment.</string>
+    <string name="help_q_beside">What is in the panel beside the board?</string>
+    <string name="help_a_beside">The panel next to the board carries the site\'s own links for that match and three things of the app\'s own.\n\nMessage opens a chat box with your opponent above the board, and Reply appears there when the opponent has written. What you write goes with your move, because on DailyGammon the message and the move are one and the same step. Both sides of the chat are saved to your archive.\n\nReminders are notes to yourself for this game, kept on this device until the game ends. Cube reminder is one of them, and while it is set the robot on the cube lights its eyes.</string>
+    <string name="help_q_skip">What does Skip Game do?</string>
+    <string name="help_a_skip">Skip Game asks DailyGammon for the next waiting item instead of this one. The site hands out each waiting item once, so skipping passes this match by in that queue. The match itself is untouched and is still yours to play.</string>
+    <string name="help_q_look">How do I change how the board looks?</string>
+    <string name="help_a_look">Board look in Settings has three choices. Follow my DailyGammon settings draws the checkers in the colours the site gives you, so the board matches the browser side by side. Monte Carlo X-22 draws your checkers cream and always at the bottom, with your opponent in red at the top. Monte Carlo variant is a green felt board with your checkers white and your opponent black. In the two Monte Carlo looks the colour is your role, not the site\'s colour, so it will not match the browser.\n\nDice and Score are separate choices: one die for each move or two dice as on the site, and points away from winning or points won as on the site.\n\nWhen nobody has doubled yet, the doubling cube shows a robot instead of a 1. A physical cube has no face for 1, so this app puts its own mark there; the value returns as soon as someone doubles. The Android robot is reproduced or modified from work created and shared by Google and used according to terms described in the Creative Commons 3.0 Attribution License.</string>
+
+    <string name="help_group_messages">Messages</string>
+    <string name="help_q_take">Why do I have to press Take an item?</string>
+    <string name="help_a_take">DailyGammon shows each message once and keeps no copy of it, so this app never fetches messages on its own: no background checking, no timer, no notifications. On the Inbox tab, press Take an item to take one item from DailyGammon\'s queue. Each message is saved on this device before it appears on screen.</string>
+    <string name="help_q_queue">What else comes out of the queue besides messages?</string>
+    <string name="help_a_queue">An announcement from DailyGammon is shown but not saved. A game board is not a message, so nothing is saved and nothing is lost: play it from your match list. An invitation to a match stays in the queue until you answer it here, with a comment if you like; accepting starts the match on DailyGammon at once.</string>
+    <string name="help_q_reply">How do I reply, and what are the phrase buttons?</string>
+    <string name="help_a_reply">Tap a received message in the archive to open a reply box under it; tap again to close it. Replies go to the sender, because DailyGammon addresses them to the player, not to the message. Your replies are saved to the archive too, and a message you sent shows the name it went to after your own. The phrase buttons under the box paste a saved phrase, and you can save your own text as a phrase or edit the list. Quote the message above adds the message you are answering to your reply.</string>
+    <string name="help_q_archive">How do I filter, export, back up or import the archive?</string>
+    <string name="help_a_archive">The player menu above the list filters the archive to one correspondent, and the choice is kept on this device. Export writes the whole archive to a file you choose. Back up chooses a file that the app rewrites with the current archive once a day, whenever the Inbox is open, and Save now writes it at once. The file holds your messages, reminders and phrases. Import reads such a file and adds what this device does not have yet; nothing already here is changed or removed, so an old file cannot overwrite newer messages.</string>
+    <string name="help_q_one_device">Why should I keep DailyGammon on one device?</string>
+    <string name="help_a_one_device">Your message archive is stored on this device only, and nowhere else. DailyGammon shows each message once, so a message read in a browser or on another device is gone from the site before this app can see it; it will never appear in this archive. Playing your moves in a browser or in another app loses nothing, because moves stay on the site.</string>
+    <string name="help_q_move_device">How do I move my archive to a new device?</string>
+    <string name="help_a_move_device">Export or Back up on the Inbox tab writes the archive to a file, and the app does not copy it anywhere by itself. The file is plain text you can read and keep. Move the file to the new device and press Import on its Inbox tab: messages, reminders and phrases come in, and anything the new device already has is left as it is. Marked positions are not in the file yet.</string>
+
+    <string name="help_group_lounge">Lounge, Forum and Settings</string>
+    <string name="help_q_join">What happens when I press Join or Sign up?</string>
+    <string name="help_a_join">The Lounge shows matches waiting for opponents and tournaments open for sign-up, read from the site. Join and Sign up ask you to confirm first, because a joined match starts at once and cannot be taken back. Cancel sign-up is there for a tournament you signed up for.</string>
+    <string name="help_q_forum">Can I edit a forum post afterwards?</string>
+    <string name="help_a_forum">No. The Forum shows the site\'s threads and their posts. New starts a thread and Add a Comment answers in one. Posts go to the public forum under your name and cannot be edited or deleted afterwards, so the app asks you to confirm before it sends.</string>
+    <string name="help_q_settings">Which settings stay on this device?</string>
+    <string name="help_a_settings">Settings has two parts. This device holds choices that live only on this device and are never sent to DailyGammon: Board look, Dice and Score; Place forced checkers for me and Bear off greedily for me; Submit the move by tapping the dice and Swap the dice by tapping them; Keep lists and messages upright; I move the checkers with my left hand; Pattern behind the lists and Vermilion birds and a moon (light theme); and Pictures below the lists, which shows pictures from a folder you choose on this device in the room left below the lists.\n\nBelow that is DailyGammon\'s own settings form for your account, read from the site. DailyGammon saves that form as a whole, so every field is sent even if you change one; the app reads the page back and only a matching read-back counts as saved.</string>
+
+    <string name="help_group_never">What this app never does</string>
+    <string name="help_q_never">What does this app never do?</string>
+    <string name="help_a_never">Nothing goes to DailyGammon without a press from you: no move, no message, no join, no post. The app does nothing in the background: no checking, no timer, no notifications. It reads only the pages you open, and it keeps only what those pages showed you, on this device and nowhere else.</string>
+
+    <!--
+      Lukko koskee koko sovellusta, ei vain viestejä, koska yksi ruutu käynnistyksessä on
+      yksinkertaisempi kuin monta erillistä lukkoa. Perustelu docs/ARKKITEHTUURI.md:ssä.
+    -->
+    <string name="app_lock_title">Unlock DG Android</string>
+    <string name="app_lock_subtitle">Your matches and message history are stored on this device only.</string>
+    <string name="app_lock_retry">Unlock</string>
+    <!--
+      Välilehdet (26.8.2026). Nimet ovat sivuston omia sanoja siellä missä sivustolla on
+      sana (Lounge, Discussion), ja sovelluksen omia siellä missä sisältö on sovelluksen
+      (Messages, Info). Matches eikä Top Page, koska välilehden nimi kertoo sisällön eikä
+      sivuston osoitetta.
+
+      **Nimet lyhennettiin laiteajossa 26.8.2026, ja se oli mittaus eikä makuasia.**
+      Mitattu Pixel 8a:lla, jonka leveys on 411 dp. Kuuden välilehden ajan nimet olivat
+      "Game Lounge" ja "Message Archive", ja silloin palkki vieri joka tapauksessa.
+      Viidellä välilehdellä tilaa on 82 dp kutakin kohden ja tekstille jää 66 dp, joten
+      "Discussion" (n. 75 dp) katkesi kahdelle riville kesken sanan. Nimet ovat siis
+      lyhyempiä kuin `docs/UI.md`:n taulukossa: Forum eikä Discussion, Inbox eikä Messages.
+
+      **Välilehden nimi ja ruudun otsikko saavat erota, ja se on tahallista.** Palkin nimi
+      on navigointia ja siihen on 66 dp; ruudun otsikko on sivun nimi eikä sitä lyhennetä
+      (`discussion_title`, `messages_title`). Sivuston oma sana säilyy siellä missä sille
+      on tilaa.
+    -->
+    <string name="tab_matches">Matches</string>
+    <string name="tab_lounge">Lounge</string>
+    <string name="tab_discussion">Forum</string>
+    <string name="tab_messages">Inbox</string>
+    <string name="tab_info">Info</string>
+
+    <!--
+      Info-välilehti (26.8.2026). Välilehti on kategoria eikä sivu, joten sen otsikko on
+      sovelluksen oma sana; rivien nimet ovat kunkin kohteen omat. DG Help ja Links
+      tulivat 29.8.2026; peliasetusten erottaminen sovelluksen omista tulee mukaan kun
+      sillä on sisältö, koska rivi jota ei voi avata ei ole rivi.
+    -->
+    <string name="info_title">Info</string>
+    <string name="info_help_label">App Help</string>
+    <string name="info_help_summary">How this app works, and what it does not do</string>
+    <string name="info_site_help_label">DailyGammon Help</string>
+    <string name="info_site_help_summary">The site\'s own FAQ, fetched from dailygammon.com</string>
+    <string name="info_site_links_label">DailyGammon Links</string>
+    <string name="info_resign_label">Resign matches</string>
+    <string name="info_resign_summary">The site\'s own Resignation Page: tick the matches, tick its confirmation, resign</string>
+    <string name="info_site_links_summary">The site\'s own list of backgammon links; opening one uses your browser</string>
+    <!-- Porautumisruudun otsikot sivuston omille sivuille, sivuston omin sanoin. -->
+    <string name="page_site_help_title">DailyGammon Help</string>
+    <string name="page_site_links_title">Links</string>
+
+    <!--
+      Game Lounge. Join on ainoa teko, ja se vahvistetaan dialogilla koska ottelu alkaa
+      heti eikä hyväksyntää voi perua. Unconfirmed-teksti kertoo mitä ei tiedetä, samaan
+      tapaan kuin lautaruudun vastaava: vastauksen muotoa ei ole mitattu.
+    -->
+    <string name="lounge_title">Game Lounge</string>
+    <string name="lounge_no_path">The lounge address comes from your match list, which has not loaded yet. Open the Matches tab first.</string>
+    <string name="lounge_invitations_heading">Matches waiting for opponents</string>
+    <string name="lounge_invitations_empty">No matches are waiting for opponents.</string>
+    <string name="lounge_tournaments_heading">Tournament sign-up</string>
+    <string name="lounge_tournaments_empty">No tournaments are open for sign-up.</string>
+    <string name="lounge_join">Join</string>
+    <string name="lounge_join_confirm_title">Join this match?</string>
+    <string name="lounge_join_confirm_body">%1$s against %2$s starts as soon as you join. This cannot be taken back.</string>
+    <string name="lounge_join_confirm_ok">Join match</string>
+    <string name="lounge_join_done">Joined. The match is on your list once the first move is made; the lounge below was reloaded from the site.</string>
+    <string name="lounge_join_unconfirmed">DailyGammon answered with a page this app does not recognise, so it is unknown whether you joined. The lounge below was reloaded: if the invitation is gone, the join went through. Nothing was sent twice.</string>
+    <string name="lounge_join_failed_offline">Nothing was sent. You appear to be offline.</string>
+    <string name="lounge_join_failed_sleeping">Nothing was joined. DailyGammon is asleep while its daily backups run; try again in half an hour or so.</string>
+    <string name="lounge_join_failed_server">Nothing was joined. DailyGammon answered with an error (%1$d).</string>
+    <string name="lounge_not_a_lounge">DailyGammon answered with a page this app cannot read as the lounge. Refresh to try again.</string>
+    <string name="lounge_length_label">Length %1$d</string>
+    <string name="lounge_rounds_label">%1$d rounds</string>
+    <string name="lounge_time_label">Time %1$s</string>
+    <string name="lounge_grace_label">Grace %1$s</string>
+    <string name="lounge_dismiss">Dismiss</string>
+    <string name="lounge_signup">Sign up</string>
+    <string name="lounge_signup_cancel">Cancel sign-up</string>
+    <string name="lounge_has_note">(has note)</string>
+    <string name="lounge_signup_confirm_title">Sign up for this tournament?</string>
+    <string name="lounge_signup_confirm_body">%1$s (%2$s). A tournament is several matches over months, and its pace is not yours to set. Cancel sign-up appears on its row here for as long as the tournament is still listed.</string>
+    <string name="lounge_signup_confirm_note">This tournament has a note from its organiser. It is on the tournament page, one tap on the row.</string>
+    <string name="lounge_signup_confirm_ok">Sign up</string>
+    <string name="lounge_signup_done">Signed up for %1$s. The lounge below now shows Cancel sign-up on its row.</string>
+    <string name="lounge_signup_cancel_done">Sign-up for %1$s cancelled. The lounge below now shows Sign up on its row again.</string>
+    <string name="lounge_signup_unconfirmed">DailyGammon answered, but the lounge below does not show Cancel sign-up on that row, so it is unknown whether you signed up. Nothing was sent twice. Refresh, and if in doubt check the tournament page.</string>
+    <string name="lounge_signup_cancel_unconfirmed">DailyGammon answered, but the lounge below still shows Cancel sign-up on that row, so it is unknown whether the sign-up was cancelled. Nothing was sent twice. Refresh, and if in doubt check the tournament page.</string>
+    <string name="lounge_signup_failed_sleeping">Nothing was changed. DailyGammon is asleep while its daily backups run; try again in half an hour or so.</string>
+    <string name="lounge_signup_failed_server">Nothing was changed. DailyGammon answered with an error (%1$d).</string>
+    <string name="own_tournaments_no_path">The address of your tournaments comes from your match list, which has not loaded yet. Refresh under Your turn first.</string>
+    <string name="own_tournaments_not_a_list">DailyGammon answered with a page this app cannot read as your tournament list. Refresh to try again.</string>
+    <string name="own_tournaments_heading">Your active tournaments (%1$d)</string>
+    <string name="own_tournaments_empty">You are not in any tournament right now. Sign up in the Lounge tab.</string>
+    <string name="own_tournaments_opponents_as_of">Opponents and rounds as of %1$s</string>
+    <string name="own_tournaments_opponents_none">Opponents and rounds appear as matches are seen. Refresh reads them all from your profile.</string>
+    <string name="own_tournaments_opponents_failed">Opponents not updated: %1$s</string>
+    <string name="own_tournaments_opponents_not_a_profile">Opponents not updated: DailyGammon answered with a page this app cannot read as your profile.</string>
+    <string name="own_tournaments_hall_link">Tournament Hall</string>
+    <string name="own_tournaments_hall_summary">Every tournament on DailyGammon, active and finished</string>
+    <string name="page_hall_title">Tournament Hall</string>
+
+    <!--
+      Laudan huomautukset ovat päällepiirto eivätkä palkki (Tommin pyyntö 31.8.2026):
+      laudan yläpuolinen palkki kutistaa laudan korkeudesta ja on kerran tuottanut
+      mitatun värähtelyn, ks. `docs/AVOIMET.md`. Sulkeminen on siksi oma tekonsa.
+    -->
+
+    <!--
+      Double repeat: sivun rivi `Pending Replay: _1_` on linkki haarautumishetkeen, mutta
+      sovellus näyttää vain luvun (Tommin päätös 9.9.2026, ks. `BoardState.pendingReplays`).
+      Sanamuoto on sivuston oma, jotta rivi tunnistuu samaksi selaimen kanssa.
+    -->
+    <string name="board_pending_replays">Pending Replay: %1$d</string>
+
+    <!--
+      Ottelun päättymissivu (mitattu 31.8.2026). Tulos ja pisteet tulevat sivulta
+      sellaisenaan; nämä ovat vain ne sanat joita sivu ei itse kirjoita.
+    -->
+    <string name="match_over_title">Match over</string>
+    <string name="match_over_predicted">DailyGammon settled this in advance: the moves left cannot change the result.</string>
+    <string name="match_over_length">Match length %1$d</string>
+    <!--
+      Review Game, Skip Game ja Next Game ovat sivun omia sanoja ja siksi kääntämättömiä,
+      kuten board_skip_game. Pienellä g:llä 10.9.2026 asti; nauha näytti eron laudan omaan
+      Skip Game -nappiin, ja Tommi valitsi koodin korjauksen (raakasivut/LUEMINUT.md,
+      sessio-10-9-ilta2).
+    -->
+    <string name="match_over_review" translatable="false">Review Game</string>
+    <string name="match_over_skip" translatable="false">Skip Game</string>
+    <string name="match_over_next" translatable="false">Next Game</string>
+    <string name="match_over_back">Back to matches</string>
+
+    <!--
+      Loungen segmenttirivi ja sen kaksi uutta kohdetta (27.8.2026). Nimet ovat lyhyet
+      samasta syystä kuin välilehtipalkissa: kolme segmenttiä jakavat ruudun leveyden.
+
+      Kummankin sivun teksteissä sanotaan ääneen, että lista on koko sivuston eikä
+      pelaajan oma. Se ei ole pääteltävissä listasta itsestään: pelaajalistan ensimmäinen
+      sivu on sivuston kärki, ja Tournament Hallissa on kolmetuhatta vierasta riviä.
+    -->
+    <!--
+      Loungen segmenttirivi poistui 4.9.2026: omat turnaukset siirtyivät otteluluetteloon
+      ja jäljelle jäi kaksi kohdetta, joista pelaajalista on nyt listan perässä oleva
+      linkki. Selite kertoo mikä lista se on, koska nimi ei kerro sen kokoa.
+    -->
+    <string name="lounge_players_link">Players</string>
+    <string name="lounge_players_summary">Everyone on DailyGammon, a hundred at a time, with a search</string>
+    <string name="players_no_path">The player list address comes from the lounge, which has not loaded yet. Open Offers first.</string>
+    <string name="players_empty">No players on this page.</string>
+    <string name="players_not_a_list">DailyGammon answered with a page this app cannot read as the player list. Refresh to try again.</string>
+    <string name="players_note">Everyone on DailyGammon, ranked by rating. Use the links above to sort or to see the next hundred.</string>
+    <!--
+      Pelaajahaku (3.9.2026): sivun oma lomake, sivun omin sanoin alkuosahaku. Tulos on
+      pelaajalista, joten tulosrivit ovat samat kuin listalla ja rivin napautus avaa
+      pelaajan profiilin, jolta pikaviestin voi lähettää.
+    -->
+    <string name="players_search_label">Name starts with</string>
+    <string name="players_search_action">Search</string>
+    <string name="players_search_results">Players whose name starts with “%1$s”. Tap a player to open the profile; the quick message is sent from there.</string>
+    <string name="players_search_clear">Show all</string>
+    <string name="players_search_empty">No player on DailyGammon has a name starting with “%1$s”.</string>
+    <string name="players_rank">%1$d.</string>
+    <string name="players_rating">Rating %1$s</string>
+    <string name="players_experience">Experience %1$s</string>
+    <string name="hall_not_a_hall">DailyGammon answered with a page this app cannot read as the tournament hall. Refresh to try again.</string>
+    <string name="hall_active_heading">Active tournaments (%1$d)</string>
+    <string name="hall_finished_heading">Finished tournaments (%1$d)</string>
+    <string name="hall_empty">No tournaments.</string>
+    <string name="hall_winner">Won by %1$s</string>
+    <string name="hall_note">Every tournament on DailyGammon, not just yours. Your own tournaments are on your profile.</string>
+
+    <!--
+      Porautumisruutu (27.8.2026): pelaajaprofiili, turnaussivu ja pelaajan turnauslistat.
+      Yksi ruutu neljälle sivulle, joten otsikko tulee sisällöstä eikä näistä.
+
+      page_not_known on tämän ruudun tärkein teksti: reitti ei tiedä mitä sivua se avaa,
+      joten tuntematon vastaus on odotettu lopputulos eikä poikkeus.
+    -->
+    <string name="page_loading_title">DailyGammon</string>
+    <string name="page_not_known">DailyGammon answered with a page this app cannot read. Refresh to try again, or use the browser.</string>
+    <string name="page_active_tournaments">Active tournaments</string>
+    <!-- Lukema on muistista (Tournaments-välilehti), ei tältä sivulta; ks. OwnTournamentCount. -->
+    <string name="page_active_tournaments_counted">Active tournaments (%1$d)</string>
+    <string name="page_tournament_wins">Tournament wins</string>
+    <string name="page_active_matches">Active games (%1$d)</string>
+    <string name="page_finished_matches">Finished matches (%1$d)</string>
+    <!--
+      page_no_matches jää varatekstiksi: tavallisesti tyhjän listan tilalla on
+      page_show_games-linkki (sivun oma lajittelulinkki, mitattu 27.8.2026), ja tämä
+      näkyy vain jos sivulla ei ole sitäkään. Aiempi muoto väitti ettei DailyGammon
+      näytä toisen pelaajan otteluita lainkaan, ja mittaus kumosi sen.
+    -->
+    <string name="page_no_matches">This page does not list matches.</string>
+    <string name="page_show_games">Show games, sorted by opponent</string>
+    <string name="page_versus_you">Matches versus you</string>
+    <!--
+      Viestin lähetys pelaajan profiililta (29.8.2026). Sanamuodot kantavat kolme asiaa
+      jotka eivät ole pääteltävissä napista:
+
+      page_message_sent sanoo minne viesti meni talteen, koska arkisto on eri välilehdellä
+      kuin tämä ruutu. Viestiruudun oma vastaava teksti sanoo "in the archive below", ja se
+      olisi täällä väärä väite sijainnista.
+
+      page_message_wrap kertoo sivuston 80 merkin rivityksen. Se ei ole raja vaan tieto
+      siitä miltä viesti näyttää perillä: palvelin rivittää eikä leikkaa (mitattu
+      24.8.2026), joten pidempi viesti menee kokonaisena mutta usealle riville.
+    -->
+    <string name="page_message_open">Message</string>
+    <string name="page_message_label">Your message</string>
+    <string name="page_message_to">Message to %1$s</string>
+    <string name="page_message_send">Send message</string>
+    <string name="page_message_wrap">DailyGammon wraps the message every %1$d characters. Longer text still arrives in full, on several lines.</string>
+    <string name="page_message_sent">Sent, and saved to your message archive: DailyGammon does not keep it.</string>
+    <!--
+      Ottelukutsu ja sivuutus profiililta (3.9.2026, rajaus 27.8.2026 purettu). Kutsun
+      vastaussivua ei ole mitattu, joten page_invite_answered sanoo sen eikä väitä
+      onnistumista. Sivuutuksen napin teksti on sivun oma (esim. "Ignore nimi"), ja
+      page_ignore_done toistaa uuden tekstin sivun sanoin.
+    -->
+    <string name="page_invite_open">Invite to a match</string>
+    <string name="page_invite_variant">Game</string>
+    <string name="page_invite_length">Length</string>
+    <string name="page_invite_time">Time control</string>
+    <string name="page_invite_comment">Comment</string>
+    <string name="page_invite_name">Match name</string>
+    <string name="page_invite_private">Private match</string>
+    <string name="page_invite_count">%1$d of %2$d characters</string>
+    <string name="page_invite_send">Send invitation</string>
+    <string name="page_invite_confirm_title">Invite %1$s?</string>
+    <string name="page_invite_confirm_body">%2$s, length %3$s, time control %4$s. The invitation reaches %1$s through DailyGammon\'s own queue as soon as you confirm, and this app has no way to take it back.</string>
+    <string name="page_invite_confirm_ok">Invite</string>
+    <!--
+      Kutsun kuittaussivu mitattiin 4.9.2026 (fixture invite_sent.html), ja page_invite_sent
+      on se mita sivu sanoo: kutsu lahti. page_invite_answered jai voimaan tuntemattomalle
+      vastaukselle, eika sen teksti muuttunut, koska se on yha totta juuri siina tilanteessa.
+    -->
+    <string name="page_invite_sent">Invitation to %1$s sent. DailyGammon confirmed it on its own page.</string>
+    <string name="page_invite_sent_notice">Invitation to %1$s sent. DailyGammon says: %2$s</string>
+    <string name="page_invite_answered">Invitation to %1$s sent. DailyGammon answered, but this app does not read that page yet, so the site is the place to check. Nothing was sent twice.</string>
+    <string name="page_invite_answered_notice">Invitation to %1$s sent. DailyGammon says: %2$s</string>
+    <string name="page_ignore_confirm_body">This is DailyGammon\'s own button. What it changes is not measured by this app; afterwards the button here shows what the site says.</string>
+    <string name="page_ignore_done">Done. DailyGammon\'s button for %1$s now says %2$s.</string>
+    <string name="page_action_unconfirmed">DailyGammon answered, but the page does not show the change. Nothing was sent twice. Refresh, and if in doubt check the site.</string>
+    <string name="page_action_sending">Sending to DailyGammon.</string>
+    <string name="page_action_dismiss">OK</string>
+    <!--
+      Luovutussivu (3.9.2026). Ruutu, nappi ja varmistusteksti ovat sivun omia; nämä ovat
+      vain ympärillä. page_resign_note sanoo mistä onnistuminen luetaan, koska vastaussivua
+      ei ole mitattu. Sävy on tavallinen, ei varoittava (SUBSTANSSI.md kohta 36).
+    -->
+    <string name="page_resign_title">Resign matches</string>
+    <string name="page_resign_heading">Unfinished matches (%1$d)</string>
+    <string name="page_resign_empty">No unfinished matches.</string>
+    <string name="page_resign_review">Moves</string>
+    <string name="page_resign_confirm_fallback">Yes, I really want to resign.</string>
+    <string name="page_resign_note">This is DailyGammon\'s own form. After sending, the list above is fetched again and the resigned matches should be gone from it.</string>
+    <string name="page_resign_done">Resigned %1$d match(es). The list above no longer shows them.</string>
+    <!--
+      Sama teko sivuston omin sanoin. Kaytossa kun vastaus oli sen oma kuittaussivu
+      (mitattu 4.9.2026), eli luku tulee sivustolta eika kadonneista riveista. Muoto on
+      sama kuin kutsulla: sovellus sanoo mika onnistui, sivusto sanoo mita se teki.
+    -->
+    <string name="page_resign_done_notice">Matches resigned. DailyGammon says: %1$s</string>
+    <string name="page_resign_unconfirmed">DailyGammon answered, but the list still shows the selected matches, or it could not be read. Nothing was sent twice. Refresh, and if in doubt check the site.</string>
+    <string name="page_no_event">Friendly match</string>
+    <string name="page_round">Round %1$s</string>
+    <string name="page_no_brackets">No brackets on this page yet.</string>
+    <string name="page_bracket_note">Columns are rounds and the lines join the two sides of each match; an empty slot is a bye or a match not yet reached. Your own name is in the accent colour. Tap a name for the profile, a result for the moves of that match.</string>
+    <string name="page_no_tournaments">No tournaments.</string>
+    <string name="page_wins">%1$s wins</string>
+    <string name="page_your_turn_waiting">has an active game</string>
+    <string name="page_active_game_against">active game against %1$s</string>
+    <string name="page_active_game_round_against">round %1$s against %2$s</string>
+    <string name="page_active_game_round">round %1$s</string>
+    <string name="page_active_game_opponents_turn">waiting for your turn</string>
+    <string name="page_export_share">Share .mat file</string>
+    <string name="page_export_share_sgf">Share .sgf for GNU Backgammon</string>
+    <string name="page_export_fetching">Fetching the match file from DailyGammon.</string>
+    <string name="page_export_not_a_file">DailyGammon did not answer with a match file. Nothing was shared.</string>
+    <string name="page_export_not_convertible">The match file could not be read as moves, so no .sgf was written. Share the .mat file instead.</string>
+    <string name="page_export_setup_position">A game in this match starts from a set-up position (nackgammon, or a repeated game after a double). The .sgf export only writes games from the normal starting position, so nothing was written. Share the .mat file instead.</string>
+    <string name="page_export_chooser">Share match file</string>
+
+    <!--
+      Discussion. Ketjut ja viestit luetaan, ja 3.9.2026 alkaen kirjoitetaan sivun omilla
+      lomakkeilla (uusi ketju, kommentti). Lähetysnapin teksti dialogissa on sivun oma
+      (Create New Thread, Submit Comment) eikä tämän tiedoston. Vahvistusteksti sanoo sen
+      mitä SUBSTANSSI kohta 59 nimeää: viestiä ei voi muokata eikä poistaa itse.
+    -->
+    <string name="discussion_title">Discussion</string>
+    <string name="discussion_no_path">The forum address comes from your match list, which has not loaded yet. Open the Matches tab first.</string>
+    <string name="discussion_empty">No threads.</string>
+    <string name="discussion_new">New</string>
+    <string name="discussion_posts_count">%1$d posts</string>
+    <string name="discussion_started_by">started by %1$s</string>
+    <string name="discussion_new_thread">Add a New Thread</string>
+    <string name="discussion_add_comment">Add a Comment</string>
+    <string name="discussion_title_label">Title</string>
+    <string name="discussion_title_count">%1$d / %2$d</string>
+    <string name="discussion_comment_label">Your comment</string>
+    <string name="discussion_post">Post</string>
+    <string name="discussion_post_note">Posts go to the forum under your name. On DailyGammon a post cannot be edited or deleted afterwards, only by a moderator.</string>
+    <string name="discussion_confirm_title">Post to the forum?</string>
+    <string name="discussion_confirm_body">This goes to the public forum under your name. It cannot be edited or deleted afterwards.</string>
+    <string name="discussion_confirm_cancel">Not yet</string>
+    <string name="discussion_posted_thread">Thread created. It is in the list below.</string>
+    <string name="discussion_posted_comment">Comment posted. It is in the thread below.</string>
+    <string name="discussion_unconfirmed_thread">DailyGammon answered, but the list below does not show your title, or it could not be read. Nothing was sent twice. Check the forum before posting again: posting twice would create two threads.</string>
+    <string name="discussion_unconfirmed_comment">DailyGammon answered, but the thread below does not show your text, or it could not be read. Nothing was sent twice. Check the thread before posting again: posting twice would post it twice.</string>
+    <string name="discussion_not_a_form">DailyGammon answered with a page this app cannot read as the posting form.</string>
+    <string name="discussion_not_a_forum">DailyGammon answered with a page this app cannot read as the forum. Refresh to try again.</string>
+    <string name="discussion_not_a_thread">DailyGammon answered with a page this app cannot read as a thread.</string>
+    <string name="discussion_thread_back">Back to threads</string>
+    <string name="discussion_posted_by">%1$s at %2$s</string>
+    <string name="discussion_archive">Old Threads</string>
+    <string name="discussion_archive_back">Back to index</string>
+    <string name="discussion_archive_months">Earlier months</string>
+    <string name="discussion_archive_empty">No threads that month.</string>
+    <string name="discussion_not_an_archive">DailyGammon answered with a page this app cannot read as the archive.</string>
+</resources>

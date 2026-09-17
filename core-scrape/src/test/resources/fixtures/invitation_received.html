@@ -1,0 +1,60 @@
+<!--
+  Anonymisoitu kopio AIDOSTA vastaanotetusta ottelukutsusta (proxyn tavut 14.9.2026,
+  GET /bg/nextgame, sessio-14-9-kutsu/0004). Pelaajanimi, kayttajatunnus ja kutsun
+  tunnus vaihdettu, rakenne sellaisenaan.
+
+  Nelja piirretta:
+  1. TITLE on sama DailyGammon Invitation kuin lahetetyn kutsun kuittaussivulla
+     (invite_sent.html), joten otsikko yksin ei erota vastaanotettua kutsua
+     lahetetysta. Ero on lomakkeissa: tama sivu kantaa kolme.
+  2. H3 on lause "<linkki>nimi</linkki> invites you to play" ja ottelun kuvaus on
+     H3:n JALKEEN irrallisena tekstina, ei sen sisalla. InboxParser luki 14.9.2026
+     vain H3:n, joten arkistoon jai "<nimi> invites you to play" ilman pituutta.
+  3. Kolme lomaketta samaan osoitteeseen /bg/invite/<id>: accept on GET
+     (action=accept), decline ja counter ovat POST. Counter Offerin private perii
+     kutsun arvon (CHECKED).
+  4. Sivu ei kulu: nextgame tarjosi sen viidesti tavulleen samana, ja Top Pagen
+     "You have Messages!" katosi silti ensimmaisen haun jalkeen.
+-->
+<HTML><HEAD>
+<TITLE>DailyGammon Invitation</TITLE></HEAD>
+<BODY BGCOLOR=#FFFFFF>
+<H3><A HREF=/bg/user/10001>anonplayer</A> invites you to play</h3>
+a <i>private</i> 5 point match of backgammon with no time control
+.
+<FORM METHOD=GET ACTION=/bg/invite/900001><INPUT type=HIDDEN name=action value=accept>
+<INPUT type=submit value="Accept Invitation"></FORM>
+<HR><FORM METHOD=POST ACTION=/bg/invite/900001><INPUT type=hidden name=action value=decline>
+Comment:<INPUT type=text size=80 maxlength=80 name=reason><BR>
+<INPUT type=submit value="Decline Invitation"></FORM>
+<HR><FORM METHOD=POST ACTION=/bg/invite/900001><INPUT type=hidden name=action value=counter>
+Offer to play a game of <SELECT NAME=variant><OPTION VALUE=1 SELECTED>backgammon
+<OPTION VALUE=2>nack
+<OPTION VALUE=3>double-repeat
+</SELECT>
+ of match length <SELECT NAME=length><OPTION VALUE=1>1<OPTION VALUE=3>3<OPTION VALUE=5 selected>5<OPTION VALUE=7>7<OPTION VALUE=9>9<OPTION VALUE=11>11<OPTION VALUE=13>13<OPTION VALUE=15>15<OPTION VALUE=17>17<OPTION VALUE=19>19<OPTION VALUE=21>21<OPTION VALUE=23>23<OPTION VALUE=25>25<OPTION VALUE=-1>Cubeless Money<OPTION VALUE=-2>Money</SELECT>
+<br>with a comment:<INPUT TYPE=text NAME=comment MAXLENGTH=80 SIZE=50>
+<br>named: <INPUT TYPE=text NAME=name VALUE="" MAXLENGTH=40 SIZE=40>
+<br>Time Control: <SELECT NAME=time_control>
+<OPTION VALUE=0 SELECTED>Never</OPTION>
+<OPTION VALUE=3>Twice a Day (100/+2/15)</OPTION>
+<OPTION VALUE=7>Once a Day (200/+4/24)</OPTION>
+<OPTION VALUE=11>Weekday (250/+0/72)</OPTION>
+<OPTION VALUE=12>Marathon (250/+1/24)</OPTION>
+<OPTION VALUE=13>Once in 2 days (250/+4/48)</OPTION>
+<OPTION VALUE=15>Once a Week (250/+0/168)</OPTION>
+<OPTION VALUE=16>Once a Month (0/+0/750)</OPTION>
+</SELECT>
+<br><INPUT TYPE=checkbox NAME=private VALUE=private CHECKED> Private Match
+<INPUT TYPE=submit VALUE="Counter Offer">
+</FORM>
+<HR>
+<TABLE border=0 cellpadding=0 cellspacing=0 BGCOLOR=#006600><TR><TD VALIGN=top>&nbsp;<IMG SRC=/images/die.gif ALT=DG WIDTH=16 HEIGHT=16 BORDER=0 ALIGN=middle>&nbsp;
+<TD align=center>&nbsp;<A HREF=/bg/top><B><FONT COLOR=#FFFFFF SIZE=-1>Top Page</FONT></B></A>
+<TD width=20 align=center><FONT COLOR=#99FF99>|</FONT><TD align=center><A HREF=/bg/lounge><B><FONT COLOR=#FFFFFF SIZE=-1>Game Lounge</FONT></B></A>
+<TD width=20 align=center><FONT COLOR=#99FF99>|</FONT><TD align=center><A HREF=/bg/forum2><B><FONT COLOR=#FFFFFF SIZE=-1>Discussion</FONT></B></A>
+<TD width=20 align=center><FONT COLOR=#99FF99>|</FONT><TD align=center><A HREF=/links.html><B><FONT COLOR=#FFFFFF SIZE=-1>Links</FONT></B></A>
+<TD width=20 align=center><FONT COLOR=#99FF99>|</FONT><TD align=center><A HREF=/bg/logout><B><FONT COLOR=#FFFFFF SIZE=-1>Log Out</FONT></B></A>
+<TD width=20 align=center><FONT COLOR=#99FF99>|</FONT><TD align=center><A HREF=/help><B><FONT COLOR=#FFFFFF SIZE=-1>Help</FONT></B></A>&nbsp;&nbsp;
+</TD></TR></TABLE>
+</BODY></HTML>

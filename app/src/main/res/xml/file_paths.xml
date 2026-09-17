@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Vain viennin välimuistikansio: mikään muu sovelluksen tiedosto ei ole jaettavissa. -->
+<paths>
+    <cache-path name="exports" path="exports/" />
+</paths>

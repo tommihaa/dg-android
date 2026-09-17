@@ -1,0 +1,13 @@
+# Kopioi tämä tiedosto nimelle local.properties ja täytä omat tietosi.
+# local.properties on .gitignoressa eikä päädy versionhallintaan.
+
+# Android SDK:n polku. Pakollinen nyt kun :data on Android-moduuli.
+# Kauttaviivat tarkoituksella: Java properties tulkitsee kenoviivan escape-merkiksi, joten
+# `C:\Users\...` katoaisi muotoon `C:Users...` ilman virheilmoitusta.
+# sdk.dir=C:/Users/<you>/AppData/Local/Android/Sdk
+
+# DailyGammon-tunnukset. Käytetään vain live-testissä (gradlew :core-net:liveTest).
+# HUOM: dailygammon.com ei tarjoa HTTPS:ää lainkaan, joten salasana kulkee verkossa
+# salaamattomana. Sama pätee selaimeen ja DG Mobileen. Älä käytä samaa salasanaa muualla.
+dg.login=
+dg.password=

@@ -1,0 +1,31 @@
+<!--
+  Anonymisoitu kopio AIDOSTA Quick Message -sivusta (proxyn tavut 4.8.2026, /bg/nextgame).
+  Nimi ja kayttajanumero vaihdettu, rakenne sellaisenaan.
+
+  TAMA KORVAA SAMANNIMISEN AIEMMAN FIXTUREN, JA SISALTO MUUTTUI. Vanha oli tallennettu
+  Bravella 1.8.2026, ja Tommilla on Bravessa laajennus joka vaihtaa sivuston yksirivisen
+  viestikentan moniriviseksi. Tallenteeseen paatyi siis laajennuksen DOM sivuston omana
+  rakenteena. Ero mitattiin 4.8.2026 raakoja tavuja vasten:
+
+      vanha (selain + laajennus)  <textarea name="text" rows="10" cols="64">&gt; Great match!
+      aito  (proxyn tavut)        <INPUT type=text name=text size=80 maxlength=80>   (tyhja)
+
+  Kaksi seurausta, ja molemmat olivat kanonissa vaarin:
+  1. Vastauslomaketta EI ole esitaytetty lainauksella. Se oli laajennuksen tekoa.
+  2. Vastauskentta on yksirivinen ja RAJATTU 80 MERKKIIN. Sivusto ei siis salli pitkaa
+     vastausta, mika koskee suoraan sita ruutua jonka joskus rakennamme.
+
+  Se mika EI muuttunut: <PRE> sisaltaa vastauslomakkeen ja erotinviivat, joten naiivi
+  pre.text() lukisi liikaa. Syy on <HR> ja <FORM> lohkon sisalla, ei lainaus.
+
+  Osoitteet ovat suhteellisia, koska niin palvelin ne lahettaa. Absoluuttinen muoto tulee
+  vain selaimen tallentamana, ja se on nyt testissa omana tapauksenaan.
+-->
+<HTML><HEAD>
+<TITLE>DailyGammon Quick Message</TITLE></HEAD>
+<BODY BGCOLOR=#FFFFFF>
+<H3>You have received the following quick message from <a href=/bg/user/91004>vastapelaaja</a></H3><PRE>
+Great match!
+<HR><FORM action=/bg/sendmsg/91004 METHOD=post><INPUT type=text name=text size=80 maxlength=80> <INPUT TYPE=submit value="Send Reply"></FORM><HR>
+</PRE><P><A HREF=/bg/nextgame>Next &gt;&gt;</A>
+</BODY></HTML>

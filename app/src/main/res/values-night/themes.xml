@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      Sama ohut teema yötilassa. Tämä ei ole sovelluksen ulkoasu vaan se ikkunan tausta jonka
+      käyttöjärjestelmä näyttää ennen kuin Compose ehtii piirtää: ilman tätä yötilassa
+      käynnistyvä sovellus välähtäisi valkoisena.
+    -->
+    <style name="Theme.DgAndroid" parent="android:Theme.Material.NoActionBar" />
+</resources>
