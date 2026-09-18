@@ -48,6 +48,19 @@ It never sends anything to DailyGammon without a press of yours. It never fetche
 background: no timer, no notifications. It reads only the pages you open. It keeps what it
 keeps on this device only.
 
+## How it was built
+
+This is a one-person project, built daily with Claude Code since late July 2026. The code,
+the documents under `docs/` and the commit messages were written together. The decisions are
+the author's, and they are recorded before the code that follows from them.
+
+What keeps that honest is the checking rather than the writing. The parsers run under JUnit
+against saved copies of real DailyGammon pages, 76 of them at the time of writing. Every
+change runs the tests before it counts as done. Behaviour on the device is measured with a
+logging proxy and screen captures rather than assumed from the code. Solutions that were
+tried and rejected are written down with the reason, in `docs/` where they concern the site
+and in the private working notes where they concern the author.
+
 ## Building
 
 Requirements: JDK 21 and the Android SDK (API 36). Android Studio's bundled JDK works.
