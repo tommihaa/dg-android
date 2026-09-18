@@ -9,6 +9,15 @@ The app is written in Kotlin with Jetpack Compose and has no third-party SDKs: n
 analytics, no ads, no crash reporting. It talks to `dailygammon.com` and to nothing else.
 Its privacy policy is at <https://tommihaa.github.io/dg-android-privacy/>.
 
+## Screenshots
+
+Match list and board on a Samsung tablet (SM-T970), dark theme. The opponents' names are
+masked. The author's own account is shown as it is.
+
+![Match list](docs/kuvat/matches.png)
+
+![Board](docs/kuvat/board.png)
+
 ## Why it exists
 
 Two things separate it from playing in a browser or in DG Mobile, and they are the reason
