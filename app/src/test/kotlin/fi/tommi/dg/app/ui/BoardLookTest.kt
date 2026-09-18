@@ -6,6 +6,7 @@ import fi.tommi.dg.domain.CheckerColor
 import fi.tommi.dg.domain.SiteBoardSettings
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -56,8 +57,11 @@ class BoardLookTest {
         assertEquals(DgBoard.MonteCarloVariant.WedgeOdd, look.wedgeOdd)
         assertEquals(DgBoard.MonteCarloVariant.CheckerSelf, look.roleSelf.fill)
         assertEquals(DgBoard.MonteCarloVariant.CheckerOpp, look.roleOpponent.fill)
-        // Lokerosarake on kotelon puuta eikä huopaa (Tommin päätös 13.9.2026).
-        assertEquals(DgBoard.MonteCarloVariant.Frame, look.trayColumn)
+        // Lokerosarake on kotelon puuta eikä huopaa (Tommin päätös 13.9.2026), mutta
+        // kehystä tummempaa, jotta kehyskaista ja ulkoreuna näkyvät (17.9.2026).
+        assertEquals(DgBoard.MonteCarloVariant.TrayColumn, look.trayColumn)
+        assertNotEquals(look.frame, look.trayColumn)
+        assertNotEquals(look.trayColumn, look.tray)
         assertEquals(DgBoard.MonteCarloVariant.Felt, look.band)
     }
 
@@ -154,5 +158,21 @@ class BoardLookTest {
 
         assertFalse(look.mirrored)
         assertNotNull(look.sitePaint(CheckerColor.YELLOW))
+    }
+
+    @Test
+    fun `paneeli seuraa tyylia vain variantissa 17 9 2026`() {
+        // X-22 ja SITE pitävät entiset värit; variantti saa lokerosarakkeen puun ja kolme
+        // vaaleampaa sävyä (Tommin päätös 17.9.2026, ASETUKSET luku 4).
+        assertEquals(PanelLook.DEFAULT, PanelLook.of(BoardStyle.X22))
+        assertEquals(PanelLook.DEFAULT, PanelLook.of(BoardStyle.SITE))
+        assertEquals(DgBoard.Palette.PanelBg, PanelLook.DEFAULT.background)
+
+        val variant = PanelLook.of(BoardStyle.MONTE_CARLO_VARIANT)
+        assertEquals(DgBoard.MonteCarloVariant.TrayColumn, variant.background)
+        assertEquals(BoardLook.monteCarloVariant().trayColumn, variant.background)
+        assertNotEquals(PanelLook.DEFAULT.muted, variant.muted)
+        assertNotEquals(PanelLook.DEFAULT.outline, variant.outline)
+        assertEquals(DgBoard.Palette.CubeSoft, variant.cubeOutline)
     }
 }

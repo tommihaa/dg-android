@@ -1,5 +1,6 @@
 package fi.tommi.dg.app.ui
 
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.graphics.Color
 import fi.tommi.dg.app.session.BoardStyle
 import fi.tommi.dg.domain.BoardScheme
@@ -46,9 +47,11 @@ internal class BoardLook private constructor(
     val trayOutline: Color = DgBoard.Palette.TrayOutline,
     /**
      * Ulos kannettujen sarakkeen tausta. X-22:ssa ja sivustouskollisessa sama kuin huopa,
-     * kuten tähänkin asti. Monte Carlo variantissa kehyksen väri (Tommin päätös 13.9.2026:
-     * *"bear-off-paneeli ei"* saa olla huovan värinen), jolloin sarake on kotelon puuta ja
-     * `OFF`-lokero erottuu siitä syvennyksenä.
+     * kuten tähänkin asti. Monte Carlo variantissa kotelon puuta (Tommin päätös 13.9.2026:
+     * *"bear-off-paneeli ei"* saa olla huovan värinen), mutta **kehystä tummempaa 17.9.2026
+     * alkaen**: kehyksen värisenä sarake sulautui kehykseen eikä sillä ollut reunaa
+     * kummallakaan puolella, ks. [DgBoard.MonteCarloVariant.TrayColumn]. `OFF`-lokero
+     * erottuu sarakkeesta yhä syvennyksenä.
      */
     val trayColumn: Color = felt,
     /**
@@ -116,7 +119,7 @@ internal class BoardLook private constructor(
             frame = DgBoard.MonteCarloVariant.Frame,
             tray = DgBoard.MonteCarloVariant.Tray,
             trayOutline = DgBoard.MonteCarloVariant.TrayOutline,
-            trayColumn = DgBoard.MonteCarloVariant.Frame,
+            trayColumn = DgBoard.MonteCarloVariant.TrayColumn,
             roleSelf = CheckerPaint(
                 DgBoard.MonteCarloVariant.CheckerSelf,
                 DgBoard.MonteCarloVariant.OnCheckerSelf,
@@ -179,3 +182,46 @@ internal class BoardLook private constructor(
         }
     }
 }
+
+/**
+ * Sivupaneelin neljä väriä jotka seuraavat lautatyyliä (Tommin päätös 17.9.2026, `docs/ASETUKSET.md`
+ * luku 4). Erillinen [BoardLook]ista kahdesta syystä: paneeli piirretään ennen kuin sivun
+ * skeema on tiedossa (myös lataus- ja virhetiloissa), ja se riippuu vain tyylistä.
+ *
+ * X-22 ja `SITE` saavat [DEFAULT]in eli täsmälleen entiset värit. Monte Carlo variantti saa
+ * lokerosarakkeen puun ja kolme vaaleampaa sävyä, koska entiset jäivät puuta vasten alle
+ * WCAG:n 4,5:n (mitatut suhteet ASETUKSET.md:ssä). Kortit pysyvät mustina, joten korttien
+ * sisällä värit eivät kulje tässä.
+ */
+internal data class PanelLook(
+    /** Paneelin ja koko lautaruudun tausta. */
+    val background: Color,
+    /** Korttien reunaviiva, kun kortilla ei ole omaa korostusta. */
+    val outline: Color,
+    /** Hiljainen teksti suoraan paneelilla: nauhojen ×, kenttien nimiöt, vahtirivit. */
+    val muted: Color,
+    /** Kuution omistajan kortin kehys. */
+    val cubeOutline: Color,
+) {
+    companion object {
+        val DEFAULT = PanelLook(
+            background = DgBoard.Palette.PanelBg,
+            outline = DgBoard.Palette.PanelOutline,
+            muted = DgBoard.Palette.TextMuted,
+            cubeOutline = DgBoard.Palette.Cube,
+        )
+
+        val MONTE_CARLO_VARIANT = PanelLook(
+            background = DgBoard.MonteCarloVariant.TrayColumn,
+            outline = DgBoard.MonteCarloVariant.PanelOutline,
+            muted = DgBoard.MonteCarloVariant.PanelMuted,
+            cubeOutline = DgBoard.Palette.CubeSoft,
+        )
+
+        fun of(style: BoardStyle): PanelLook =
+            if (style == BoardStyle.MONTE_CARLO_VARIANT) MONTE_CARLO_VARIANT else DEFAULT
+    }
+}
+
+/** Lautaruudun paneelivärit; [BoardScreen] tarjoaa, paneelin osat lukevat. */
+internal val LocalPanelLook = compositionLocalOf { PanelLook.DEFAULT }

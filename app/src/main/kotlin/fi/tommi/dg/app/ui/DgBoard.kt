@@ -510,8 +510,25 @@ object DgBoard {
     object MonteCarloVariant {
         val Felt = Color(0xFF3D7A3F)
         val Frame = Color(0xFF5A3D27)
-        val Tray = Color(0xFF44301E)
-        val TrayOutline = Color(0xFF2E2014)
+        /**
+         * Ulos kannettujen sarake: kotelon puuta mutta kehystä tummempaa (17.9.2026, Tommin
+         * havainto: *"nappilokerosta puuttuu reuna"*). Kehyksen värisenä (13.9.–17.9.2026)
+         * sarake sulautui kehykseen, jolloin sen ja pelialueen välinen kehyskaista sekä
+         * kotelon ulkoreuna katosivat; X-22:ssa huovan värinen sarake saa reunansa juuri
+         * siitä että sen molemmin puolin on kehyksen puuta. Tummempi puu on sama
+         * mekanismi eri sävyllä, ja `OFF`-lokero on sitä vielä tummempi syvennys.
+         */
+        val TrayColumn = Color(0xFF44301E)
+        val Tray = Color(0xFF352418)
+        val TrayOutline = Color(0xFF241810)
+
+        /**
+         * Sivupaneelin kaksi vaaleampaa sävyä, kun paneeli on [TrayColumn]in puuta (Tommin
+         * päätös 17.9.2026, ks. [PanelLook]). Paletin `PanelOutline` ja `TextMuted` jäivät
+         * puuta vasten suhteisiin 2,1 ja 3,8; nämä ovat 3,0 ja 5,1.
+         */
+        val PanelOutline = Color(0xFF8C7A64)
+        val PanelMuted = Color(0xFFB5A48C)
         val WedgeEven = Color(0xFFE07338)
         val WedgeOdd = Color(0xFFEDE5D0)
         val CheckerSelf = Color(0xFFF3F0E8)

@@ -393,3 +393,35 @@ edelleen ainoa totuus: `Submit Move`n palauttama lauta korvaa paikallisen tilan 
   jättäisi levylle arvon jota ei voi avata eikä tunnistaa roskaksi.
 - `core-net` julkaisee OkHttpin `api`na eikä `implementation`ina: OkHttpin tyypit näkyvät
   `DgClient`in ja `CookieStore`n julkisissa rajapinnoissa, joten kutsuja ei käänny ilman niitä.
+
+### Virheen olemassaolo: poistettu vai pidetty (lainattu jako, 18.9.2026)
+
+Tämän tiedoston virhepäätökset jakautuvat kahteen luokkaan, ja jako on lainattu John
+Ousterhoutilta (*A Philosophy of Software Design*, luku *define errors out of existence*;
+luettu Pragmatic Engineer -jaksosta 9.4.2025, kirjattu `Kaanon/LAINAT.md` Lähde 3 kohta 2).
+Kirjaus on Tommin päätös 18.9.2026. Se ei avaa uudelleen työjonon kohtaa 20 (suljettu
+19.8.2026 hylkäyksenä): säännöt pysyvät tämän projektin kanonissa, ja tässä ne saavat vain
+nimen jaolleen. Luokka luetaan kutsujan reaktioiden määrästä. Jos kutsujalla on virheelle vain
+yksi reaktio, virhe poistetaan suunnittelulla. Jos alusta tai palvelin tarjoaa virheen
+piilottamista mutta virhe on aito, se pidetään olemassa.
+
+**Virhe poistettu suunnittelulla.** Kutsujalle ei jää käsiteltävää, koska sillä ei ollut
+kuin yksi tapa reagoida.
+
+- Purun epäonnistuminen palauttaa `null` eikä poikkeusta (yllä, tunnukset). Ainoa reaktio
+  on uusi kirjautuminen.
+- Tuntematon `MessageSource`-nimi luetaan `ANNOUNCEMENT`iksi (yllä, kanta). Väärä laji
+  hukkaa lajittelun, poikkeus hukkaisi listan.
+
+**Virhe pidetty olemassa vaikka sen piilottamista tarjottiin.** Ousterhoutin oma varoitus
+kirjan vaarallisimmasta luvusta on tämä puoli. Virhe joka jätetään huomiotta ei ole poistettu.
+
+- Ei `fallbackToDestructiveMigration`ia (yllä, kanta). Varakaatuminen olisi poistanut
+  migraatiovirheen hävittämällä ainoan kopion viestihistoriasta.
+- Onnistuminen luetaan sisällöstä eikä statuskoodista (`docs/KOHDE.md`). Palvelin palauttaa
+  200 OK ja login-sivun, eli se on itse jättänyt virheen huomiotta, ja `DgPages.isLoginPage`
+  palauttaa virheen olemassaoloon.
+
+**Ei kummassakaan luokassa.** Varmuuskopion mukaan ottava lista (yllä, sovellus) ei päätä
+virheen olemassaolosta vaan sen suunnasta: puuttuva kopio huomataan palautettaessa, liika ei
+koskaan. Ousterhoutilla ei ole tälle sanaa, ja sääntö jää oman perustelunsa varaan.

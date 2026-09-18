@@ -271,6 +271,29 @@ class TopViewModel(
         if (current is TopUiState.Failed && current.reason is Failure.Offline) refresh()
     }
 
+    /**
+     * Sovellus palasi etualalle ja otteluluettelo on auki. Haku uusitaan **vain jos lista on
+     * jo ruudulla eikä haku ole kesken** (Tommin tilaus 18.9.2026, monen pelisession
+     * havainto: *"kun vaihtaa takaisin sovellukseen ja Matches-näkymä on auki, niin
+     * ottelulistan tulisi päivittyä"*, kuten DG Mobilessa).
+     *
+     * Rajaus on tarkoituksellinen ja sama kuin [onNetworkAvailable]issa toisin päin.
+     * `Loaded` on ainoa tila jossa ruudulla on vanhentuvaa tietoa; `Loading` on jo hakemassa,
+     * `SignedOut` ei voi hakea ja `Failed` jätetään virheelleen, koska palvelinvirhe tai
+     * nukkuminen ei korjaannu siitä että sovellus vaihdettiin näkyviin (Sleeping on Tommin
+     * päätös 11.9.2026, verkkokatkon hoitaa [onNetworkAvailable]). Rivit pidetään ruudulla
+     * haun ajan (`matchesStale = false`), koska lista voi hyvinkin olla ajan tasalla ja
+     * tyhjennys olisi välähdys.
+     *
+     * Kohde on Top Page, joka ei kuluta jonoa (`docs/KOHDE.md`), joten haku on turvallinen
+     * ilman painallusta. Käynnistys ei kulje tästä: [init] hakee jo, ja ensimmäinen
+     * etualalletulo suodatetaan kutsupaikassa.
+     */
+    fun onForeground() {
+        val current = _state.value
+        if (current is TopUiState.Loaded && !current.refreshing) refresh()
+    }
+
     fun signOut() {
         credentials.clear()
         _state.value = TopUiState.SignedOut()

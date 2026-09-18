@@ -245,6 +245,52 @@ class TopViewModelTest {
     }
 
     @Test
+    fun `etualalle paluu hakee luettelon uudestaan kun lista on ruudulla`() = runTest(dispatcher) {
+        // Tommin tilaus 18.9.2026: paluu toisesta sovelluksesta Matches-nakyman ollessa auki
+        // paivittaa listan. Rivit pysyvat ruudulla haun ajan, koska ne voivat olla ajan tasalla.
+        val fetcher = RecordingFetcher { DgResponse.Ok(YKSI_OTTELU) }
+        val malli = malli(fetcher, FakeCredentials(DgCredentials("tommi", "salasana")))
+        advanceUntilIdle()
+
+        malli.onForeground()
+        val kesken = malli.state.value
+        assertTrue(kesken is TopUiState.Loaded && kesken.refreshing && !kesken.matchesStale)
+        advanceUntilIdle()
+
+        assertEquals(2, fetcher.requested.size)
+        assertTrue(malli.state.value is TopUiState.Loaded)
+    }
+
+    @Test
+    fun `etualalle paluu ei hae kun haku on jo kesken`() = runTest(dispatcher) {
+        val fetcher = RecordingFetcher { DgResponse.Ok(YKSI_OTTELU) }
+        val malli = malli(fetcher, FakeCredentials(DgCredentials("tommi", "salasana")))
+        advanceUntilIdle()
+
+        malli.refresh()
+        malli.onForeground()
+        advanceUntilIdle()
+
+        assertEquals(2, fetcher.requested.size)
+    }
+
+    @Test
+    fun `etualalle paluu ei hae virhetilasta`() = runTest(dispatcher) {
+        // Palvelinvirhe tai nukkuminen ei korjaannu siita etta sovellus vaihdettiin nakyviin;
+        // verkkokatkon hoitaa onNetworkAvailable ja Sleeping jaa Refreshin varaan (11.9.2026).
+        for (vastaus in listOf<DgResponse>(DgResponse.ServerError(503), DgResponse.Sleeping, DgResponse.Offline(TEST_OFFLINE_CAUSE))) {
+            val fetcher = RecordingFetcher { vastaus }
+            val malli = malli(fetcher, FakeCredentials(DgCredentials("tommi", "salasana")))
+            advanceUntilIdle()
+
+            malli.onForeground()
+            advanceUntilIdle()
+
+            assertEquals(vastaus.toString(), 1, fetcher.requested.size)
+        }
+    }
+
+    @Test
     fun `palvelinvirhe sailyttaa koodin`() = runTest(dispatcher) {
         val fetcher = RecordingFetcher { DgResponse.ServerError(503) }
         val malli = malli(fetcher, FakeCredentials(DgCredentials("tommi", "salasana")))

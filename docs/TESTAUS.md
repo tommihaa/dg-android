@@ -191,6 +191,13 @@ ajettiin väliaikaisella koodilla joka luki suhteen tiedostosta `files/kokeilu.t
 kirjoituksella, ja koodi peruttiin ennen committia; se ei ole repossa. Kolmas päätös kuvien
 jälkeen: kaista huovan väriseksi ja muuri sen läpi (`kaista-huopa-muuri-lapi.png`).
 
+**Lokerosarakkeen reuna variantissa 17.9.2026, kuorella tabletilla.** Tommin havainto
+*"nappilokerosta puuttuu reuna"* korjattiin kehystä tummemmalla puulla (`docs/ASETUKSET.md`
+luku 4) ja todennettiin samalla sivulla X-22:na, varianttina ja varianttina peilattuna
+(`raakasivut/sessio-17-9-kuori/`, kuvat `x22-vertailu.png`, `lokerosarake-tumma-puu.png`,
+`-peilattu.png`). Tässä osui kuoren dokumentoitu säädin: 16.9. session lautasivun
+ottelutunnus piti sed-korvata luettelon ensimmäiseksi, muuten ruutu oli `DifferentMatch`.
+
 **Kuudes todennus 7.9.2026: katkotila syntyy tappamalla kuori.** Katkotilan `Refresh`-nappi
 (`UnconfirmedRefresh`) ei ole tilattavissa oikeaa sivustoa vasten, mutta kuoren kanssa se
 syntyy kolmella askeleella: lauta kuoresta (`sessio-7-9-ilta/0010`, Quastelin heittovuoro),
@@ -866,8 +873,10 @@ painoi `Cancel`, ja loki todistaa sen: rivien 36 (18.46.08, `Submit Move`) ja 37
 välittänyt siitä. `Accept`-dialogi todennettiin kuorella session jälkeen
 (`nauhat/kuori-accept-dialogi.png`): otsikko `Accept?`, kuutioteksti, napit `Cancel` ja
 `Accept`. Sen sanat olivat sessiossa itsessään väärät (peruutusrunko, ks. `docs/UI.md`
-8.9.2026), ja Tommi ei lukenut niitä hyväksyessään. Kohta on ratkennut lukuun ottamatta
-`Cancel`ia `Accept`-dialogissa, jota ei ole vielä painettu oikealla sivulla.
+8.9.2026), ja Tommi ei lukenut niitä hyväksyessään. ~~Kohta on ratkennut lukuun ottamatta
+`Cancel`ia `Accept`-dialogissa, jota ei ole vielä painettu oikealla sivulla.~~ **`Accept`-dialogin
+`Cancel` painettu oikealla sivulla 17.9.2026 Pixelillä proxyn alla (`sessio-17-9-pixel`):
+lokiin ei tullut riviä. Kohta on kokonaan ratkennut.**
 
 **2. Palstan lähetyksen vahvistus.** Toinen kutsupaikka, ja **ainoa jonka peruutusnappi ei
 ole `Cancel` vaan `Not yet`**, joten se on koko noston ainoa poikkeus. Tämä on ajettavissa

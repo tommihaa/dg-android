@@ -91,6 +91,16 @@ voittaa.
   16.9. lukutilan lautaan ja turhaan `Skip Game`en. Haku on `/bg/top`, joka ei kuluta jonoa.
   Katsomiskäynti ilman tekoa ei hae, eli säännön hinta ei muutu siinä tapauksessa jota
   varten se kirjoitettiin.
+  **Toinen poikkeus 18.9.2026 (Tommin tilaus monen pelisession jälkeen): paluu toisesta
+  sovelluksesta luettelon ollessa auki hakee sen uudestaan**, kuten DG Mobile tekee. *"Kun
+  vaihtaa takaisin sovellukseen ja Matches-näkymä on auki, niin ottelulistan tulisi
+  päivittyä."* Hetki luetaan aktiviteetin `ON_RESUME`sta (`RefreshOnForeground`,
+  `MainActivity.kt`), ja ensimmäinen tapahtuma ohitetaan, koska tarkkailija saa sen heti
+  koostuessaan: se osuisi käynnistykseen ja jokaiseen paluuseen laudalta, jotka on säädetty
+  yllä. Päätös haetaanko on `TopViewModel.onForeground`in, ja se hakee vain kun lista on jo
+  ruudulla eikä haku ole kesken; virhetila jää virheelleen (palvelinvirhe ja nukkuminen eivät
+  korjaannu vaihdosta, katkon hoitaa `onNetworkAvailable`). Rivit pysyvät ruudulla haun ajan,
+  koska lista voi olla ajan tasalla ja tyhjennys olisi välähdys. Haku on `/bg/top`.
 
 #### Portti purettiin, ja tae siirtyi ruudulta tyyppiin (10.8.2026)
 

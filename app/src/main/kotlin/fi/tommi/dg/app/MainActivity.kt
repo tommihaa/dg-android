@@ -21,6 +21,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -33,6 +34,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.fragment.app.FragmentActivity
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
@@ -233,6 +237,9 @@ class MainActivity : FragmentActivity() {
                     // Otteluluettelon malli on activityn tasolla eikä reitin, jotta paluu
                     // laudalta ei laukaise uutta Top Page -hakua. Lista on yhä oikeaa tietoa
                     // siitä hetkestä jolloin se haettiin, ja Refresh on käyttäjän oma valinta.
+                    // Poikkeus 18.9.2026: paluu toisesta sovelluksesta luettelon ollessa auki
+                    // hakee sen uudestaan (`RefreshOnForeground`), koska silloin on kulunut
+                    // aikaa jonka pituutta sovellus ei tiedä.
                     val topModel: TopViewModel = viewModel(
                         factory = TopViewModel.Factory(
                             container.pages,
@@ -410,6 +417,7 @@ class MainActivity : FragmentActivity() {
                             val markCount by remember { container.marks.observeAll().map { it.size } }
                                 .collectAsStateWithLifecycle(initialValue = 0)
                             WakeOnReconnect(container.network, topModel::onNetworkAvailable)
+                            RefreshOnForeground(topModel::onForeground)
                             TopScreen(
                                 state = state,
                                 order = order,
@@ -1378,6 +1386,33 @@ private fun WakeOnReconnect(network: NetworkAvailability, onAvailable: () -> Uni
     val latest by rememberUpdatedState(onAvailable)
     LaunchedEffect(network) {
         network.availability().collect { latest() }
+    }
+}
+
+/**
+ * Sovellus palasi etualalle otteluluettelon ollessa auki: luettelo haetaan uudestaan
+ * (Tommin tilaus 18.9.2026, DG Mobile tekee saman). Päätös siitä haetaanko on
+ * [TopViewModel.onForeground]in, tämä vain kertoo hetken.
+ *
+ * **Ensimmäinen `ON_RESUME` ohitetaan.** Tarkkailija saa sen heti rekisteröityessään, koska
+ * aktiviteetti on jo `RESUMED` kun ruutu koostuu, ja se osuisi sekä käynnistykseen (haku on
+ * jo käynnissä `init`istä) että jokaiseen paluuseen laudalta tai välilehdeltä, jossa ruutu
+ * koostuu uudestaan. Katsomiskäynti laudalla ei saa hakea (`docs/UI.md`), ja teon jälkeinen
+ * paluu hakee jo omaa reittiään. Vasta seuraava `ON_RESUME` on paluu toisesta sovelluksesta
+ * tai lukitulta näytöltä, ja siitä haetaan.
+ */
+@Composable
+private fun RefreshOnForeground(onForeground: () -> Unit) {
+    val latest by rememberUpdatedState(onForeground)
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    DisposableEffect(lifecycle) {
+        var first = true
+        val observer = LifecycleEventObserver { _, event ->
+            if (event != Lifecycle.Event.ON_RESUME) return@LifecycleEventObserver
+            if (first) first = false else latest()
+        }
+        lifecycle.addObserver(observer)
+        onDispose { lifecycle.removeObserver(observer) }
     }
 }
 

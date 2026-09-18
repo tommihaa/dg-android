@@ -54,7 +54,7 @@ numero ei, joten pysyvä viittaus on avain ja keskustelun viittaus numero.
 | `differences` | `d_unconfirmed` | Board not confirmed, ei automaattista toistoa | `board_unconfirmed_*`, `BoardViewModel.kt` |
 | `tabs` | `tabs` | Viisi välilehteä; profiili ja turnaus porautumisina; viesti profiililta tallentuu | `DgTabs.kt`, `InfoScreen.kt`, `PageScreen.kt`, `page_message_sent` |
 | `matches` | `order` | Määräaikajärjestys; Sort by -napit ja kolmen napautuksen kierto; nuoli; valinta säilyy | `MatchOrder.next`, `TopScreen.kt` rivit 537–578, `MatchOrderStore` |
-| `matches` | `open` | Avaus ei kuluta vuoroa; paluu teon jälkeen hakee luettelon, katsomiskäynti ei; Refresh on käyttäjän | `BoardViewModel.actedOnSite`, `MainActivity.kt` › leaveBoard, `docs/UI.md` poikkeus 16.9.2026 |
+| `matches` | `open` | Avaus ei kuluta vuoroa; paluu teon jälkeen hakee luettelon, katsomiskäynti ei; paluu toisesta sovelluksesta luettelon ollessa auki hakee; Refresh on käyttäjän | `BoardViewModel.actedOnSite`, `MainActivity.kt` › leaveBoard ja `RefreshOnForeground`, `TopViewModel.onForeground`, `docs/UI.md` poikkeukset 16.9.2026 ja 18.9.2026 |
 | `matches` | `tournaments` | Kierros ja vastustaja luettelosta tai muistista; voitot vain ilman kierrosta; ikärivi; Refresh lukee profiilin; ensiavaus lukee profiilin kerran | `OwnTournaments.kt`, `PlayerTournamentRowView.showWins`, `MatchMemory` |
 | `board` | `move` | Sivuston nimet; kokoaminen laitteella ja Submit Move; Undo; noppanapautus lähettää kun asetus päällä; ei-todennettu asema askel kerrallaan | `BoardViewModel.kt`, `LocalComposition.kt`, `DiceSubmitStore` |
 | `board` | `forced` | Pakolliset ja ahne asettavat, eivät lähetä | `ForcedStepsStore`, `GreedyBearoffStore` |
@@ -63,7 +63,7 @@ numero ei, joten pysyvä viittaus on avain ja keskustelun viittaus numero.
 | `board` | `gestures` | Veto alas hakee; Refresh sama; Back; palkit piiloon vain kun ne veisivät laudan kokoa tai sivulla paneelin leveyttä; reunapyyhkäisy | `BoardScreen.pullDownToRefresh`, `DgBoard.barsAreFree`, `Immersive.kt` |
 | `board` | `beside` | Sivupaneeli: linkit, Message ja Reply, chat siirron mukana ja talteen, muistutukset, kuutiomuistutus | `BoardScreen.kt` sivupaneeli, `board_chat_*`, `board_reminder_*`, `Notes.kt` |
 | `board` | `skip` | Skip Game ohittaa jonossa, ottelu koskematon | `SkipGameAction` |
-| `board` | `look` | Kolme lautatyyliä ja värit; noppa- ja pistetyyli; robotti ja CC BY | `BoardLook.kt`, `BoardStyleStore`, `DiceStyleStore`, `ScoreStyleStore`, `DgBoard.kt` |
+| `board` | `look` | Kolme lautatyyliä ja värit, variantin paneeli lokeron puuta; noppa- ja pistetyyli; robotti ja CC BY | `BoardLook.kt` (`PanelLook`), `BoardStyleStore`, `DiceStyleStore`, `ScoreStyleStore`, `DgBoard.kt` |
 | `messages` | `take` | Ei taustahakua, ei ajastinta, ei ilmoituksia; Take an item; tallennus ennen näyttöä | `MessagesViewModel.readItem` |
 | `messages` | `queue` | Ilmoitus ei tallennu, lauta ei tallennu, kutsu jää jonoon ja siihen vastataan | `InvitationParser`, `MessagesScreen.kt` |
 | `messages` | `reply` | Vastauslaatikko, vastaus pelaajalle, fraasit, lainaus; oma viesti näyttää kohteen | `MessagesScreen.kt` (`MessageRow`, `messages_to`), `PhraseStore` |

@@ -322,9 +322,29 @@ kaikissa tyyleissä samana, ja sivupaneelin kortit, nappirivi ja muut sovellukse
 pysyvät ominaan tyylistä riippumatta; vain lauta vaihtuu. `BoardLook` kantaa siis 13.9.2026
 alkaen myös huovan, kehyksen ja lokeron värit sekä roolivärit. Ulos kannettujen sarake
 (`trayColumn`) on samaa lajia: X-22:ssa ja `SITE`ssä huovan värinen kuten ennen, variantissa
-kehyksen väri, koska Tommin sana samana iltana oli *"bear-off-paneeli ei"* saa olla huovan
-värinen. Keskikaista on variantissa huovan värinen (`band`, Tommin päätös samana iltana:
-*"keskikaista oli parempi huovan värisenä"*), muissa tyyleissä kehyksen värinen kuten ennen.
+kotelon puuta, koska Tommin sana samana iltana oli *"bear-off-paneeli ei"* saa olla huovan
+värinen. **Puu on kehystä tummempaa 17.9.2026 alkaen** (Tommin havainto: *"nappilokerosta
+puuttuu reuna"*): kehyksen värisenä sarake sulautui kehykseen, jolloin pelialueen ja
+sarakkeen välinen kehyskaista ja kotelon ulkoreuna katosivat. X-22:n huovan värinen sarake
+saa reunansa siitä että molemmin puolin on kehyksen puuta, ja tummempi puu on sama mekanismi
+eri sävyllä (`MonteCarloVariant.TrayColumn`); `OFF`-lokero on sitä vielä tummempi syvennys.
+Keskikaista on huovan värinen kaikissa tyyleissä (`band`): variantissa ensin (Tommin päätös
+13.9.2026: *"keskikaista oli parempi huovan värisenä"*), X-22 14.9. ja `SITE` 16.9.2026.
+
+**Sivupaneelin tausta seuraa lautatyyliä 17.9.2026 alkaen** (Tommin päätös samana aamuna
+neljän kuorikokeilun jälkeen, kuvat `raakasivut/sessio-17-9-kuori/kokeilu-*.png`). Tämä on
+poikkeus 13.9. tarkennuksen sanaan *"vain lauta vaihtuu"*, ja se on rajattu: `PanelLook`
+kantaa paneelin taustan, korttien reunaviivan, hiljaisen tekstin ja kuution omistajan kehyksen.
+X-22 ja `SITE` pitävät nykyisen mustan (`Palette.PanelBg`) ja nykyiset värit, eli niissä
+mikään ei muutu. Monte Carlo variantti käyttää lokerosarakkeen puuta
+(`MonteCarloVariant.TrayColumn`), ja kolme väriä saa siinä vaaleamman sävyn kontrastin vuoksi
+(mitattu WCAG-suhteina puuta vasten: hiljainen teksti `B5A48C` 5,1, reunaviiva `8C7A64` 3,0,
+kuution kehys `CubeSoft` 7,3; vanhat sävyt olisivat olleet 3,8, 2,1 ja 2,0). Kortit pysyvät
+mustina, joten korttien sisällä värit ovat ennallaan kaikissa tyyleissä. Hylätyt vaihtoehdot:
+huovan vihreä (Tommi: *"vihreä sivupaneeli ei käy"*; kerma olisi ollut 4,2 ja muut alle 2,5)
+ja kehyksen puu `5A3D27` (vaaleampi, oranssi pip-teksti 4,2 ja punainen 2,7; Tommi valitsi
+tummemman). Muut ruudut (luettelo, asetukset, chat) eivät seuraa tyyliä, koska tyyli koskee
+lautaruutua.
 
 Sivusto sanoo kolme asiaa (`6`, `7`, `board`), joten tiloilla oli aluksi **kolme eroa**.
 **Yksi niistä poistui 9.9.2026**, ks. suunta alla.

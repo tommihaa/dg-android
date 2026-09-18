@@ -962,6 +962,10 @@ class BoardViewModel(
      * vastaus joka jättää epäselväksi tapahtuiko teko: palvelinvirhe ja katkennut istunto
      * ovat molemmat palvelimen omia vastauksia, eli yhteys toimi ja pyyntö tuli käsitellyksi.
      * Onnistunut teko puolestaan tekee aiemman rivin tarpeettomaksi, koska sivun tila liikkui.
+     *
+     * Rajaus vahvistettu 17.9.2026 (Tommin päätös *"palkki vain yhteyskatkosta"*) sen jälkeen
+     * kun mittausproxyn oma 502 näytti ruudulla sirun mutta ei palkkia (`sessio-17-9-ilta`).
+     * Ilman proxya sama katko olisi [DgResponse.Offline], ja palkki tulisi.
      */
     private suspend fun afterPress(attempt: PendingAction, response: DgResponse) {
         when (response) {

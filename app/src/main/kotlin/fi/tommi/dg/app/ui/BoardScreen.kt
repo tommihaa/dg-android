@@ -69,6 +69,8 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -312,10 +314,15 @@ fun BoardScreen(
         // tarvitsee sen silloin kun se pyyhkäistään hetkeksi esiin.
         DarkSystemBarIconsWhileVisible()
 
+        // Paneelin värit tyylistä (Tommin päätös 17.9.2026, [PanelLook]): luetaan tässä
+        // eikä [BoardLook]ista, koska tausta piirretään myös lataus- ja virhetiloissa,
+        // ennen kuin sivun skeema on tiedossa. Lapset lukevat saman [LocalPanelLook]ista.
+        val panelLook = PanelLook.of(style)
+        CompositionLocalProvider(LocalPanelLook provides panelLook) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Palette.PanelBg)
+                .background(panelLook.background)
                 // Vain palkit, ei näyttölovea (Tommin päätös 16.9.2026, `docs/UI.md` › Lovi
                 // ja sivupalkki). Lovi on puhelimen vaakatilassa paneelin reunalla ja sen
                 // inset vei viidenneksen paneelista; reikä itse osuu ottelukortin
@@ -339,7 +346,9 @@ fun BoardScreen(
                     },
                 ) {
                     when (state) {
-                        is BoardUiState.Loaded -> {
+                        is BoardUiState.Loaded -> CompositionLocalProvider(
+                            LocalActionsBlocked provides state.blocked,
+                        ) {
                             LoadedBoard(
                                 state,
                                 style = style,
@@ -424,6 +433,7 @@ fun BoardScreen(
                     }
                 }
             }
+        }
         }
     }
 }
@@ -1138,7 +1148,7 @@ private fun LoadedBoard(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Palette.PanelBg)
+            .background(LocalPanelLook.current.background)
             // Näppäimistö kaventaa saraketta eikä peitä sitä: ilman tätä chat-kentän
             // avaaminen jättäisi nappirivin näppäimistön alle laitteilla joilla ikkuna
             // ei itse kutistu. Kun ikkuna kutistuu, ime-inset on nolla ja tämä ei tee mitään.
@@ -1721,6 +1731,7 @@ private fun ReminderStrip(
     // nappirivi, ja se maksoi laudalta korkeutta myös silloin kun muistutuksia ei ollut.
     if (reminders.isEmpty() && !composing) return
 
+    val panelLook = LocalPanelLook.current
     Column(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 2.dp),
         verticalArrangement = Arrangement.spacedBy(2.dp),
@@ -1757,9 +1768,9 @@ private fun ReminderStrip(
                     focusedTextColor = Palette.TextPrimary,
                     unfocusedTextColor = Palette.TextPrimary,
                     focusedBorderColor = Palette.Accent,
-                    unfocusedBorderColor = Palette.PanelOutline,
+                    unfocusedBorderColor = panelLook.outline,
                     focusedLabelColor = Palette.Accent,
-                    unfocusedLabelColor = Palette.TextMuted,
+                    unfocusedLabelColor = panelLook.muted,
                     cursorColor = Palette.Accent,
                 ),
             )
@@ -1775,11 +1786,11 @@ private fun ReminderStrip(
                 // himmeä mutta luettava, sama sävy kuin kentän lepotilan label.
                 colors = ButtonDefaults.outlinedButtonColors(
                     contentColor = Palette.Accent,
-                    disabledContentColor = Palette.TextMuted,
+                    disabledContentColor = panelLook.muted,
                 ),
                 border = BorderStroke(
                     width = 1.dp,
-                    color = if (draft.isNotBlank()) Palette.Accent else Palette.PanelOutline,
+                    color = if (draft.isNotBlank()) Palette.Accent else panelLook.outline,
                 ),
             ) {
                 Text(
@@ -1791,7 +1802,7 @@ private fun ReminderStrip(
         Text(
             text = stringResource(R.string.board_reminder_scope),
             style = MaterialTheme.typography.labelSmall,
-            color = Palette.TextMuted,
+            color = panelLook.muted,
         )
     }
 }
@@ -1830,12 +1841,16 @@ private fun SkipGameAction(
     /** Ahdas paneeli: 32 dp:n korkuinen nappi 40:n sijaan, ks. [ReminderActions]. */
     compact: Boolean = false,
 ) {
+    val blocked = LocalActionsBlocked.current
     OutlinedButton(
         onClick = { onFollow(href) },
-        modifier = if (compact) modifier.height(DgBoard.COMPACT_BUTTON_HEIGHT) else modifier,
+        modifier = (if (compact) modifier.height(DgBoard.COMPACT_BUTTON_HEIGHT) else modifier)
+            .blockedAlpha(blocked),
+        enabled = !blocked,
         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
         colors = ButtonDefaults.outlinedButtonColors(
             contentColor = DgBoard.Palette.TextSecondary,
+            disabledContentColor = DgBoard.Palette.TextSecondary,
         ),
         border = BorderStroke(DgBoard.OUTLINE, DgBoard.Palette.TextSecondary),
     ) {
@@ -1923,6 +1938,7 @@ private fun MarkStrip(
 ) {
     if (marks.isEmpty() && !marking) return
 
+    val panelLook = LocalPanelLook.current
     Column(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 2.dp),
         verticalArrangement = Arrangement.spacedBy(2.dp),
@@ -1951,9 +1967,9 @@ private fun MarkStrip(
                     focusedTextColor = Palette.TextPrimary,
                     unfocusedTextColor = Palette.TextPrimary,
                     focusedBorderColor = Palette.Accent,
-                    unfocusedBorderColor = Palette.PanelOutline,
+                    unfocusedBorderColor = panelLook.outline,
                     focusedLabelColor = Palette.Accent,
-                    unfocusedLabelColor = Palette.TextMuted,
+                    unfocusedLabelColor = panelLook.muted,
                     cursorColor = Palette.Accent,
                 ),
             )
@@ -1973,7 +1989,7 @@ private fun MarkStrip(
         Text(
             text = stringResource(R.string.board_mark_scope),
             style = MaterialTheme.typography.labelSmall,
-            color = Palette.TextMuted,
+            color = panelLook.muted,
         )
     }
 }
@@ -2004,7 +2020,7 @@ private fun MarkRow(mark: MarkedPosition, onRemove: (Long) -> Unit) {
             Text(
                 text = "\u00d7",
                 style = MaterialTheme.typography.bodyMedium,
-                color = Palette.TextMuted,
+                color = LocalPanelLook.current.muted,
             )
         }
     }
@@ -2073,7 +2089,7 @@ private fun ReminderRow(reminder: Reminder, onRemove: (Long) -> Unit) {
             Text(
                 text = "\u00d7",
                 style = MaterialTheme.typography.bodyMedium,
-                color = Palette.TextMuted,
+                color = LocalPanelLook.current.muted,
             )
         }
     }
@@ -2298,6 +2314,25 @@ private val VERIFY_BOX = 20.dp
 /** Kuution sivu pelaajakortissa: nimen ja away-rivin yhteinen korkeus (14.9.2026), ei laudan mitta. */
 private val CARD_CUBE = 40.dp
 
+/**
+ * Ottaako lauta juuri nyt vastaan tekoja. Tosi kun lauta on vahvistamaton
+ * ([BoardUiState.Loaded.blocked]): [BoardViewModel.acting] hylkää silloin painalluksen
+ * hiljaa, ja tämä on sen näkyvä puoli.
+ *
+ * **Napit himmennetään eikä piiloteta** (Tommin tilaus 17.9.2026 `sessio-17-9-ilta`n
+ * jälkeen: `Next Game` ja `To Matches` näyttivät sirun aikana tavallisilta vaikka
+ * painallus oli ei-mitään). Piilotus veisi tiedon siitä mitä sivu tarjosi, ja se tieto
+ * on juuri se jonka pelaaja vertaa tuoreeseen lautaan Refreshin jälkeen. CompositionLocal
+ * eikä parametri, koska ehto on koko laudan tila ja napit rakennetaan neljässä paikassa.
+ */
+private val LocalActionsBlocked = compositionLocalOf { false }
+
+/** Estetyn napin himmennys; värit pysyvät omina, jotta peruuttamaton erottuu yhä. */
+private fun Modifier.blockedAlpha(blocked: Boolean): Modifier =
+    if (blocked) alpha(BLOCKED_ALPHA) else this
+
+private const val BLOCKED_ALPHA = 0.38f
+
 /** Sivun lomakkeen nappi; peruuttamaton saa kuutiotealin ja reunuksen (24.8.2026). */
 @Composable
 private fun SubmitButton(
@@ -2307,14 +2342,20 @@ private fun SubmitButton(
     onPress: (String, Boolean) -> Unit,
 ) {
     val irreversible = label in IRREVERSIBLE_SUBMITS
+    val blocked = LocalActionsBlocked.current
+    val contentColor = if (irreversible) DgBoard.Palette.Cube else DgBoard.Palette.OnCheckerSelf
     Button(
         onClick = { onPress(label, verified) },
-        modifier = modifier,
+        modifier = modifier.blockedAlpha(blocked),
+        enabled = !blocked,
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
-        // Peruuttamattoman teon väri on kuutioteal eikä punainen (24.8.2026).
+        // Peruuttamattoman teon väri on kuutioteal eikä punainen (24.8.2026). Estetyn napin
+        // värit ovat samat ja himmennys tulee alphasta, ks. [blockedAlpha].
         colors = ButtonDefaults.buttonColors(
             containerColor = DgBoard.Palette.CheckerSelf,
-            contentColor = if (irreversible) DgBoard.Palette.Cube else DgBoard.Palette.OnCheckerSelf,
+            contentColor = contentColor,
+            disabledContainerColor = DgBoard.Palette.CheckerSelf,
+            disabledContentColor = contentColor,
         ),
         border = if (irreversible) BorderStroke(DgBoard.OUTLINE, DgBoard.Palette.CubeSoft) else null,
     ) {
@@ -2548,12 +2589,15 @@ private fun actionItems(
     board.undoHref?.let { href ->
         add(
             ActionItem.Content {
+                val blocked = LocalActionsBlocked.current
                 OutlinedButton(
                     onClick = { onFollow(href) },
-                    modifier = buttonModifier,
+                    modifier = buttonModifier.blockedAlpha(blocked),
+                    enabled = !blocked,
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
                     colors = ButtonDefaults.outlinedButtonColors(
                         contentColor = DgBoard.Palette.CheckerSelf,
+                        disabledContentColor = DgBoard.Palette.CheckerSelf,
                     ),
                     border = BorderStroke(DgBoard.OUTLINE, DgBoard.Palette.CheckerSelf),
                 ) {
@@ -2572,12 +2616,15 @@ private fun actionItems(
     board.commands.forEach { command ->
         add(
             ActionItem.Content {
+                val blocked = LocalActionsBlocked.current
                 OutlinedButton(
                     onClick = { onFollow(command.href) },
-                    modifier = buttonModifier,
+                    modifier = buttonModifier.blockedAlpha(blocked),
+                    enabled = !blocked,
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
                     colors = ButtonDefaults.outlinedButtonColors(
                         contentColor = DgBoard.Palette.TextSecondary,
+                        disabledContentColor = DgBoard.Palette.TextSecondary,
                     ),
                     border = BorderStroke(DgBoard.OUTLINE, DgBoard.Palette.TextSecondary),
                 ) {
@@ -2767,7 +2814,7 @@ private fun SidePanel(
                 Column(
                     modifier = Modifier
                         .then(if (eventPath != null) Modifier.clickable { onOpenPage(eventPath) } else Modifier)
-                        .panelCard(),
+                        .panelCard(outline = LocalPanelLook.current.outline),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     matchLines.forEach { line ->
@@ -2968,7 +3015,7 @@ private fun scoreText(panel: PlayerPanel, away: Int?): String? {
  * mitoille, jotta kortit eivät voi ajautua erilleen toisistaan.
  */
 private fun Modifier.panelCard(
-    outline: Color = Palette.PanelOutline,
+    outline: Color,
     outlineWidth: Dp = DgBoard.OUTLINE,
 ): Modifier = this
     .fillMaxWidth()
@@ -3017,14 +3064,15 @@ private fun PlayerPanelView(
     // väri ja sama keino kuin kuution omalla pysyvällä korostuksella pulssien jälkeen.
     // Staattinen, koska lepotilan kuuluu piirtää nolla ruutua (`docs/TESTAUS.md`).
     val reminded = cube != null && cubeAttention
+    val panelLook = LocalPanelLook.current
     Column(
         modifier = modifier
             .then(if (onOpen != null) Modifier.clickable(onClick = onOpen) else Modifier)
             .panelCard(
                 outline = when {
                     reminded -> Palette.CubeLaser
-                    cube != null -> Palette.Cube
-                    else -> Palette.PanelOutline
+                    cube != null -> panelLook.cubeOutline
+                    else -> panelLook.outline
                 },
                 outlineWidth = if (reminded) DgBoard.OUTLINE * 2 else DgBoard.OUTLINE,
             ),
@@ -4961,7 +5009,7 @@ private fun PipCheckLine(pips: PipCheck) {
         // asetusta Hide pip counts. Todetaan se, koska tarkistuksen puuttuminen ei ole
         // sama asia kuin tarkistuksen epäonnistuminen.
         PipCheck.Unavailable -> stringResource(R.string.board_pip_check_unavailable) to
-            Palette.TextMuted
+            LocalPanelLook.current.muted
     }
     Text(
         text = text,
