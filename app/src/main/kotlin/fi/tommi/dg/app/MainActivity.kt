@@ -70,6 +70,7 @@ import fi.tommi.dg.app.ui.DgTabAccent
 import fi.tommi.dg.app.ui.DgTabRow
 import fi.tommi.dg.app.ui.DgTheme
 import fi.tommi.dg.app.ui.DiscussionScreen
+import fi.tommi.dg.app.ui.DropsScreen
 import fi.tommi.dg.app.ui.DiscussionUiState
 import fi.tommi.dg.app.ui.DiscussionViewModel
 import fi.tommi.dg.app.ui.HelpScreen
@@ -505,6 +506,8 @@ class MainActivity : FragmentActivity() {
                                     forms = container.forms,
                                     archive = container.messages,
                                     queuePathUpstream = queuePathUpstream,
+                                    // Lauta jonosta pyyhkii luettelon ilmoituksen (18.9.2026).
+                                    onMessagesDrained = topModel::clearMessageNotice,
                                     // Oma nimi lähetetyn viestin lähettäjäksi. Luetaan
                                     // kutsuhetkellä eikä oteta talteen, jotta uloskirjautuminen
                                     // näkyy tässäkin.
@@ -889,6 +892,21 @@ class MainActivity : FragmentActivity() {
                                     onBack = { openSection = null },
                                 )
 
+                                // Katkohistoria: kaksi virtaa kannasta, ei näkymämallia
+                                // eikä verkkoa. Ottelumuisti nimeää ottelun kuten
+                                // merkityillä asemilla.
+                                InfoSection.Drops -> {
+                                    val drops by remember { container.drops.observeNewestFirst() }
+                                        .collectAsStateWithLifecycle(initialValue = emptyList())
+                                    val remembered by remember { container.matchMemory.observeAll() }
+                                        .collectAsStateWithLifecycle(initialValue = emptyMap())
+                                    DropsScreen(
+                                        drops = drops,
+                                        remembered = remembered,
+                                        onBack = { openSection = null },
+                                    )
+                                }
+
                                 /*
                                  * Sivuston omat sivut samalla porautumisruudulla kuin
                                  * profiilit ja turnaukset: laji luetaan vastauksesta
@@ -976,6 +994,7 @@ class MainActivity : FragmentActivity() {
                             var boardStyle by remember { mutableStateOf(container.boardStyle.get()) }
                             var diceStyle by remember { mutableStateOf(container.diceStyle.get()) }
                             var scoreStyle by remember { mutableStateOf(container.scoreStyle.get()) }
+                            var busyStyle by remember { mutableStateOf(container.busyStyle.get()) }
                             var playForcedSteps by remember { mutableStateOf(container.forcedSteps.get()) }
                             var playGreedyBearoff by remember { mutableStateOf(container.greedyBearoff.get()) }
                             var diceSubmitTap by remember { mutableStateOf(container.diceSubmit.get()) }
@@ -1018,6 +1037,11 @@ class MainActivity : FragmentActivity() {
                                 onScoreStyleChange = { style ->
                                     container.scoreStyle.save(style)
                                     scoreStyle = style
+                                },
+                                busyStyle = busyStyle,
+                                onBusyStyleChange = { style ->
+                                    container.busyStyle.save(style)
+                                    busyStyle = style
                                 },
                                 playForcedSteps = playForcedSteps,
                                 onPlayForcedStepsChange = { enabled ->
@@ -1209,6 +1233,8 @@ class MainActivity : FragmentActivity() {
                                     listedRound = container.listedRounds::of,
                                     // Luettu lauta ottelumuistiin, ks. `MatchMemory`.
                                     matchMemory = container.matchMemory,
+                                    // Katko kesken teon historiaan, ks. `DropLog`.
+                                    dropLog = container.drops,
                                 )
                             )
                             val state by boardModel.state.collectAsStateWithLifecycle()
@@ -1332,6 +1358,7 @@ class MainActivity : FragmentActivity() {
                                 siteSettings = container.siteSettings.get(),
                                 diceStyle = container.diceStyle.get(),
                                 scoreStyle = container.scoreStyle.get(),
+                                busyStyle = container.busyStyle.get(),
                                 // Luetaan piirtohetkellä kuten kaksi ylläolevaa: laudalle
                                 // tullaan asetusruudun jälkeen, joten muutos on voimassa
                                 // seuraavassa ottelussa ilman erillistä virtaa.

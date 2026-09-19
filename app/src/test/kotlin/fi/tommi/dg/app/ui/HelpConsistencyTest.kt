@@ -67,6 +67,13 @@ class HelpConsistencyTest {
     }
 
     @Test
+    fun katkohistoriaNimelta() {
+        // Info-rivin nimi sekä välilehtien luettelossa että kortin kohdassa (18.9.2026).
+        assertMentions(listOf("tabs"), listOf(strings.getValue("info_drops_label")))
+        assertMentions(listOf("unconfirmed"), listOf(strings.getValue("info_drops_label"), strings.getValue("tab_info")))
+    }
+
+    @Test
     fun lajittelunapitNimelta() {
         val cols = listOf("col_grace", "col_time_pool", "col_round", "col_length", "col_opponent").map { strings.getValue(it) }
         assertMentions(listOf("order"), cols + listOf(strings.getValue("top_sort_by")))
@@ -79,7 +86,7 @@ class HelpConsistencyTest {
         val styles = strings.keys.filter { it.startsWith("settings_board_style_") }.map { strings.getValue(it) }
         assertTrue(styles.size == 3)
         assertMentions(listOf("look"), styles)
-        assertMentions(listOf("look"), listOf(strings.getValue("settings_board_style"), strings.getValue("settings_dice_style"), strings.getValue("settings_score_style")))
+        assertMentions(listOf("look"), listOf(strings.getValue("settings_board_style"), strings.getValue("settings_dice_style"), strings.getValue("settings_score_style"), strings.getValue("settings_busy_style")))
     }
 
     @Test

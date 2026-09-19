@@ -84,6 +84,20 @@ sealed interface QueueUiState {
     data class NotAMessage(val kind: NotAMessageKind) : QueueUiState
 
     /**
+     * Jono oli tyhjä: sivusto vastasi `/bg/nextgame`en otteluluettelolla eikä kohteella
+     * (Tommin havainto 18.9.2026, *"Take an item on harhaanjohtava, jos dailygammonin
+     * viestijono on tyhjä"*). Mitään ei kulunut eikä tallennettu.
+     *
+     * Oma tilansa eikä [NotAMessage]: siellä jonon kärjessä oli jotain, tässä kärkeä ei
+     * ollut. Ilman tätä Top Page putosi [NotAMessageKind.Unreadable]en, joka käskee
+     * tarkistamaan sivuston vaikka syy on tyhjä jono. Polku pudotetaan samalla nulliksi,
+     * joten nappi katoaa siihen asti että luettelo antaa linkin uudelleen. Tämä sulkee
+     * `docs/UI.md`:n 13.8.2026 kirjaaman aukon (*sitä ei ole mitattu mitä sivusto palauttaa
+     * tyhjästä jonosta*) tunnistuksen puolelta; itse vastaus on yhä mittaamatta.
+     */
+    data object Empty : QueueUiState
+
+    /**
      * Jonon kärjessä on toisen pelaajan suora ottelukutsu (Tommin päätös 14.9.2026:
      * *"ilmoitus napin alle, kaikkiin lomakkeisiin"* ei koske tätä, vaan *"vaihtoehto 1"*:
      * kutsu näytetään jonokortissa sivun sanoin ja siihen vastataan sovelluksesta).
@@ -255,6 +269,12 @@ class MessagesViewModel(
      * jotain odottamassa, joten ruutu seuraa sitä eikä muista omaa käsitystään.
      */
     queuePathUpstream: Flow<String?>,
+    /**
+     * Kutsutaan kun jonon kärjestä tuli lauta, eli viestit on luettu (18.9.2026). Kutsuja
+     * pyyhkii luettelon ilmoituksen ([TopViewModel.clearMessageNotice]); tämä malli ei
+     * tunne luetteloa, joten pyyhintä on annettu funktiona. Oletus ei tee mitään (testit).
+     */
+    private val onMessagesDrained: () -> Unit = {},
     /**
      * Saapumishetki. Parametrina eikä kellosta suoraan, koska se on osa viestin tunnistetta
      * ja testin on voitava antaa sama luku kahdesti.
@@ -557,7 +577,21 @@ class MessagesViewModel(
      */
     private suspend fun readItem(html: String, requestedPath: String): QueueUiState {
         if (DgPages.isBoardPage(html)) {
+            // Lauta jonon kärjessä tarkoittaa että viestit on luettu: sivusto tarjoilee
+            // kohteet järjestyksessä ja lauta pysyy jonossa kunnes se on pelattu, joten
+            // seuraava painallus toisi saman laudan (mitattu 18.9.2026, kolme painallusta,
+            // sama tiiviste). Polku pois ja luettelon ilmoitus pois, jottei ruutu kutsu
+            // painamaan uudelleen eikä luettelo väitä että jotain odottaa.
+            _queuePath.value = null
+            onMessagesDrained()
             return QueueUiState.NotAMessage(NotAMessageKind.Board)
+        }
+        // Otteluluettelo vastauksena tarkoittaa tyhjää jonoa, kuten `Next Game` laudalla
+        // (`docs/KOHDE.md`). Ei kulunut mitään, joten polkuun ei jää mitään haettavaa:
+        // nappi katoaa ja palaa vasta luettelon uudesta linkistä.
+        if (DgPages.isTopPage(html)) {
+            _queuePath.value = null
+            return QueueUiState.Empty
         }
         // Kutsu ennen viestilukijaa, koska `InboxParser` hyväksyisi sen tuntemattomana
         // viestinä ja kirjoittaisi kantaan (mitattu 14.9.2026: viisi kaksoisriviä). Kutsu ei
@@ -782,6 +816,7 @@ class MessagesViewModel(
         private val forms: FormSender,
         private val archive: MessageArchive,
         private val queuePathUpstream: Flow<String?>,
+        private val onMessagesDrained: () -> Unit,
         private val self: () -> String?,
         private val filterStore: MessageFilterStore,
         private val phraseBook: PhraseBook,
@@ -794,6 +829,7 @@ class MessagesViewModel(
                 forms,
                 archive,
                 queuePathUpstream,
+                onMessagesDrained = onMessagesDrained,
                 self = self,
                 filterStore = filterStore,
                 phraseBook = phraseBook,

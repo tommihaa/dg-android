@@ -294,6 +294,23 @@ class TopViewModel(
         if (current is TopUiState.Loaded && !current.refreshing) refresh()
     }
 
+    /**
+     * Viestit on luettu: jonon kärjestä tuli lauta (Tommin tilaus 18.9.2026, *"en halua
+     * dialogia jos ei ole viestejä"*). Luettelon ilmoitus *Something is waiting* on
+     * viimeisen haun tila, ja se jäi näkyviin senkin jälkeen kun `Take an item` oli lukenut
+     * ainoan viestin (sessio-18-9-ilta3). Lauta jonossa tarkoittaa että viestejä ei enää
+     * ole sen edellä, koska sivusto tarjoilee kohteet järjestyksessä, joten ilmoitus
+     * pyyhitään ilman uutta hakua. Polku katoaa samalla, ja siitä seuraa että viestiruudun
+     * nappi katoaa (`MessagesViewModel` seuraa tätä virtaa). Seuraava haku lukee merkin
+     * sivulta uudelleen, joten tämä ei peitä uutta viestiä.
+     */
+    fun clearMessageNotice() {
+        val current = _state.value
+        if (current is TopUiState.Loaded && current.page.messageQueuePath != null) {
+            _state.value = current.copy(page = current.page.copy(messageQueuePath = null))
+        }
+    }
+
     fun signOut() {
         credentials.clear()
         _state.value = TopUiState.SignedOut()

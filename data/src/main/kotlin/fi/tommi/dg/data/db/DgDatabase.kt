@@ -23,8 +23,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         ReminderEntity::class,
         SeenMatchEntity::class,
         MarkedPositionEntity::class,
+        ConnectionDropEntity::class,
     ],
-    version = 11,
+    version = 12,
     exportSchema = true,
 )
 abstract class DgDatabase : RoomDatabase() {
@@ -38,6 +39,8 @@ abstract class DgDatabase : RoomDatabase() {
     abstract fun seenMatches(): SeenMatchDao
 
     abstract fun markedPositions(): MarkedPositionDao
+
+    abstract fun connectionDrops(): ConnectionDropDao
 
     companion object {
         const val FILE_NAME = "dg.db"
@@ -309,6 +312,33 @@ abstract class DgDatabase : RoomDatabase() {
         }
 
         /**
+         * `connection_drops`, eli katkohistoria: milloin `Board not confirmed` tuli ja miksi
+         * (Tommin tilaus 18.9.2026, ks. [ConnectionDropEntity] ja
+         * [fi.tommi.dg.domain.ConnectionDrop]).
+         *
+         * **Uusi taulu eikä muutos vanhaan**, kuten `seen_matches`: mitään ei siirretä eikä
+         * pudoteta, ja `messages` on tämän ulkopuolella sanan täydessä merkityksessä. Ei
+         * indeksiä: taulu luetaan aina kokonaan uusin ensin, ja sen koko on rajattu sataan.
+         * Aiempia katkoja ei voi täydentää, koska niiden ainoa jälki oli jonon rivi joka on
+         * jo poistettu; laskuri 41 laitteen kannassa on kaikki mitä niistä jäi.
+         */
+        val MIGRATION_11_12 = object : Migration(11, 12) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE connection_drops (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        atEpochMillis INTEGER NOT NULL,
+                        matchId TEXT,
+                        submit TEXT NOT NULL,
+                        cause TEXT NOT NULL
+                    )
+                    """.trimIndent(),
+                )
+            }
+        }
+
+        /**
          * Kanta on **yksi olio prosessia kohti**, ja se on oikeellisuutta eikä säästö.
          *
          * Roomin muutostenseuranta elää olion sisällä: kaksi `RoomDatabase`-oliota samaan
@@ -341,6 +371,7 @@ abstract class DgDatabase : RoomDatabase() {
                         MIGRATION_8_9,
                         MIGRATION_9_10,
                         MIGRATION_10_11,
+                        MIGRATION_11_12,
                     )
                     .build()
                     .also { instance = it }

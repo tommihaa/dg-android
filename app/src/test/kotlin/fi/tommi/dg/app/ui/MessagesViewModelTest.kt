@@ -401,6 +401,37 @@ class MessagesViewModelTest {
     }
 
     @Test
+    fun `lauta jonossa tarkoittaa etta viestit on luettu`() {
+        // Mitattu 18.9.2026 (sessio-18-9-ilta3): viestin jälkeen kolme painallusta toi saman
+        // laudan, koska lauta pysyy jonossa kunnes se on pelattu. Polku pois ja luettelon
+        // ilmoitus pyyhitään kutsujan kautta, jottei ruutu kutsu painamaan uudelleen.
+        val fetcher = RecordingFetcher { DgResponse.Ok(lauta()) }
+        var pyyhitty = 0
+        val malli = MessagesViewModel(
+            pages = fetcher,
+            forms = RecordingSender { DgResponse.Ok(KUITTAUS) },
+            archive = dao,
+            queuePathUpstream = upstream.also { it.value = JONO },
+            onMessagesDrained = { pyyhitty++ },
+            now = { HETKI },
+            self = { OMA_NIMI },
+            filterStore = FakeFilterStore(),
+            phraseBook = PhraseBook(FakePhraseStore()),
+            reminders = FakeReminders(),
+            io = dispatcher,
+        )
+
+        runTest(dispatcher) {
+            advanceUntilIdle()
+            malli.fetchNext()
+            advanceUntilIdle()
+        }
+
+        assertEquals(1, pyyhitty)
+        assertEquals(null, malli.queuePath.value)
+    }
+
+    @Test
     fun `tuntematon sivu ei tallenna mitaan`() {
         val fetcher = RecordingFetcher { DgResponse.Ok("<html><body><p>Ei mitään</p></body></html>") }
         val malli = malli(fetcher)
@@ -414,6 +445,25 @@ class MessagesViewModelTest {
         }
 
         assertEquals(QueueUiState.NotAMessage(NotAMessageKind.Unreadable), malli.queue.value)
+        assertEquals(0, dao.rows.value.size)
+    }
+
+    @Test
+    fun `tyhja jono vie napin eika tallenna mitaan`() {
+        // Sivusto vastaa tyhjaan jonoon otteluluettelolla (Tommin havainto 18.9.2026).
+        // Ilman omaa tilaa se luettiin tuntemattomaksi sivuksi, ja nappi jai paikalleen
+        // vaikka mitaan ei odottanut.
+        val fetcher = RecordingFetcher { DgResponse.Ok(TOP_PAGE_TYHJA) }
+        val malli = malli(fetcher)
+
+        runTest(dispatcher) {
+            advanceUntilIdle()
+            malli.fetchNext()
+            advanceUntilIdle()
+        }
+
+        assertEquals(QueueUiState.Empty, malli.queue.value)
+        assertEquals(null, malli.queuePath.value)
         assertEquals(0, dao.rows.value.size)
     }
 
@@ -1127,6 +1177,14 @@ class MessagesViewModelTest {
         val TUNTEMATON = """
             <html><body><h3>You have received something entirely new</h3>
             <pre>Sisältö tallessa</pre></body></html>
+        """.trimIndent()
+
+        /** Tyhjä otteluluettelo: `days_to_view`-linkki on se josta `DgPages.isTopPage` tunnistaa sivun. */
+        val TOP_PAGE_TYHJA = """
+            <html><body><h2>Your Matches</h2>
+            <p>There are no matches where you can move.</p>
+            <p>View <A HREF=/bg/user/90001?days_to_view=30&active=1&finished=1>active matches</A></p>
+            </body></html>
         """.trimIndent()
 
         /** Riittävän lauta ollakseen lauta: 24 pistekuvaa, ja oma h3-otsikko kuten aidolla. */

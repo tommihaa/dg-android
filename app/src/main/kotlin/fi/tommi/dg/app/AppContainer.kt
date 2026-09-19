@@ -3,7 +3,9 @@ package fi.tommi.dg.app
 import android.content.Context
 import fi.tommi.dg.app.session.BackupStore
 import fi.tommi.dg.app.session.BoardStyleStore
+import fi.tommi.dg.app.session.BusyStyleStore
 import fi.tommi.dg.app.session.DiceStyleStore
+import fi.tommi.dg.app.session.SharedPrefsBusyStyle
 import fi.tommi.dg.app.session.DiceSubmitStore
 import fi.tommi.dg.app.session.DiceSwapStore
 import fi.tommi.dg.app.session.SharedPrefsDiceSubmit
@@ -43,6 +45,7 @@ import fi.tommi.dg.app.session.SiteSettingsRefresher
 import fi.tommi.dg.app.session.SiteSettingsStore
 import fi.tommi.dg.data.ActionQueue
 import fi.tommi.dg.data.DgData
+import fi.tommi.dg.data.DropLog
 import fi.tommi.dg.data.MatchMemory
 import fi.tommi.dg.data.MessageArchive
 import fi.tommi.dg.data.MarkBook
@@ -127,6 +130,9 @@ class AppContainer(context: Context) {
 
     /** Pisteiden esitys, samaa lajia kuin [diceStyle]. */
     val scoreStyle: ScoreStyleStore by lazy { SharedPrefsScoreStyle(appContext) }
+
+    /** Odotuksen ilmaisin nappien paikalla, samaa lajia kuin [diceStyle] (Tommi 18.9.2026). */
+    val busyStyle: BusyStyleStore by lazy { SharedPrefsBusyStyle(appContext) }
 
     /**
      * Pakollisten askelten esipoiminta, laitteen oma kytkin kuten [diceStyle] mutta eri
@@ -233,6 +239,13 @@ class AppContainer(context: Context) {
      * sivustoon**, ks. [MarkBook].
      */
     val marks: MarkBook by lazy { DgData.markBook(appContext) }
+
+    /**
+     * Katkohistoria: milloin `Board not confirmed` tuli ja miksi (Tommin tilaus 18.9.2026).
+     * Lauta kirjoittaa katkon hetkellä, Info-välilehden rivi lukee. **Ei kosketa
+     * sivustoon**, ks. [DropLog].
+     */
+    val drops: DropLog by lazy { DgData.dropLog(appContext) }
 
     private val client: DgClient by lazy {
         DgClient(

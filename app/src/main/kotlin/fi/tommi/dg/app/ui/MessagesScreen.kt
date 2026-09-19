@@ -877,6 +877,8 @@ private fun queueOutcome(queue: QueueUiState): String? = when (queue) {
 
     is QueueUiState.Invitation -> stringResource(R.string.messages_queue_invitation)
 
+    QueueUiState.Empty -> stringResource(R.string.messages_queue_empty)
+
     is QueueUiState.Failed -> queue.reason.text()
 
     QueueUiState.SessionExpired -> stringResource(R.string.error_auth)

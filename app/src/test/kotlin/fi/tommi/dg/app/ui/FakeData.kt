@@ -2,10 +2,12 @@ package fi.tommi.dg.app.ui
 
 import fi.tommi.dg.app.session.SiteSettingsStore
 import fi.tommi.dg.data.ActionQueue
+import fi.tommi.dg.data.DropLog
 import fi.tommi.dg.data.MessageArchive
 import fi.tommi.dg.data.MarkBook
 import fi.tommi.dg.data.ReminderBook
 import fi.tommi.dg.domain.CheckerPosition
+import fi.tommi.dg.domain.ConnectionDrop
 import fi.tommi.dg.domain.GameKey
 import fi.tommi.dg.domain.MatchId
 import fi.tommi.dg.domain.Message
@@ -191,4 +193,18 @@ class FakeSiteSettings(private var stored: SiteBoardSettings = SiteBoardSettings
         stored = settings
         saved += settings
     }
+}
+
+/** Katkohistoria muistissa: rivit siinä järjestyksessä kuin ne kirjattiin, uusin viimeisenä. */
+class FakeDropLog : DropLog {
+    val rows = MutableStateFlow<List<ConnectionDrop>>(emptyList())
+    private var nextId = 1L
+
+    override fun observeNewestFirst(): Flow<List<ConnectionDrop>> = rows.map { it.reversed() }
+
+    override suspend fun record(drop: ConnectionDrop) {
+        rows.value = rows.value + drop.copy(id = nextId++)
+    }
+
+    override suspend fun count(): Int = rows.value.size
 }

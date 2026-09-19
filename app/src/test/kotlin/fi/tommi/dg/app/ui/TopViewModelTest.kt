@@ -145,6 +145,25 @@ class TopViewModelTest {
     }
 
     @Test
+    fun `viestien lukeminen pyyhkii ilmoituksen ilman uutta hakua`() = runTest(dispatcher) {
+        // Lauta jonon kärjessä tarkoittaa että viestit on luettu (18.9.2026). Ilmoitus
+        // pyyhitään paikallisesti, eikä pyyhintä hae mitään: pyyntöjä on yhä yhtä monta.
+        val fetcher = RecordingFetcher { DgResponse.Ok(YKSI_OTTELU_JA_ILMOITUS) }
+        val malli = malli(fetcher, FakeCredentials(DgCredentials("tommi", "salasana")))
+        advanceUntilIdle()
+        val ennen = malli.state.value as TopUiState.Loaded
+        assertEquals("/bg/nextgame", ennen.page.messageQueuePath)
+        val pyynnot = fetcher.requested.size
+
+        malli.clearMessageNotice()
+
+        val jalkeen = malli.state.value as TopUiState.Loaded
+        assertEquals(null, jalkeen.page.messageQueuePath)
+        assertEquals(1, jalkeen.page.matches.size)
+        assertEquals(pyynnot, fetcher.requested.size)
+    }
+
+    @Test
     fun `onnistunut haku tuottaa jasennetyn otteluluettelon`() = runTest(dispatcher) {
         val fetcher = RecordingFetcher { DgResponse.Ok(YKSI_OTTELU) }
         val malli = malli(fetcher, FakeCredentials(DgCredentials("tommi", "salasana")))
@@ -457,6 +476,13 @@ class TopViewModelTest {
         /** Sivu joka tulee 200 OK:lla muttei ole otteluluettelo. */
         val EI_OTTELULUETTELO =
             "<html><body><h2>Something else entirely</h2><p>No list here.</p></body></html>"
+
+        /** Sama sivu jonolinkillä: `You have Messages!` on ankkuri `/bg/nextgame`iin. */
+        val YKSI_OTTELU_JA_ILMOITUS: String
+            get() = YKSI_OTTELU.replace(
+                "<p>Welcome to DailyGammon, tommi.</p>",
+                "<p>Welcome to DailyGammon, tommi.</p><p><a href=\"/bg/nextgame\">You have Messages!</a></p>",
+            )
 
         val YKSI_OTTELU = """
             <html><body>

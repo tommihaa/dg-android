@@ -389,6 +389,39 @@ class DgDatabaseMigrationTest {
     }
 
     @Test
+    fun `yhdestoista migraatio lisaa katkohistorian eika koske viesteihin`() {
+        val db = avaaVersio1()
+        db.execSQL(
+            """
+            INSERT INTO messages
+                (id, matchId, sender, timestampText, body, source, storedAtEpochMillis)
+            VALUES ('tiiviste', '5302842', 'vastustaja', 'Jul 29 2026 20:14',
+                    'Good roll', 'GAME_MESSAGE', 1000)
+            """.trimIndent(),
+        )
+
+        DgDatabase.MIGRATION_11_12.migrate(db)
+
+        db.execSQL(
+            """
+            INSERT INTO connection_drops (atEpochMillis, matchId, submit, cause)
+            VALUES (1000, '5302842', 'Submit Move', 'SocketTimeoutException')
+            """.trimIndent(),
+        )
+        db.query("SELECT submit, cause FROM connection_drops").use { rivi ->
+            assertEquals(1, rivi.count)
+            rivi.moveToFirst()
+            assertEquals("Submit Move", rivi.getString(0))
+            assertEquals("SocketTimeoutException", rivi.getString(1))
+        }
+        db.query("SELECT body FROM messages WHERE id = 'tiiviste'").use { rivi ->
+            assertEquals(1, rivi.count)
+            rivi.moveToFirst()
+            assertEquals("Good roll", rivi.getString(0))
+        }
+    }
+
+    @Test
     fun `kahdeksas migraatio lisaa merkityt asemat eika koske viesteihin`() {
         val db = avaaVersio1()
         db.execSQL(

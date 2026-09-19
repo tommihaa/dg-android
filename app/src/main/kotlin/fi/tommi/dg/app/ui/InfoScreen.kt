@@ -40,6 +40,11 @@ enum class InfoSection(@StringRes val labelRes: Int, @StringRes val summaryRes: 
      * asti, ja `SETTINGS_ROUTE` on nyt sen ainoa kohde.
      */
     Help(R.string.info_help_label, R.string.info_help_summary),
+    /**
+     * Katkohistoria (Tommin tilaus 18.9.2026). Heti manuaalin perässä, koska se on
+     * sovelluksen omaa tietoa kuten manuaali, ja ennen sivuston sivuja.
+     */
+    Drops(R.string.info_drops_label, R.string.info_drops_summary),
     SiteHelp(R.string.info_site_help_label, R.string.info_site_help_summary),
     SiteLinks(R.string.info_site_links_label, R.string.info_site_links_summary),
     /**

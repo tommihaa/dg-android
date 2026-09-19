@@ -9,7 +9,7 @@ import fi.tommi.dg.data.db.DgDatabase
  * Room jää tarkoituksella tänne: jos `:app` viittaisi [DgDatabase]en, se joutuisi
  * tuntemaan `RoomDatabase`n ja sitä myöten Roomin koko rajapinnan. Silloin tallennustavan
  * vaihto vuotaisi käyttöliittymäkerrokseen asti. Ulos näkyvät vain [MessageArchive],
- * [ActionQueue], [ReminderBook], [MatchMemory] ja [MarkBook], joiden lupaus on tallennustavasta
+ * [ActionQueue], [ReminderBook], [MatchMemory], [MarkBook] ja [DropLog], joiden lupaus on tallennustavasta
  * riippumaton.
  */
 object DgData {
@@ -28,4 +28,7 @@ object DgData {
 
     fun markBook(context: Context): MarkBook =
         RoomMarkBook(DgDatabase.open(context).markedPositions())
+
+    fun dropLog(context: Context): DropLog =
+        RoomDropLog(DgDatabase.open(context).connectionDrops())
 }

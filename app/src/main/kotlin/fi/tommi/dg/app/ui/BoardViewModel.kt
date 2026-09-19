@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import fi.tommi.dg.app.FormSender
 import fi.tommi.dg.app.PageFetcher
 import fi.tommi.dg.data.ActionQueue
+import fi.tommi.dg.data.DropLog
 import fi.tommi.dg.data.MessageArchive
 import fi.tommi.dg.data.MarkBook
 import fi.tommi.dg.data.ReminderBook
@@ -18,6 +19,7 @@ import fi.tommi.dg.domain.ChatForm
 import fi.tommi.dg.domain.CheckerCheck
 import fi.tommi.dg.domain.CheckerPosition
 import fi.tommi.dg.domain.CompositionSession
+import fi.tommi.dg.domain.ConnectionDrop
 import fi.tommi.dg.domain.FormSubmission
 import fi.tommi.dg.domain.GameKey
 import fi.tommi.dg.domain.LocalComposition
@@ -492,6 +494,12 @@ class BoardViewModel(
      * luettelo ei enää näytä. Null testeissä joita muisti ei koske. Ks. [MatchMemory].
      */
     private val matchMemory: MatchMemory? = null,
+    /**
+     * Katkohistoria. **Ei kyky sivustolla** kuten [reminderBook]: rivi kirjoitetaan silloin
+     * kun teko päättyi katkoon, samalla hetkellä kuin jonon rivi, ja se jää kun jonon rivi
+     * poistuu. Null testeissä joita historia ei koske. Ks. [DropLog].
+     */
+    private val dropLog: DropLog? = null,
     /**
      * Viestiarkisto. **Ei kyky sivustolla** kuten [reminderBook], mutta eri syystä tärkeä:
      * ottelun chat on se puoli jota sivusto ei säilytä lainkaan, ja tämä ruutu on ainoa
@@ -973,8 +981,21 @@ class BoardViewModel(
             // katkos jonka käyttäjä koki, ja ilman sitä rivi olisi tyhjä juuri siltä osin
             // jota se on olemassa kertomaan. Yrityslaskuri ei kasva, koska sen merkitys on
             // muualla: se kertoo montako kertaa palvelinta on kuormitettu uusinnalla.
-            is DgResponse.Offline ->
+            is DgResponse.Offline -> {
                 queue.record(attempt.copy(lastErrorText = offlineReason(response)))
+                // Sama katko myös historiaan, joka jää kun jonon rivi poistuu (18.9.2026).
+                // Syy on pelkkä luokan nimi ilman `Offline:`-etuliitettä, koska lista on
+                // katkojen lista ja sana toistuisi joka rivillä.
+                dropLog?.record(
+                    ConnectionDrop(
+                        id = 0,
+                        atEpochMillis = now(),
+                        matchId = attempt.matchId,
+                        submit = attempt.submit,
+                        cause = response.cause,
+                    ),
+                )
+            }
             is DgResponse.Ok -> pending.value?.let { queue.clear(it.id) }
             else -> Unit
         }
@@ -1409,6 +1430,7 @@ class BoardViewModel(
         private val playForcedSteps: () -> Boolean = { false },
         private val playGreedyBearoff: () -> Boolean = { false },
         private val matchMemory: MatchMemory? = null,
+        private val dropLog: DropLog? = null,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
@@ -1419,6 +1441,7 @@ class BoardViewModel(
                 reminderBook,
                 markBook = markBook,
                 matchMemory = matchMemory,
+                dropLog = dropLog,
                 archive = archive,
                 self,
                 playPath,

@@ -43,6 +43,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.systemBarsIgnoringVisibility
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
@@ -87,6 +88,8 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.drawscope.rotate as drawRotate
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -110,6 +113,7 @@ import androidx.compose.ui.unit.isSpecified
 import androidx.compose.ui.unit.sp
 import fi.tommi.dg.app.R
 import fi.tommi.dg.app.session.BoardStyle
+import fi.tommi.dg.app.session.BusyStyle
 import fi.tommi.dg.app.session.DiceStyle
 import fi.tommi.dg.app.session.ScoreStyle
 import fi.tommi.dg.app.ui.DgBoard.Palette
@@ -238,6 +242,8 @@ fun BoardScreen(
      */
     diceStyle: DiceStyle = DiceStyle.COUNTER,
     scoreStyle: ScoreStyle = ScoreStyle.AWAY,
+    /** Odotuksen ilmaisin nappien paikalla, laitteen kytkin (Tommi 18.9.2026), ks. [BusyIndicator]. */
+    busyStyle: BusyStyle = BusyStyle.ARC,
     /**
      * Noppien painallus tekona, kaksi laitteen kytkintä (Tommin tilaus 4.9.2026).
      * Oletukset ovat pois, eli kutsuja joka ei anna näitä saa saman laudan kuin ennen:
@@ -348,6 +354,7 @@ fun BoardScreen(
                     when (state) {
                         is BoardUiState.Loaded -> CompositionLocalProvider(
                             LocalActionsBlocked provides state.blocked,
+                            LocalBusyStyle provides busyStyle,
                         ) {
                             LoadedBoard(
                                 state,
@@ -2389,8 +2396,8 @@ private fun BusyArc(modifier: Modifier, arc: ArcLook) {
         label = "busyArcAngle",
     )
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
-        Canvas(modifier = Modifier.size(BUSY_ARC).rotate(kulma)) {
-            val viiva = 3.dp.toPx()
+        Canvas(modifier = Modifier.requiredSize(BUSY_ARC).rotate(kulma)) {
+            val viiva = 5.dp.toPx()
             drawArc(
                 brush = Brush.sweepGradient(
                     0.00f to Color.Transparent,
@@ -2409,14 +2416,187 @@ private fun BusyArc(modifier: Modifier, arc: ArcLook) {
     }
 }
 
-/** Kaaren halkaisija; pienempi kuin pienin nappikorkeus (32 dp), jotta se mahtuu aina. */
-private val BUSY_ARC = 26.dp
+/**
+ * Kaaren halkaisija. Oli 26 dp (pienin nappikorkeus 32) 18.9.2026 asti; nyt sama koko kuin
+ * [BUSY_OUROBOROS], jotta asetuksen kolme muotoa vertautuvat samassa mitassa (Tommin kysymys
+ * *"onko latauskaari samaa kokoluokkaa kuin uudet?"*), ja viiva 3 → 5 dp samassa suhteessa.
+ */
+private val BUSY_ARC = 60.dp
+
+/**
+ * Odotuksen ilmaisin nappien paikalla, ks. [BusyArc]. Kokeilu 18.9.2026 (Tommin kysymys
+ * *"onko latauskaarelle näyttävämpiä vaihtoehtoja"* ja tilaus *"rakenna ouroboros ja kuutio
+ * pelin väreillä, android 64:n tilalle"*): kolme muotoa saman kytkimen takana. Kytkin oli
+ * ensin vakio, ja samana iltana siitä tuli laiteasetus [BusyStyle] (Tommin tilaus
+ * *"haluaisin busy-style asetuksen sovellukseen"*), joka tuodaan tänne [LocalBusyStyle]lla
+ * jotta sitä ei tarvitse kuljettaa viiden funktion läpi kuten `arc`ia.
+ */
+private val LocalBusyStyle = compositionLocalOf { BusyStyle.ARC }
+
+@Composable
+private fun BusyIndicator(modifier: Modifier, arc: ArcLook) = when (LocalBusyStyle.current) {
+    BusyStyle.ARC -> BusyArc(modifier, arc)
+    BusyStyle.OUROBOROS -> BusyOuroboros(modifier, arc)
+    BusyStyle.CUBE -> BusyCube(modifier)
+}
+
+/**
+ * Häntäänsä syövä käärme kiertää kehää (Tommin toive 18.9.2026: *"ouroboros!"*). Ruumis
+ * paksunee hännästä päähän ja väri kulkee kiilan parillisesta sävystä parittomaan ja
+ * takaisin, eli laudan kahdella kiilavärillä; suomut ovat reunaviivan tummia pisteitä ja
+ * silmät kuution vaaleaa tealia. Muoto on sama kehä kuin [BusyArc]illa, joten se kestää
+ * 26 dp:n koon: pää on siinä noin 4 dp.
+ */
+@Composable
+private fun BusyOuroboros(modifier: Modifier, arc: ArcLook) {
+    val kulma by rememberInfiniteTransition(label = "ouroboros").animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(tween(1200, easing = LinearEasing), RepeatMode.Restart),
+        label = "ouroborosAngle",
+    )
+    Box(modifier = modifier, contentAlignment = Alignment.Center) {
+        Canvas(modifier = Modifier.requiredSize(BUSY_OUROBOROS).rotate(kulma)) {
+            val s = size.minDimension
+            val r = s * 0.36f
+            val c = center
+            val n = 48
+            val len = 315f
+            for (i in 0 until n) {
+                val t = i / n.toFloat()
+                val a0 = len * t
+                val w = s * (0.05f + 0.11f * t)
+                val col = if (t < 0.5f) {
+                    lerp(arc.wedge, arc.wedgeOdd, t * 2f)
+                } else {
+                    lerp(arc.wedgeOdd, arc.wedge, (t - 0.5f) * 2f)
+                }
+                drawArc(
+                    color = col,
+                    startAngle = a0,
+                    sweepAngle = len / n + 1.5f,
+                    useCenter = false,
+                    topLeft = Offset(c.x - r, c.y - r),
+                    size = Size(2f * r, 2f * r),
+                    style = Stroke(width = w, cap = StrokeCap.Round),
+                )
+                if (i % 4 == 2 && t > 0.15f) {
+                    val am = Math.toRadians((a0 + len / n / 2f).toDouble())
+                    drawCircle(
+                        color = Palette.Outline,
+                        radius = w * 0.18f,
+                        center = Offset(c.x + kotlin.math.cos(am).toFloat() * r, c.y + kotlin.math.sin(am).toFloat() * r),
+                    )
+                }
+            }
+            val ah = Math.toRadians(len.toDouble())
+            val head = Offset(c.x + kotlin.math.cos(ah).toFloat() * r, c.y + kotlin.math.sin(ah).toFloat() * r)
+            val hs = s * 0.17f
+            drawRotate(degrees = len + 90f, pivot = head) {
+                translate(left = head.x, top = head.y) {
+                    val skull = Path().apply {
+                        moveTo(-hs * 0.55f, -hs * 0.2f)
+                        quadraticTo(0f, -hs * 1.05f, hs * 0.55f, -hs * 0.2f)
+                        quadraticTo(hs * 0.3f, hs * 0.6f, 0f, hs * 0.75f)
+                        quadraticTo(-hs * 0.3f, hs * 0.6f, -hs * 0.55f, -hs * 0.2f)
+                        close()
+                    }
+                    drawPath(skull, arc.wedge)
+                    val eyes = listOf(Offset(-hs * 0.25f, -hs * 0.25f), Offset(hs * 0.25f, -hs * 0.25f))
+                    eyes.forEach { drawCircle(Palette.Outline, radius = hs * 0.11f, center = it) }
+                    eyes.forEach { drawCircle(Palette.CubeSoft, radius = hs * 0.05f, center = it) }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Vierivä tuplauskuutio (Tommin toive 18.9.2026: *"vierivä tuplauskuutio, missä yksi tahko
+ * on androidin pää"*, ja tarkennus *"android 64:n tilalle"*). Kuusi tahkoa järjestyksessä
+ * robotti, 2, 4, 8, 16 ja 32, samalla piirrolla kuin laudan kuutio ([CubeFace],
+ * [CubeRobotFace]). Käännös on litistys ja pieni kallistus: tahko kapenee viivaksi ja
+ * avautuu seuraavana, kuten [BusyArc]in tilalla oleva 2D-käännös esikatselussa.
+ *
+ * Huomio kaanonista: laudan kuutiossa robotti on ykköspinta eli *kukaan ei ole tuplannut*
+ * (26.8.2026). Tässä se on 64:n paikalla Tommin sanoin, ja ero on tarkoituksellinen: tämä
+ * ei ole kuution arvo vaan odotuksen kuva.
+ *
+ * **Kierros alkaa robotista** (Tommin päätös 18.9.2026 pelisession jälkeen, *"kierros alkaa
+ * robotista"*). Ensin robotti oli viimeinen tahko, ja pelisessiossa 18.9. (sessio-18-9-ilta2)
+ * Tommi ei nähnyt sitä kertaakaan: kierros on 6 × 840 ms = 5,0 s, ja odotukset olivat
+ * 0,3–3,3 s, joten robotin vuoro ei koskaan tullut. Ensimmäisenä se näkyy jokaisessa
+ * odotuksessa, myös puolen sekunnin. Tahkojen järjestys on siis robotin jälkeen nouseva,
+ * ja 64:n paikka on 32:n jälkeen kierroksen alussa.
+ */
+@Composable
+private fun BusyCube(modifier: Modifier) {
+    val t by rememberInfiniteTransition(label = "busyCube").animateFloat(
+        initialValue = 0f,
+        targetValue = 6f,
+        // 700 ms tahkoa kohti. Välillä 840 (18.9.2026 iltapäivä, *"hidasta kuutiota 20%"*),
+        // ja saman illan pelisession jälkeen takaisin: *"hidastus oli virhe, nopeuta 25% eli
+        // alkuperäiseen tahtiin"*. Peruste on peli eikä kuoriajo: pelissä odotukset ovat
+        // 0,3–3 s, ja hitaampi tahko ehtii näyttää vähemmän.
+        animationSpec = infiniteRepeatable(tween(6 * 700, easing = LinearEasing), RepeatMode.Restart),
+        label = "busyCubeTurn",
+    )
+    val idx = kotlin.math.floor(t).toInt() % 6
+    val u = t - kotlin.math.floor(t)
+    val sq = kotlin.math.abs(kotlin.math.cos(u * Math.PI)).toFloat()
+    val tilt = kotlin.math.sin(u * Math.PI).toFloat() * 17f
+    // Tahko vaihtuu viivan kohdalla (u = 0,5), ei litistyksen puolivälissä. Aiempi ehto
+    // `sq > 0.5f` vaihtoi tahkon jo kolmanneksessa ja palautti sen kahdessa kolmanneksessa,
+    // joten seuraava tahko vilahti ja edellinen palasi (kehykset 18.9.2026, sessio-18-9-kuori).
+    val face = if (u < 0.5f) idx else (idx + 1) % 6
+    Box(modifier = modifier, contentAlignment = Alignment.Center) {
+        Box(
+            modifier = Modifier
+                .requiredSize(BUSY_CUBE)
+                .graphicsLayer {
+                    scaleX = kotlin.math.max(sq, 0.08f)
+                    rotationZ = tilt
+                }
+                .clip(RoundedCornerShape(BUSY_CUBE * DgBoard.CORNER_PER_SIDE))
+                .background(Palette.Cube),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (face == 0) {
+                CubeRobotFace(BUSY_CUBE)
+            } else {
+                // Tahko 1 on 2, tahko 5 on 32.
+                val text = (1 shl face).toString()
+                Text(
+                    text = text,
+                    style = MaterialTheme.typography.labelSmall,
+                    fontSize = cubeFontSize(text.length, BUSY_CUBE),
+                    lineHeight = cubeFontSize(text.length, BUSY_CUBE),
+                    maxLines = 1,
+                    softWrap = false,
+                    fontWeight = FontWeight.Bold,
+                    color = Palette.OnCube,
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Kuution sivu ja käärmeen kehä nappilokerossa. Lokero on yhden napin korkuinen, mutta
+ * odotuksen aikana kaikki napit ovat poissa, joten ilmaisin saa vuotaa lokeron yli
+ * (`requiredSize`, Tommin tarkennus 18.9.2026 ensimmäisen laiteajon jälkeen: *"animaatiot
+ * saisi olla isompia"*; 26 ja 22 dp olivat laitteella täpliä). Kuutio on kehää pienempi,
+ * koska neliö näyttää kehää isommalta.
+ */
+private val BUSY_CUBE = 52.dp
+
+private val BUSY_OUROBOROS = 60.dp
 
 /** Kaaren kaksi laudasta luettavaa väriä: kiilan oranssi ja oma nappula, ks. [BusyArc]. */
-private data class ArcLook(val wedge: Color, val checker: Color) {
+private data class ArcLook(val wedge: Color, val checker: Color, val wedgeOdd: Color) {
     companion object {
-        val X22 = ArcLook(DgBoard.Palette.WedgeEven, DgBoard.Palette.CheckerSelf)
-        fun of(roles: BoardRoles) = ArcLook(roles.look.wedgeEven, roles.selfPaint().fill)
+        val X22 = ArcLook(DgBoard.Palette.WedgeEven, DgBoard.Palette.CheckerSelf, DgBoard.Palette.WedgeOdd)
+        fun of(roles: BoardRoles) = ArcLook(roles.look.wedgeEven, roles.selfPaint().fill, roles.look.wedgeOdd)
     }
 }
 
@@ -2535,7 +2715,7 @@ private fun actionItems(
     arc: ArcLook = ArcLook.X22,
 ): List<ActionItem> = buildList {
     if (busy) {
-        add(ActionItem.Content { BusyArc(buttonModifier, arc) })
+        add(ActionItem.Content { BusyIndicator(buttonModifier, arc) })
         return@buildList
     }
     val submits = form?.submits.orEmpty()

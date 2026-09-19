@@ -80,6 +80,12 @@
     <string name="marks_match_versus">vs %1$s (match %2$s)</string>
     <string name="marks_match_number">Match %1$s</string>
     <string name="marks_position">Game at %1$d–%2$d, move %3$d</string>
+
+    <!-- Katkohistorian ruutu, ks. DropsScreen.kt. -->
+    <string name="drops_title">Connection drops</string>
+    <string name="drops_explain">Every time the connection dropped while an action was on its way and the board showed Board not confirmed. Newest first, the last hundred are kept. The cause is the name of the network error as the app saw it.</string>
+    <string name="drops_empty">No connection drops recorded.</string>
+    <string name="drops_row">%1$s · %2$s</string>
     <string name="marks_remove">Remove mark</string>
 
     <!--
@@ -174,7 +180,7 @@
       mitä sovellus tekee oikein, eli ovat lupauksia eivätkä varoituksia. Ne asuvat
       manuaalissa ja otteluluettelon odotusilmoituksessa, joten mitään ei kadonnut.
     -->
-    <string name="messages_queue_explain">DailyGammon shows each item once and keeps no copy, so fetching one uses it up.\n\nWhatever you take lands in this device\'s archive and nowhere else: another device or a browser would not see it.\n\nThis app never checks the queue on its own, so it cannot tell you what is in there. The notice came from your match list when it was last refreshed, and taking an item does not update it. Pressing the button is the question, not the answer.</string>
+    <string name="messages_queue_explain">DailyGammon shows each item once and keeps no copy, so fetching one uses it up.\n\nWhatever you take lands in this device\'s archive and nowhere else: another device or a browser would not see it.\n\nThis app never checks the queue on its own, so it cannot tell you what is in there. The notice came from your match list when it was last refreshed. Taking a message does not update it, but taking a game board does: a board at the front means the messages are read, so the notice is cleared. Pressing the button is the question, not the answer.</string>
     <string name="messages_queue_fetch">Take an item</string>
     <string name="messages_queue_fetching">Fetching…</string>
     <string name="messages_queue_saved">Saved. The message is in the archive below. Whether anything else is waiting is not something this screen can know.</string>
@@ -224,8 +230,15 @@
       menettänyt viestiä, koska kohde ei ollut viesti.
     -->
     <string name="messages_queue_announcement">That was a DailyGammon announcement, not a personal message, so it was not saved. It is shown below and only here: once you take the next item, it is gone.</string>
-    <string name="messages_queue_was_board">That item was a game board, not a message, so nothing was saved. Play it on the site.</string>
+    <string name="messages_queue_was_board">That item was a game board, not a message, so nothing was saved. The match is in your match list. A board at the front of the queue means the messages are read, so the notice on the list is cleared and the button is gone until the list shows the notice again.</string>
     <string name="messages_queue_unreadable">DailyGammon returned a page this app could not read as a message, so nothing was saved. Check the site.</string>
+    <!--
+      Tyhjä jono (Tommin havainto 18.9.2026). Sivusto vastaa otteluluettelolla, ja ilman tätä
+      riviä se luettiin tuntemattomaksi sivuksi jonka teksti käskee tarkistamaan sivuston.
+      Napin katoaminen sanotaan ääneen, koska "Nothing is waiting" ilmestyy samalla sen
+      tilalle ja käyttäjän on nähtävä että ne ovat sama asia eikä kaksi.
+    -->
+    <string name="messages_queue_empty">The queue was empty: DailyGammon answered with your match list instead of an item, so nothing was used up and nothing was saved. The button is gone until the match list shows the notice again.</string>
     <!--
       Vastaanotettu ottelukutsu jonon kärjessä (Tommin päätös 14.9.2026, vaihtoehto 1: kutsuun
       vastataan sovelluksesta). Kutsu ei kulu eikä sitä tallenneta; napit ovat sivun omat sanat
@@ -583,6 +596,14 @@
     <string name="settings_score_style_away">Points away from winning (4-away)</string>
     <string name="settings_score_style_site">Points won, as on the site</string>
     <!--
+      Odotuksen ilmaisin nappien paikalla (Tommin tilaus 18.9.2026). Kolme kuvaa, kaikki
+      laudan väreissä; sanat kuvaavat kuvaa eivätkä koodin nimeä.
+    -->
+    <string name="settings_busy_style">Waiting for DailyGammon</string>
+    <string name="settings_busy_style_arc">Spinning arc in the board\'s colours</string>
+    <string name="settings_busy_style_ouroboros">Ouroboros, a snake chasing its tail</string>
+    <string name="settings_busy_style_cube">Rolling doubling cube, robot first</string>
+    <!--
       Pakolliset askeleet (Tommin vaatimus 1.9.2026, lukutapa 2.9.2026: siirto on askel eikä
       vuoro). Selite nimeää kolme tilannetta joissa askel mitatusti on pakollinen, ja sanoo
       erikseen ettei lähetys siirry sovellukselle, koska se on koko riskiluokan raja
@@ -815,13 +836,13 @@
     <string name="help_q_d_confirm">Join, Sign up, Double, Accept and forum posts ask you to confirm first.</string>
     <string name="help_a_d_confirm">None of them can be taken back on DailyGammon, so the app asks before it sends. Without your confirmation nothing is sent.</string>
     <string name="help_q_d_marks">You can mark a position to look at after the match.</string>
-    <string name="help_a_d_marks">Mark position sits next to Reminders on the board. It saves the game score and the move number the site shows, with a comment from you if you want one, and keeps it on this device until you remove it. The field is called Comment because that is the word GNU Backgammon, BGBlitz and eXtreme Gammon use for the same thing, and your comment goes into the match file as it is. The list is under Matches, next to your name, grouped by match, so when you analyse the match file later you know which moves to look at first. Nothing is sent to DailyGammon.\n\nA finished match on your profile has two links: Share .mat file hands on the site\'s own match file, and Share .sgf for GNU Backgammon writes the same match in GNU\'s format with your marks as comments, your comment as the comment text. A mark saves the position on the board as well, and the export replays the game to find the move that position belongs to, so the comment sits on the move you marked. A mark made before this, or on a board the app could not read, goes at the start of its game with the site\'s move number, which is not the game\'s move number; step to the position from there. GNU Backgammon shows a comment in its annotation panel; other programs read the .sgf but not the comment. Nackgammon matches and double repeat matches with a repeated game are not written as .sgf, because the export only knows the normal starting position; share the .mat file for those. A double repeat match without a repeated game is written without the Crawford rule, which the export reads from the tournament page; a friendly match is written with it.</string>
+    <string name="help_a_d_marks">Mark position sits next to Reminders on the board. It saves the game score and the move number the site shows, with a comment from you if you want one, and keeps it on this device until you remove it. The field is called Comment because that is the word GNU Backgammon, BGBlitz and eXtreme Gammon use for the same thing, and your comment goes into the match file as it is. The list is under Matches, next to your name, grouped by match, so when you analyse the match file later you know which moves to look at first. Nothing is sent to DailyGammon.\n\nA finished match on your profile has two links: Share .mat file hands on the site\'s own match file, and Share .sgf for GNU Backgammon writes the same match in GNU\'s format with your marks as comments, your comment as the comment text. A mark saves the position on the board as well, and the export replays the game to find the move that position belongs to, so the comment sits on the move you marked. A mark made before this, or on a board the app could not read, goes at the start of its game with the site\'s move number, which is not the game\'s move number; step to the position from there. GNU Backgammon shows a comment in its annotation panel and BGBlitz from version 3.4.5 on its Comment tab; eXtreme Gammon reads the .sgf but not the comment. Share opens the device\'s share menu, so Save to Drive puts the file in your Google Drive, where Drive for desktop makes it a plain file for the analysis program on your computer. Nackgammon matches and double repeat matches with a repeated game are not written as .sgf, because the export only knows the normal starting position; share the .mat file for those. A double repeat match without a repeated game is written without the Crawford rule, which the export reads from the tournament page; a friendly match is written with it.</string>
     <string name="help_q_d_unconfirmed">The board tells you when an action may not have arrived.</string>
     <string name="help_a_d_unconfirmed">If the connection drops while an action is on its way, the board shows a Board not confirmed notice and never repeats your action by itself. Refresh to see what DailyGammon did.</string>
 
     <string name="help_group_tabs">The five tabs</string>
     <string name="help_q_tabs">What is on each tab?</string>
-    <string name="help_a_tabs">Matches is your match list, with Refresh and Settings at the top. Lounge shows matches waiting for opponents and tournaments open for sign-up. Forum is the site\'s discussion board. Inbox is your message archive and the place where new items are taken from DailyGammon. Info holds this text, the site\'s own Help and Links, the site\'s Resignation Page and Sign out.\n\nTapping a player\'s name opens their profile, and a tournament name opens the tournament page, both read from the site. From a profile you can send that player a message; it is saved to your archive because DailyGammon does not keep it.</string>
+    <string name="help_a_tabs">Matches is your match list, with Refresh and Settings at the top. Lounge shows matches waiting for opponents and tournaments open for sign-up. Forum is the site\'s discussion board. Inbox is your message archive and the place where new items are taken from DailyGammon. Info holds this text, Connection drops, the site\'s own Help and Links, the site\'s Resignation Page and Sign out.\n\nTapping a player\'s name opens their profile, and a tournament name opens the tournament page, both read from the site. From a profile you can send that player a message; it is saved to your archive because DailyGammon does not keep it.</string>
 
     <string name="help_group_matches">Matches and tournaments</string>
     <string name="help_q_order">Why is the match list in this order?</string>
@@ -839,7 +860,7 @@
     <string name="help_q_double">How do Double and Accept work?</string>
     <string name="help_a_double">Double and Accept cannot be taken back, so they take three steps: tick the site\'s own Verify box, press the button, then confirm. Without the tick nothing is sent. Tapping the cube is the same press: Double when you can double, Accept when a double is offered to you.</string>
     <string name="help_q_unconfirmed">What does Board not confirmed mean?</string>
-    <string name="help_a_unconfirmed">If the connection drops or the site answers with an error while an action is on its way, the board shows a Board not confirmed notice. The position below it is the last one loaded before the attempt, nothing on it has been confirmed since, and the app never repeats your action by itself. The action buttons are dimmed and do nothing until the board is reloaded. Refresh to see what DailyGammon did.</string>
+    <string name="help_a_unconfirmed">If the connection drops or the site answers with an error while an action is on its way, the board shows a Board not confirmed notice. The position below it is the last one loaded before the attempt, nothing on it has been confirmed since, and the app never repeats your action by itself. The action buttons are dimmed and do nothing until the board is reloaded. Refresh to see what DailyGammon did.\n\nEach drop is also written to Connection drops on the Info tab: the time, the match, the button and the name of the network error. The list keeps the last hundred, so you can look back after the notice is gone.</string>
     <string name="help_q_gestures">How do I refresh the board or go back?</string>
     <string name="help_a_gestures">Drag downwards anywhere on the board to load the position again from DailyGammon. The Refresh button does the same.\n\nTo leave the board, use Back. When the screen is large enough for the board, the system bar stays on view and Back is always there. When the bars would cost the board its size, or a bar at the side would narrow the panel, they are hidden: swipe from the right edge towards the left, which either goes back or brings the bar into view, and Back is on it. You can also swipe downwards from the top edge to bring the status bar into view for a moment.</string>
     <string name="help_q_beside">What is in the panel beside the board?</string>
@@ -847,13 +868,13 @@
     <string name="help_q_skip">What does Skip Game do?</string>
     <string name="help_a_skip">Skip Game asks DailyGammon for the next waiting item instead of this one. The site hands out each waiting item once, so skipping passes this match by in that queue. The match itself is untouched and is still yours to play.</string>
     <string name="help_q_look">How do I change how the board looks?</string>
-    <string name="help_a_look">Board look in Settings has three choices. Follow my DailyGammon settings draws the checkers in the colours the site gives you, so the board matches the browser side by side. Monte Carlo X-22 draws your checkers cream and always at the bottom, with your opponent in red at the top. Monte Carlo variant is a green felt board with your checkers white and your opponent black, and its side panel takes the wood of the bearing-off tray instead of black. In the two Monte Carlo looks the colour is your role, not the site\'s colour, so it will not match the browser.\n\nDice and Score are separate choices: one die for each move or two dice as on the site, and points away from winning or points won as on the site.\n\nWhen nobody has doubled yet, the doubling cube shows a robot instead of a 1. A physical cube has no face for 1, so this app puts its own mark there; the value returns as soon as someone doubles. The Android robot is reproduced or modified from work created and shared by Google and used according to terms described in the Creative Commons 3.0 Attribution License.</string>
+    <string name="help_a_look">Board look in Settings has three choices. Follow my DailyGammon settings draws the checkers in the colours the site gives you, so the board matches the browser side by side. Monte Carlo X-22 draws your checkers cream and always at the bottom, with your opponent in red at the top. Monte Carlo variant is a green felt board with your checkers white and your opponent black, and its side panel takes the wood of the bearing-off tray instead of black. In the two Monte Carlo looks the colour is your role, not the site\'s colour, so it will not match the browser.\n\nDice and Score are separate choices: one die for each move or two dice as on the site, and points away from winning or points won as on the site. Waiting for DailyGammon picks what spins in place of the buttons while a move is on its way: an arc, an ouroboros or a rolling doubling cube, all in the board\'s colours.\n\nWhen nobody has doubled yet, the doubling cube shows a robot instead of a 1. A physical cube has no face for 1, so this app puts its own mark there; the value returns as soon as someone doubles. The Android robot is reproduced or modified from work created and shared by Google and used according to terms described in the Creative Commons 3.0 Attribution License.</string>
 
     <string name="help_group_messages">Messages</string>
     <string name="help_q_take">Why do I have to press Take an item?</string>
     <string name="help_a_take">DailyGammon shows each message once and keeps no copy of it, so this app never fetches messages on its own: no background checking, no timer, no notifications. On the Inbox tab, press Take an item to take one item from DailyGammon\'s queue. Each message is saved on this device before it appears on screen.</string>
     <string name="help_q_queue">What else comes out of the queue besides messages?</string>
-    <string name="help_a_queue">An announcement from DailyGammon is shown but not saved. A game board is not a message, so nothing is saved and nothing is lost: play it from your match list. An invitation to a match stays in the queue until you answer it here, with a comment if you like; accepting starts the match on DailyGammon at once.</string>
+    <string name="help_a_queue">An announcement from DailyGammon is shown but not saved. A game board is not a message, so nothing is saved and nothing is lost: the match is in your match list. A board at the front of the queue also means the messages are read, so the notice on the list is cleared without a refresh. An invitation to a match stays in the queue until you answer it here, with a comment if you like; accepting starts the match on DailyGammon at once. If the queue turns out to be empty, DailyGammon answers with your match list: nothing is used up, and the Take an item button goes away until the list shows the notice again.</string>
     <string name="help_q_reply">How do I reply, and what are the phrase buttons?</string>
     <string name="help_a_reply">Tap a received message in the archive to open a reply box under it; tap again to close it. Replies go to the sender, because DailyGammon addresses them to the player, not to the message. Your replies are saved to the archive too, and a message you sent shows the name it went to after your own. The phrase buttons under the box paste a saved phrase, and you can save your own text as a phrase or edit the list. Quote the message above adds the message you are answering to your reply.</string>
     <string name="help_q_archive">How do I filter, export, back up or import the archive?</string>
@@ -915,6 +936,8 @@
     <string name="info_title">Info</string>
     <string name="info_help_label">App Help</string>
     <string name="info_help_summary">How this app works, and what it does not do</string>
+    <string name="info_drops_label">Connection drops</string>
+    <string name="info_drops_summary">When Board not confirmed appeared, and what the network error was</string>
     <string name="info_site_help_label">DailyGammon Help</string>
     <string name="info_site_help_summary">The site\'s own FAQ, fetched from dailygammon.com</string>
     <string name="info_site_links_label">DailyGammon Links</string>

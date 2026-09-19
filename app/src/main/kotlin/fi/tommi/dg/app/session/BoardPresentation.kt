@@ -43,6 +43,30 @@ enum class ScoreStyle {
     SITE,
 }
 
+/**
+ * Odotuksen ilmaisin nappien paikalla (Tommin tilaus 18.9.2026: *"haluaisin busy-style
+ * asetuksen sovellukseen"*). Kolme muotoa `BoardScreen.kt`:ssä: `BusyArc`, `BusyOuroboros`
+ * ja `BusyCube`. Sama laji kuin [DiceStyle]: laitteen oma maku, ei lähde koskaan verkkoon.
+ * Oletus on kaari, koska se on nykyinen käytös eikä valintaa ole vielä tehty.
+ */
+enum class BusyStyle {
+    /** Pyörivä kaari laudan väreillä (16.9.2026). Oletus. */
+    ARC,
+
+    /** Häntäänsä syövä käärme kiertää kehää, kiilan kahdella värillä. */
+    OUROBOROS,
+
+    /** Vierivä tuplauskuutio: robotti ensin (64:n paikalla), sitten 2, 4, 8, 16 ja 32. */
+    CUBE,
+}
+
+interface BusyStyleStore {
+
+    fun get(): BusyStyle
+
+    fun save(style: BusyStyle)
+}
+
 interface DiceStyleStore {
 
     fun get(): DiceStyle
@@ -76,6 +100,27 @@ class SharedPrefsDiceStyle(private val prefs: SharedPreferences) : DiceStyleStor
     private companion object {
         const val FILE_NAME = "dg_dice_style"
         const val KEY = "dice_style"
+    }
+}
+
+class SharedPrefsBusyStyle(private val prefs: SharedPreferences) : BusyStyleStore {
+
+    constructor(context: Context) : this(
+        context.applicationContext.getSharedPreferences(FILE_NAME, Context.MODE_PRIVATE),
+    )
+
+    override fun get(): BusyStyle {
+        val stored = prefs.getString(KEY, null) ?: return BusyStyle.ARC
+        return BusyStyle.entries.firstOrNull { it.name == stored } ?: BusyStyle.ARC
+    }
+
+    override fun save(style: BusyStyle) {
+        prefs.edit().putString(KEY, style.name).apply()
+    }
+
+    private companion object {
+        const val FILE_NAME = "dg_busy_style"
+        const val KEY = "busy_style"
     }
 }
 

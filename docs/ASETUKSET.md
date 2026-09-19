@@ -170,6 +170,15 @@ käytännön seuraus on että X-22-laudalla voi pitää sivuston noppaesityksen.
   sellaisenaan). Rahapelissä away ei ole olemassa, jolloin molemmat tilat näyttävät sivun
   kentän; se oli tähänkin asti varareitti eikä muutu.
 
+- **`busy_style`** (18.9.2026, Tommin tilaus *"haluaisin busy-style asetuksen
+  sovellukseen"*): `ARC` (pyörivä kaari laudan väreillä, 16.9.2026 alkaen, oletus koska se
+  on nykyinen käytös), `OUROBOROS` (häntäänsä syövä käärme kiilan kahdella värillä) tai
+  `CUBE` (vierivä tuplauskuutio, robotti ensin 64:n paikalla, 18.9.2026 illasta). Kaikki 60 tai 52 dp nappien
+  paikalla odotuksen ajan (`BusyIndicator`, `LocalBusyStyle`). Syntyi samana iltana kahden
+  kuoriajon vertailusta (`docs/UI.md` › Kaksi näyttävämpää muotoa). Tommilla arvo
+  `OUROBOROS` pelikokeilua varten, 18.9. klo 19.21 alkaen `CUBE`. Kolme arvoa jää
+  (Tommin päätös 18.9.2026).
+
 **Kolmas paikallinen kytkin 2.9.2026, ja se on eri lajia: teko eikä esitys.**
 `forced_steps` (`ForcedStepsStore`, oletus pois) poimii pakolliset askeleet valmiiksi kun
 paikallinen kokoaminen alkaa. Pakollinen askel on askel joka on mukana jokaisessa

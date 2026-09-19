@@ -37,6 +37,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import fi.tommi.dg.app.R
 import fi.tommi.dg.app.session.BoardStyle
+import fi.tommi.dg.app.session.BusyStyle
 import fi.tommi.dg.app.session.DiceStyle
 import fi.tommi.dg.app.session.ScoreStyle
 import fi.tommi.dg.app.session.SettingsSnapshot
@@ -92,6 +93,9 @@ fun SettingsScreen(
     onDiceStyleChange: (DiceStyle) -> Unit,
     scoreStyle: ScoreStyle,
     onScoreStyleChange: (ScoreStyle) -> Unit,
+    /** Odotuksen ilmaisin nappien paikalla, oma kytkin (Tommi 18.9.2026). Ks. [DeviceSection]. */
+    busyStyle: BusyStyle,
+    onBusyStyleChange: (BusyStyle) -> Unit,
     /** Pakollisten askelten esipoiminta, oma kytkin (Tommi 2.9.2026). Ks. [DeviceSection]. */
     playForcedSteps: Boolean,
     onPlayForcedStepsChange: (Boolean) -> Unit,
@@ -176,6 +180,8 @@ fun SettingsScreen(
                 onDiceStyleChange = onDiceStyleChange,
                 scoreStyle = scoreStyle,
                 onScoreStyleChange = onScoreStyleChange,
+                busyStyle = busyStyle,
+                onBusyStyleChange = onBusyStyleChange,
                 playForcedSteps = playForcedSteps,
                 onPlayForcedStepsChange = onPlayForcedStepsChange,
                 playGreedyBearoff = playGreedyBearoff,
@@ -256,6 +262,8 @@ private fun DeviceSection(
     onDiceStyleChange: (DiceStyle) -> Unit,
     scoreStyle: ScoreStyle,
     onScoreStyleChange: (ScoreStyle) -> Unit,
+    busyStyle: BusyStyle,
+    onBusyStyleChange: (BusyStyle) -> Unit,
     playForcedSteps: Boolean,
     onPlayForcedStepsChange: (Boolean) -> Unit,
     playGreedyBearoff: Boolean,
@@ -333,6 +341,25 @@ private fun DeviceSection(
                 label = stringResource(R.string.settings_score_style_site),
                 selected = scoreStyle == ScoreStyle.SITE,
                 onSelect = { onScoreStyleChange(ScoreStyle.SITE) },
+            )
+        }
+        // Odotuksen ilmaisin (Tommin tilaus 18.9.2026). Kolme muotoa ja kaikki laudan
+        // väreissä; vaihtoehtojen sanat kuvaavat kuvaa eivätkä koodin nimeä.
+        DeviceGroup(title = stringResource(R.string.settings_busy_style), striped = true) {
+            StyleRow(
+                label = stringResource(R.string.settings_busy_style_arc),
+                selected = busyStyle == BusyStyle.ARC,
+                onSelect = { onBusyStyleChange(BusyStyle.ARC) },
+            )
+            StyleRow(
+                label = stringResource(R.string.settings_busy_style_ouroboros),
+                selected = busyStyle == BusyStyle.OUROBOROS,
+                onSelect = { onBusyStyleChange(BusyStyle.OUROBOROS) },
+            )
+            StyleRow(
+                label = stringResource(R.string.settings_busy_style_cube),
+                selected = busyStyle == BusyStyle.CUBE,
+                onSelect = { onBusyStyleChange(BusyStyle.CUBE) },
             )
 
             // Pakolliset askeleet ovat kytkin eikä valinta vaihtoehtojen välillä, joten rivi on

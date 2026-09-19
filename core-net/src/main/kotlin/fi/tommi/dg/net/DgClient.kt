@@ -39,6 +39,12 @@ class DgClient(
     private val minRequestIntervalMillis: Long = 1_000L,
     private val userAgent: String = DEFAULT_USER_AGENT,
     httpClient: OkHttpClient? = null,
+    /**
+     * Tauko jonka jälkeen rungollinen teko ei enää luota altaan yhteyteen vaan avaa uuden,
+     * ks. [execute]. Palvelimen `KeepAliveTimeout` on 5 s (`docs/KOHDE.md`), ja raja on sen
+     * alla, jotta rajatapaus jää palvelimen puolelle eikä meidän.
+     */
+    private val stalePoolAfterMillis: Long = 4_000L,
 ) {
 
     private val base: OkHttpClient = (httpClient ?: OkHttpClient.Builder().build())
@@ -348,6 +354,20 @@ class DgClient(
         val withHeaders = request.newBuilder()
             .header("User-Agent", userAgent)
             .build()
+        // **Rungollinen teko tauon jälkeen avaa uuden yhteyden eikä poimi altaasta kuollutta.**
+        // Mitattu 18.9.2026 kolmesti ilman proxya (`connection_drops` rivit 1–3, kaikki
+        // `Next Game` tai `To Top`, molemmat POST): edellisestä vastauksesta 6–10 s, ja
+        // painallus päättyi paljaaseen `IOException`iin 20–23 ms:ssa, eli yhteys oli jo
+        // kiinni kun runko lähti. GET-haku selviää samasta OkHttpin uusinnalla, POST ei saa
+        // uusintaa (runko voisi mennä kahdesti, ks. yllä), joten sille ainoa turvallinen
+        // keino on olla käyttämättä vanhaa yhteyttä. Hinta on TCP-kättely (sivusto on
+        // http), ja se maksetaan vain kun tauko on ylittänyt rajan. Molemmat asiakkaat
+        // jakavat altaan, joten `base` riittää.
+        if (intent == Intent.ACT && lastRequestAt > 0L &&
+            System.currentTimeMillis() - lastRequestAt >= stalePoolAfterMillis
+        ) {
+            base.connectionPool.evictAll()
+        }
         val http = if (intent == Intent.ACT) httpOnce else httpRetrying
         try {
             http.newCall(withHeaders).execute().use { response ->

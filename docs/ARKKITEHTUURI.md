@@ -229,6 +229,16 @@ edelleen ainoa totuus: `Submit Move`n palauttama lauta korvaa paikallisen tilan 
   ottelunumerolla ja numero on tilikohtainen, merkit samoin, jono tyhjenee lähetyksessä.
   Vientitiedosto (versio 3) nimeää tilin otsakkeessa, ja tuonti (16.9.2026) kirjaa viestit
   sille tilille; muistutukset ja fraasit tuodaan yhteisinä.
+- **`connection_drops` on katkohistoria 18.9.2026 alkaen** (Tommin tilaus, *"tee
+  katkohistoria"*, sen jälkeen kun tallentamattomien pelisessioiden punaisen palkin syytä ei
+  voitu lukea mistään). Rivi on hetki, ottelu, nappi ja poikkeuksen luokan nimi, ja se
+  kirjoitetaan `BoardViewModel.afterPress`issä samalla hetkellä kuin jonon rivi, vain
+  `DgResponse.Offline`sta. Ero jonoon on elinkaari: jonon rivi poistuu kun teon kohtalo
+  ratkeaa, ja juuri silloin syy katosi. Laitteen kannan laskuri sanoi 41 katkoa ilman yhtään
+  jäljellä olevaa riviä (`raakasivut/LUEMINUT.md` › `sessio-18-9-paiva`). `DropLog` saa vain
+  DAO:n, kirjoittaja on lauta ja lukija Info-välilehden *Connection drops*. Historia rajaa
+  itsensä sataan lisäyksessä (`DropLog.KEEP`), poistoa ei ole. Rivi on loki eikä tila: mikään
+  ei lue sitä päätöksen pohjaksi, joten syy saa olla teksti kuten jonon `lastErrorText`.
 - **Room ei näy ulos.** `:app` käyttää `DgData.messageArchive(context)`ia eikä `DgDatabase`a,
   jottei `RoomDatabase` vuoda käyttöliittymäkerrokseen. Kääntäjä valvoo tätä: `:app`illa ei
   ole Roomia luokkapolussa lainkaan.

@@ -65,6 +65,7 @@ class BoardViewModelTest {
     }
 
     private val queueDao = FakeQueue()
+    private val katkoLoki = FakeDropLog()
 
     private val reminderDao = FakeReminders()
     private val markDao = FakeMarks()
@@ -92,6 +93,7 @@ class BoardViewModelTest {
         pages = fetcher,
         forms = sender,
         queue = queueDao,
+        dropLog = katkoLoki,
         reminderBook = reminderDao,
         markBook = markDao,
         archive = viestiDao,
@@ -769,6 +771,35 @@ class BoardViewModelTest {
         val odottava = malli.pending.value
         assertNotNull("Painallus ei päätynyt jonoon", odottava)
         assertEquals("Offline: $TEST_OFFLINE_CAUSE", odottava!!.lastErrorText)
+    }
+
+    @Test
+    fun `katkos kirjautuu historiaan joka jaa kun jonon rivi poistuu`() {
+        // Jonon rivi poistuu kun seuraava teko onnistuu, ja sen mukana katosi syy (18.9.2026,
+        // laitteen laskuri 41 ilman yhtään riviä). Historian rivi on olemassa juuri sitä
+        // varten, ja se ei saa poistua jonon mukana. Kaksi painallusta: katko, sitten
+        // onnistunut teko joka tyhjentää jonon. Onnistunut teko ei kirjaa historiaan mitään.
+        val fetcher = RecordingFetcher { DgResponse.Ok(lautaJossaNoppa()) }
+        val sender = RecordingSender(answer = { DgResponse.Offline(TEST_OFFLINE_CAUSE) })
+        val malli = malli(fetcher, sender)
+
+        runTest(dispatcher) {
+            advanceUntilIdle()
+            malli.press("Roll Dice")
+            advanceUntilIdle()
+            malli.refresh()
+            advanceUntilIdle()
+            sender.answer = { DgResponse.Ok(lautaJossaNoppa()) }
+            malli.press("Roll Dice")
+            advanceUntilIdle()
+        }
+
+        assertEquals(0, queueDao.rows.value.size)
+        val katko = katkoLoki.rows.value.single()
+        assertEquals("Roll Dice", katko.submit)
+        assertEquals(TEST_OFFLINE_CAUSE, katko.cause)
+        assertEquals(MatchId(OTTELU), katko.matchId)
+        assertEquals(HETKI, katko.atEpochMillis)
     }
 
     @Test

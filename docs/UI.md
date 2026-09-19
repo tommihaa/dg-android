@@ -1417,6 +1417,23 @@ jota jäsennin ei tunnista, käyttäjä näkee `messages_queue_unreadable`n eik�
 Se on tiedossa oleva aukko eikä yllätys, ja se sulkeutuu vasta jos joskus on syytä hakea
 tyhjästä jonosta muutenkin.
 
+**Aukko suljettu tunnistuksen puolelta 18.9.2026** (Tommin havainto: *"Take an item on
+harhaanjohtava, jos dailygammonin viestijono on tyhjä"*, ja valinta koodin ja kaanonin
+välillä oli koodi). Päätös 13.8. pysyy: luetteloa ei haeta uudelleen haun jälkeen. Sen
+sijaan `readItem` tunnistaa otteluluettelon vastauksena (`DgPages.isTopPage`, sama
+predikaatti kuin laudan `Next Game` -paluulla) omaksi tilakseen `QueueUiState.Empty`.
+Napin alle tulee *The queue was empty: DailyGammon answered with your match list instead
+of an item, so nothing was used up and nothing was saved. The button is gone until the
+match list shows the notice again.*, ja polku pudotetaan nulliksi, jolloin nappi katoaa
+ja *Nothing is waiting* tulee sen tilalle. Luettelon `Refresh` palauttaa napin jos linkki
+on taas siellä, koska `queuePathUpstream` on `map` tilavirrasta ja emittoi jokaisesta
+uudesta `Loaded`-tilasta myös saman polun. Ilman tätä Top Page putosi
+`messages_queue_unreadable`en, joka käski tarkistamaan sivuston. Yksikkötesti `tyhja jono
+vie napin eika tallenna mitaan`. Oletus jota koodi ei todista: että tyhjä `/bg/nextgame`
+palauttaa Top Pagen, kuten laudan `Next Game` tekee (`raakasivut/LUEMINUT.md`, 8.9. ja
+15.9.). Se todentuu seuraavassa pelisessiossa yhdellä painalluksella kun luettelo sanoo
+ettei mitään odota, proxy päällä; haku tyhjästä jonosta ei kuluta.
+
 **Ilmoituksen otsikkoriviä ei näytetä arkistossa** (Tommin päätös 9.8.2026, kysyttynä samana
 iltana). `Message.rawHeader` on tallessa kannassa, joten päätös koskee vain esitystä ja on
 peruttavissa ilman että mitään on menetetty. Laji ja teksti riittävät, koska otsikko on
@@ -2766,7 +2783,7 @@ lista. Tommin tavoite: **viisi tai vähemmän, eikä yhtään alasvetovalikkoa.*
 | Lounge | pelitarjoukset, pelaajalista, turnaukset | `/bg/lounge`, `/bg/plist`, `/bg/thall` |
 | Discussion | General ja Politics | `/bg/forum2`, `/bg/forum2/politics` |
 | Messages | viestijono ja arkisto | `/bg/nextgame`, `/bg/sendmsg` |
-| Info | sovelluksen asetukset, peliasetukset, App Help, DG Help, Links | `/bg/profile`, `/help`, `/links.html` |
+| Info | sovelluksen asetukset, peliasetukset, App Help, Connection drops, DG Help, Links | `/bg/profile`, `/help`, `/links.html` |
 
 **Ryhmittelyperuste on mitä pelaaja on tekemässä, ei mistä tieto haetaan.** Siksi
 pelaajalista ja turnaukset ovat Loungessa: ne vastaavat samaan kysymykseen kenen kanssa ja
@@ -4008,6 +4025,46 @@ Carlo variantilla kuoriproxylla 16.9.2026 klo 20.16 (`raakasivut/sessio-16-9-ilt
 kaari-monte-carlo-variant.png`): kaari kulki variantin oranssista kerman kautta tealiin,
 eli oma nappula luettiin valkoisena eikä X-22:n kermana, ja napit olivat pois odotuksen
 ajan samoin kuin X-22:lla. Tabletin tyyli palautettiin X-22:een ajon jälkeen.
+
+**Kaksi näyttävämpää muotoa kokeiltavana, valinta auki (18.9.2026).** Tommin kysymys
+*"onko latauskaarelle näyttävämpiä vaihtoehtoja"* sai ensin neljä yleistä vaihtoehtoa ja
+sitten kolme Tommin omaa toivetta (tuplauskuutio Android-tahkolla, kaksi noppaa ja kuutio,
+ouroboros), kaikki liikkuvina esikatseluina chatissa. Tilaus *"rakenna ouroboros ja kuutio
+pelin väreillä, android 64:n tilalle"*. `BusyIndicator` valitsee `BUSY_STYLE`-vakiolla
+kolmesta: `BusyArc` (nykyinen), `BusyOuroboros` (käärme kiertää kehää, ruumis paksunee
+hännästä päähän, väri kiilan parillisesta parittomaan ja takaisin `ArcLook.wedgeOdd`in
+kautta, silmät kuution tealia) ja `BusyCube` (kuutio kääntyy litistyksellä tahkolta
+tahkolle 2, 4, 8, 16, 32 ja robotti, samat piirrot kuin laudan kuutiolla). Ensimmäinen
+laiteajo 26 ja 22 dp:ssä oli Tommin sanoin liian pieni (*"animaatiot saisi olla isompia"*),
+joten molemmat vuotavat nappilokeron yli `requiredSize`-mitalla, 60 ja 52 dp; odotuksen
+aikana kaikki napit ovat poissa, joten tila on olemassa. Todennettu kuoriproxylla tabletilla
+kummastakin koosta (`raakasivut/sessio-18-9-kuori`, nauhat ja lähikuvaruudukot, LUEMINUT).
+Kaanonihuomio kuutiosta: laudan kuutiossa robotti on ykköspinta (*kukaan ei ole tuplannut*),
+lataajassa se on 64:n paikalla Tommin sanoin; ero on tarkoituksellinen, koska lataaja ei ole
+kuution arvo. Samana iltana vakiosta tuli laiteasetus `busy_style` (Tommin tilaus
+*"haluaisin busy-style asetuksen sovellukseen"*, `docs/ASETUKSET.md` luku 3), asetusruudun
+ryhmä *Waiting for DailyGammon* kolmella rivillä, tuotuna lautaan `LocalBusyStyle`lla.
+Kaari nostettiin samalla 60 dp:hen ja viiva 5 dp:hen, jotta kolme muotoa vertautuvat
+samassa mitassa (Tommin kysymys *"onko latauskaari samaa kokoluokkaa kuin uudet?"*), ja
+kuutio hidastettiin 700 → 840 ms tahkoa kohti (*"hidasta kuutiota 20%"*), ja saman illan
+pelisession jälkeen takaisin 700:aan (*"hidastus oli virhe, nopeuta 25% eli alkuperäiseen
+tahtiin"*, 18.9.2026 klo 20.35). Laudan
+ensilatauksen keskellä oleva kaari on yhä Materialin oma, koska se ei ole tämän kohdan
+piirissä.
+
+**Asetus jää kolmella arvolla** (Tommin päätös 18.9.2026 klo 19.18: *"asetus kolmella
+arvolla"*). Kaaren 60 dp nähtiin pelisessiossa samana iltana ja kuitattiin (*"latauskaaren
+koko oli hyvä"*). Kuution robottia Tommi ei nähnyt kertaakaan, ja syy on mitattu
+(`raakasivut/LUEMINUT.md`, sessio-18-9-ilta2): kierros on 6 × 840 ms = 5,0 s, robotti on
+viimeinen tahko, ja odotukset olivat 0,3–3,3 s. Ratkaisu samana iltana (Tommin päätös
+*"kierros alkaa robotista"*): tahkojärjestys on robotti, 2, 4, 8, 16, 32, joten robotti näkyy
+jokaisen odotuksen ensimmäisen tahkon ajan (700 ms 18.9. illasta). Asetusruudun rivi sanoo *robot first*. Todennettu kuorella samana iltana
+(`raakasivut/LUEMINUT.md`, kuoritesti 19.34). Samat kehykset paljastivat käännösvian: tahko
+vaihtui kolmanneksessa ja palasi kahdessa kolmanneksessa, joten seuraava tahko vilahti kesken
+litistyksen. Korjattu vaihtumaan viivan kohdalla (`u < 0.5f`), todennettu toisella nauhalla.
+
+**Käärme pelissä 18.9.2026 klo 17.33–17.37** (`raakasivut/LUEMINUT.md`): Tommi
+*"pelasin käärmeellä, oli hyvä"*. Valinta kolmen välillä on yhä auki, ja asetus jää.
 
 ### Ottelukutsu ja sivuutus profiililta (Tommin tilaus 3.9.2026)
 
@@ -6122,3 +6179,45 @@ Ensimmäinen versio raidoitti rivit otsikon alla (commit f216ee4) ja eli yhden l
 asetusrivit ovat eri korkuisia selitteineen, joten rivitason raita teki ruudusta levottoman
 eikä auttanut löytämään ryhmää. Todennettu tabletilla vaaleassa teemassa molemmissa
 osioissa.
+
+### Katkohistoria Info-välilehdellä (Tommin tilaus 18.9.2026)
+
+Info-välilehden rivi *Connection drops* heti *App Help*in perässä, ja sen takana lista
+uusin ensin: hetki laitteen kellosta minuutin tarkkuudella, painettu nappi, ottelu
+ottelumuistista (`vs <vastustaja> (match <nro>)` tai pelkkä numero) ja poikkeuksen luokan
+nimi sellaisenaan (`SocketTimeoutException`). Rivi kirjoitetaan `Board not confirmed`
+-kortin syntyessä eikä koskaan muulloin (`BoardViewModel.afterPress`, vain
+`DgResponse.Offline`), ja se jää kun kortti ja jonon rivi poistuvat.
+
+**Paikka on Info eikä Settings**, koska Info on lukemista ja asetukset säätämistä (Tommin
+päätös 4.9.2026), ja tämä on lukulista kuten merkityt asemat: ei poistoa, ei avautuvaa
+lautaa, ei verkkoa. Historia rajaa itsensä sataan (`DropLog.KEEP`), mikä riittää
+kysymykseen "mikä se äskeinen oli".
+
+**Syy näytetään luokan nimenä eikä käännetä sanaksi**, koska lukija on se joka mittaa:
+`UnknownHostException` (DNS), `SocketTimeoutException` (hidas verkko) ja `ConnectException`
+(yhteys hylätty) ovat juuri se ero jota tallentamattomasta sessiosta ei voinut lukea
+(`raakasivut/LUEMINUT.md` › `sessio-18-9-paiva`). App Help sanoo saman `unconfirmed`- ja
+`tabs`-kohdissa (`docs/OHJE.md`).
+
+Laiteajo odottaa: lista on tyhjä kunnes ensimmäinen katko osuu, joten ruutu todennetaan
+tyhjänä ja täyttyminen seuraavasta oikeasta katkosta tai kuoritestistä proxy alhaalla.
+
+### Drive-reitti `.sgf`:lle todennettu päästä päähän (18.9.2026)
+
+Tommi kysyi voiko sovellus tallentaa Driveen ja BGBlitz lukea sieltä. Vastaus on kyllä
+ilman yhtään koodiriviä, ja se todennettiin samana päivänä. Tabletilla `Share .sgf for GNU
+Backgammon` › jakovalikon *Tallenna Driveen* (Tommin teko, klo 15.07), ja tällä koneella
+Drive for desktop näytti tiedoston `G:\Oma Drive\dg-5301910.sgf` (2 237 tavua,
+`AP[DG Android:0.1]`, 5 pisteen ottelu, 4 peliä) ennen kuin sitä ehdittiin kysyä. BGBlitz
+avaa sen `File › Analyze › GnuBG (SGF)` tavallisena tiedostona, koska `G:` on asema.
+
+`.mat`-reitti työpöydälle todennettiin 3.9.2026 *Linkki Windowsiin* -rivillä, ja 2.9.
+laiteajossa Driveä ei nähty valikon näkyvässä osassa; nyt se on nähty ja käytetty. Ero
+reittien välillä on vain jakovalikon rivi, koska molemmat tiedostot kulkevat
+`MatchExportShare`n kautta samalla MIME-tyypillä. App Helpin `d_marks` sanoo saman yhdellä
+lauseella (`docs/OHJE.md`).
+
+Todennettu tiedosto oli ilman `C[]`-kommenttia, eli tässä ottelussa ei ollut merkkiä. Se ei
+heikennä todennusta, koska reitti ei katso sisältöä, mutta Frankin korjatun buildin mittaus
+tehdään yhä `raakasivut/dg-5311448.sgf`:llä jossa kommentti on.

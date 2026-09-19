@@ -98,6 +98,39 @@ class DgClientRetryTest {
     }
 
     @Test
+    fun `tauon jälkeinen rungollinen teko avaa uuden yhteyden eikä poimi kuollutta`() {
+        // Mitattu 18.9.2026 (connection_drops rivit 1–3): Next Game ja To Top ovat POSTeja,
+        // ja 6–10 s tauon jälkeen ne päättyivät IOExceptioniin 20 ms:ssa, koska altaan
+        // yhteys oli palvelimen puolelta jo kiinni. POSTia ei saa uusia, joten korjaus on
+        // hylätä joutilas yhteys ennen tekoa. Kynnys nollassa, jotta koe ei odota.
+        val evicting = DgClient(
+            credentials = { DgCredentials("testi", "salainen") },
+            baseUrl = server.url("/"),
+            minRequestIntervalMillis = 0,
+            stalePoolAfterMillis = 0,
+        )
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(topPage)
+                .apply { socketPolicy = SocketPolicy.DISCONNECT_AT_END },
+        )
+        server.enqueue(MockResponse().setResponseCode(200).setBody(topPage))
+
+        assertInstanceOf(DgResponse.Ok::class.java, evicting.fetch("/bg/top"))
+        val response = evicting.submitForm("/bg/move/1234/5", mapOf("commit" to "Next Game"))
+
+        assertInstanceOf(
+            DgResponse.Ok::class.java,
+            response,
+            "Teon piti mennä tuoreella yhteydellä kerralla perille, ei palauttaa Offlinea",
+        )
+        assertEquals(2, server.requestCount, "Yksi haku ja yksi teko, ei toistoa")
+        // Järjestysnumero on pyynnön indeksi omalla yhteydellään: nolla tarkoittaa että teko
+        // avasi uuden yhteyden eikä jatkanut haun yhteyttä.
+        server.takeRequest()
+        assertEquals(0, server.takeRequest().sequenceNumber, "Teon piti mennä uudella yhteydellä")
+    }
+
+    @Test
     fun `katkennut Submit Move yritetään uudelleen ja onnistuu ilman toista lähetystä`() {
         // Sama kuolleen yhteyden koe kuin haulla, mutta lautasivun lomakkeella: rungoton
         // GET, joten OkHttpin oma uusinta on turvallinen eikä vaadi kahta pyyntöä

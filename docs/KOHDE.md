@@ -1643,6 +1643,72 @@ epäonnistuu näkyvästi, koska kahdesti lähetetty runko voisi viedä pelin til
 pyytänyt. Alkuperäinen sääntö *"lomakelähetystä ei toisteta"* (4.8.2026) koski nimenomaan
 runkoa, ja tämä on sen tarkennus eikä kompromissi. Vahti on `DgClientRetryTest`.
 
+**Sama ilmiö osui POSTeihin 18.9.2026 kolmesti, ja POST sai oman keinon: ei uusintaa vaan
+tuore yhteys.** `Next Game` ja `To Top` ovat POSTeja (`commit`-kenttä), ja katkohistoria
+(`connection_drops`) kirjasi ne klo 15.13, 17.34 ja 17.35 paljaana `IOException`ina.
+`KitkaLoki` osoitti mekanismin ilman proxya: edellisestä vastauksesta oli 9,7 s (`Submit
+Move` 17.34.38,7 → `Next Game` 17.34.48,5) ja 6,4 s (`refresh` 17.35.16,9 → `To Top`
+17.35.23,3), ja kumpikin päättyi 20–23 ms:ssa, eli runko lähti yhteyteen jonka palvelin oli
+jo sulkenut. Pidemmät tauot (11 ja 18 s) menivät läpi 0,9–1,8 s:ssa, eli silloin OkHttp
+huomasi sulkeutuneen yhteyden ja avasi uuden; ikkuna on siis heti viiden sekunnin jälkeen,
+ennen kuin sulkeminen näkyy asiakkaan päässä. Korjaus `DgClient.execute`ssa: rungollinen
+teko hylkää altaan joutilaat yhteydet (`connectionPool.evictAll`) kun edellisestä
+vastauksesta on yli 4 s (`stalePoolAfterMillis`), jolloin POST menee uudella yhteydellä
+kerran. Runkoa ei yhä koskaan lähetetä kahdesti, joten 4.8. sääntö pysyy; hinta on
+TCP-kättely tauon jälkeen, ja sivusto on http, joten TLS:ää ei ole. Vahti
+`DgClientRetryTest` › *tauon jälkeinen rungollinen teko avaa uuden yhteyden*
+(`sequenceNumber` 0 toisella pyynnöllä). Todentuu pelissä: `connection_drops` ei saa enää
+`Next Game`- tai `To Top`-rivejä `IOException`illa.
+
+**Toinen katkolaji samalla napilla: sivusto ei vastaa POSTiin 20 sekuntiin** (17.9.2026
+klo 21.40 ja 18.9.2026 klo 18.41, molemmat `Next Game`, molemmat proxyn takana ja alle kahden
+sekunnin tauon jälkeen, proxyn `TimeoutError 10060` 21 s:ssa). Keep-alive ei selitä sitä,
+koska tauko oli lyhyt eikä proxy kierrätä yhteyksiä. Kummallakin kerralla Refresh näytti
+saman siirtonumeron ja sama POST meni perään sekunnissa, eli pyyntö ei ollut mennyt perille.
+Erottelematta on, jäikö yhdistäminen vai vastaus tulematta (`raakasivut/LUEMINUT.md`,
+sessio-18-9-ilta). Ilman proxya sama näkyisi sovelluksessa 30 s `readTimeout`in jälkeen.
+Tahti 18.9.2026 klo 19.23: 2 jumia 28 proxyllisesta `Next Game`sta kolmessa sessiossa, ja
+18 proxytonta ilman jumia (sessio-18-9-ilta2, ei jumia viidestä).
+
+**Nimi 18.9.2026 klo 19.45: pudonnut SYN, eli uusi TCP-yhteys sivustolle ei saa vastausta.**
+Paikannus kolmesta todisteesta. Ensin kesto: 21 062 ms on Windowsin SYN-uusintojen summa
+(3 + 6 + 12 s, `TcpMaxConnectRetransmissions` 2), kun taas Pythonin oma 30 s aikakatkaisu
+sanoisi `timed out` ilman WinError-numeroa. Toiseksi toisto: proxy ohjattuna mustaan aukkoon
+(`10.255.255.1`, SYN ilman vastausta) antoi 502:n 21 046 ms:ssa ja saman `WinError 10060`
+-tekstin sanasta sanaan. Kolmanneksi `proxy.py` jakaa 18.9. alkaen välityksen vaiheisiin
+`yhdistys` ja `vastaus` (`X-Proxy-Error`-otsakkeen alussa) ja kirjaa onnistuneen pyynnön
+yhdistysajan otsakkeeseen `X-Proxy-Connect-Ms`; musta aukko kirjautui vaiheeseen `yhdistys`.
+Sivuston HTTP-käsittely ei siis ole jumissa, vaan yhteys ei synny. Proxy on tälle alttiimpi
+kuin sovellus, koska se avaa joka pyynnölle uuden yhteyden (`Connection: close`), ja
+sovellus poolaa; keep-alive-korjauksen (`8f067a4`) jälkeen sovelluskin avaa uuden yhteyden
+POSTille yli 4 s tauon jälkeen, joten sama pudotus näkyisi siellä `connectTimeout`in 15 s
+jälkeen `SocketTimeoutException: connect timed out` -tekstinä KitkaLokissa. **Mistä SYN
+putoaa, ei ole mitattu**: kotireititin, operaattori tai sivuston vastaanottojono ovat kaikki
+mahdollisia, ja erottelu vaatisi pakettikaappauksen PC:llä. Kumpikin osuma oli POST heti
+GETin perään, mikä voi olla sattuma kahdella tapauksella. Seuraava 502 luetaan vaiheen
+nimestä eikä kestosta.
+
+**Pakettikaappaus 18.9.2026 klo 20.25–20.28 vahvisti pudotuksen PC:n ulkopuolelle**
+(`raakasivut/sessio-18-9-ilta3/paketit.txt`, pktmon, 138 kättelyä sivustolle). SYN-vahdin
+kättely klo 20.28.24 kesti 15 264 ms: PC lähetti saman SYNin viidesti (0, 1, 3, 7 ja 15 s),
+neljä ensimmäistä jäivät ilman SYN-ACKia ja viides sai sen 238 ms:ssa. Heti perään avattu
+seuraava yhteys uudesta portista sai SYN-ACKin 182 ms:ssa. Toinen pienempi tapaus klo
+20.26.14: yksi SYN pudonnut, uusinta sekunnin päästä läpi (1223 ms). Kaikki 138 saivat
+lopulta SYN-ACKin, mediaani 212 ms. Uusintojen väli on siis 1, 2, 4 ja 8 s eikä aiemmin
+päätelty 3, 6 ja 12; 502:n 21 s on Windowsin luovutus viidennen SYNin jälkeen. Sivusto oli
+elossa (SYN-ACK tuli normaalilla viiveellä heti kun SYN pääsi perille), ja pudotus koski
+yhtä virtaa kerrallaan: samaan aikaan muut yhteydet kulkivat. Se sopii tilalliseen
+laitteeseen matkalla (NAT, palomuuri tai sivuston SYN-jono) paremmin kuin reitin katkoon,
+mutta erottelua ei ole tehty. Seuraava koe: kun vahdin kättely venyy yli 1,5 s, avaa
+rinnakkainen yhteys uudesta portista; jos se menee läpi uusintojen yhä pudotessa, pudotus on
+virtakohtainen.
+
+**Tyhjän jonon vastaus laudan `Next Game`sta ei ole Top Page vaan lause** (mitattu
+18.9.2026, `sessio-18-9-ilta2` rivi 36): `There are no matches where you can move.` ja
+viisi linkkiä, joista `active matches` kantaa `days_to_view`-parametrin. Ei taulukkoa.
+`DgPages.isTopPage` tunnistaa sen samasta linkistä, ja sovellus siirtyy otteluluetteloon
+hakematta `/bg/top`ia. Viestijonon `/bg/nextgame` tyhjänä on yhä mittaamatta.
+
 - **Help-sivun kysymysankkuri on osin sulkematon (mitattu 29.8.2026).** Muoto on
   `<a name="X"><h3>Kysymys</h3></a>` useimmissa kohdissa, mutta ei kaikissa: `Who runs
   DailyGammon?` alkaa `<a name="run"><h3>...</h3>` ilman sulkevaa tagia. HTML sallii sen,
