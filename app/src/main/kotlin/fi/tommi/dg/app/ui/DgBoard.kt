@@ -341,6 +341,22 @@ object DgBoard {
     }
 
     /**
+     * Laudan **kehyksen** korkeus sen leveydestä, eli se korkeus jonka leveysrajattu lauta
+     * tarvitsee ilman että kiilat venyvät.
+     *
+     * Käytössä vain kirjoitushetken pystyasennossa (19.9.2026, `docs/UI.md` › Suunta
+     * lukittiin › Poikkeus): siellä lauta on kuva eikä pelipinta, ja koko ruudun korkeus
+     * venyttäisi kiilat moninkertaisiksi. Kaava on [checkerFromHeight] toisin päin, ja
+     * nappula johdetaan leveydestä samalla ketjulla kuin [contentWidth]issa.
+     */
+    fun frameHeight(frameWidth: Dp, numberRowHeight: Dp): Dp {
+        val column = (frameWidth - FRAME_PAD_H * 2) / (PLAY_COLUMNS + TRAY_PER_COLUMN)
+        val checker = minOf(column * CHECKER_PER_COLUMN, CHECKER_MAX)
+        val inner = checker * (CHECKERS_APART * 2 + BAND_PER_CHECKER)
+        return inner + numberRowHeight * 2 + FRAME_PAD_V * 2
+    }
+
+    /**
      * Lokerosarakkeen leveys kehyksen leveydestä.
      *
      * Oma funktionsa eikä laskutoimitus kutsupaikassa, ja syy on sama kuin [frameWidth]illä:

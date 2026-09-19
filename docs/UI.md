@@ -1898,6 +1898,33 @@ telineessä tai näppäimistössä kiinni jää lukuruuduilla väärään asento
 Jos se osoittautuu haitaksi, tästä tulee asetus; nyt se on yksi päätös eikä kaksi ylläpidettävää
 haaraa.
 
+**Poikkeus 19.9.2026: kirjoitushetki kääntää laudan pystyyn.** Tommin havainto pelisession
+jälkeen, kun hän kirjoitti muistutusta tabletilla: *"muistutusrivin kirjoittamista auttaisi
+jos lauta kutistuisi ja näyttö menisi pystyasentoon"*. Kaappaus samasta hetkestä näytti syyn.
+Vaakanäppäimistö vie Galaxy Tab S7+:lla puolet ruudun korkeudesta, ja `imePadding` työntää
+laudan ylös niin että näkyviin jää vain sen alareuna ja kenttä. Tommin valinta neljästä
+(pystyyn kentän fokuksella, vaaka ja kutistus, kenttä laudan päälle, ei muutosta): **pystyyn**,
+perustelulla *"lautahan ei ole pelattavissa, joten kuva siitä riittää"*. Kirjoitushetkellä
+lauta on siis kuva eikä pelipinta, ja se saa kutistua leveyden mittaan.
+
+Laukaisin on kirjoitustila eikä kentän fokus: `composing` (Reminders) tai `marking` (Mark
+position), koska kenttä on olemassa vain siinä tilassa ja molemmilla on sama ongelma. Add
+tai kirjoitustilan sulkeminen palauttaa vaakaan. Pystyssä lauta piirtyy leveyden mittaan ja
+saa korkeudekseen sen mikä leveydestä johtuu ([`DgBoard.frameHeight`]), ei koko ruutua, jotta
+kiilat eivät veny; sivupaneelia ei ole, koska leveyttä ei jää, ja napit putoavat keskikaistalle
+kuten puhelimella. Geometriaperuste (lauta kutistuu pystyssä) on yhä tosi, ja siksi tämä on
+poikkeus hetkeen eikä uusi oletus.
+
+**Kaksi mittausta samalta illalta, ja molemmat muuttivat toteutusta.** Ensimmäinen asennus
+(klo 18.32): ruutu kääntyi, mutta näppäimistö vei laudasta puolet yläreunan yli ja kentän
+alle jäi tyhjä kaista. Syy oli manifestista puuttunut `windowSoftInputMode`: järjestelmä
+panoroi ikkunaa ylös näppäimistön verran, ja `imePadding` lisäsi saman verran alle. Tämä
+oli sama vika joka vaakanäytön kaappauksessa näkyi laudan alareunana; `adjustResize` poisti
+panoroinnin. Toinen asennus (klo 18.34): lauta täytti näppäimistön yläpuolisen tilan ja kiilat
+venyivät, koska korkeuskatto luettiin mittasuhteesta (`maxWidth < maxHeight`) ja laatikko oli
+näppäimistön kanssa lähes neliö. Katto luetaan nyt kirjoitustilasta, kuten kaanoni sanoo.
+Kolmas asennus (klo 18.36) todennettu kaappauksesta, Tommi: *"nyt on hyvä"*.
+
 **Haitta ilmeni 2.9.2026, ja siitä tuli asetus** (Tommin päätös: *"laiteasetus, mutta lauta
 pidetään pakotettuna vaaka"*). Tommi yön session jälkeen: *"tabletilla pelatessa en enää pidä
 siitä että näyttö pakottautuu pysty-näkymään kun ottelulista on tyhjä."* Jonon tyhjentyessä

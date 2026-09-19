@@ -412,8 +412,12 @@ def nauha_kaynnista():
         "i=1; while [ -f %s ]; do screenrecord --time-limit %d %s/nauha$i.mp4; "
         "i=$((i+1)); done" % (NAUHALIPPU, NAUHAPATKA, NAUHAKANSIO)
     )
+    # Kohdistus (`-s`) on annettava myös tässä: ilman sitä `adb shell` kieltäytyy hiljaa kun
+    # laitteita on kaksi, ja nauha jäi siitä pois 19.9.2026 klo 18.12 (puhelin USB:ssä,
+    # tabletti langattomasti).
+    kohdistus = ["-s", LAITE] if LAITE else []
     subprocess.Popen(
-        [adb_polku(), "shell", "nohup sh -c '%s' >/dev/null 2>&1 &" % silmukka],
+        [adb_polku(), *kohdistus, "shell", "nohup sh -c '%s' >/dev/null 2>&1 &" % silmukka],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )

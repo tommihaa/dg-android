@@ -230,9 +230,17 @@ class MainActivity : FragmentActivity() {
                     // näkyy heti sen omassa tyhjässä tilassa. Ks. `DgWallpaper.kt`.
                     var wallpaperFolder by remember { mutableStateOf(container.wallpaper.folder()) }
 
-                    LaunchedEffect(onBoard, portraitLock) {
-                        this@MainActivity.requestedOrientation =
-                            orientationFor(onBoard = onBoard, portraitLock = portraitLock)
+                    // Kirjoitushetki (muistutus tai merkki) kääntää laudan pystyyn, koska
+                    // vaakanäppäimistö vie puolet ruudusta (Tommin päätös 19.9.2026,
+                    // `docs/UI.md` › Suunta lukittiin › Poikkeus). Tila asuu täällä, koska
+                    // suunta on activityn.
+                    var boardWriting by remember { mutableStateOf(false) }
+                    LaunchedEffect(onBoard, portraitLock, boardWriting) {
+                        this@MainActivity.requestedOrientation = orientationFor(
+                            onBoard = onBoard,
+                            portraitLock = portraitLock,
+                            writing = boardWriting,
+                        )
                     }
 
                     // Otteluluettelon malli on activityn tasolla eikä reitin, jotta paluu
@@ -1348,6 +1356,7 @@ class MainActivity : FragmentActivity() {
                                 reminders = reminders,
                                 onAddReminder = boardModel::addReminder,
                                 onRemoveReminder = boardModel::removeReminder,
+                                onWritingChange = { boardWriting = it },
                                 marks = marks,
                                 onMarkPosition = boardModel::markPosition,
                                 onRemoveMark = boardModel::removeMark,
@@ -1399,7 +1408,8 @@ class MainActivity : FragmentActivity() {
  * taas yksi. Funktio jäi silti, koska se on nyt kirjoitettuna se mitä ennen luettiin
  * `when`-lohkosta kutsupaikan sisältä: **kaksi ehtoa, kolme arvoa, ja lauta ensin.**
  */
-private fun orientationFor(onBoard: Boolean, portraitLock: Boolean): Int = when {
+private fun orientationFor(onBoard: Boolean, portraitLock: Boolean, writing: Boolean = false): Int = when {
+    onBoard && writing -> ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
     onBoard -> ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
     portraitLock -> ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
     else -> ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED

@@ -68,6 +68,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -221,6 +222,11 @@ fun BoardScreen(
     reminders: List<Reminder> = emptyList(),
     onAddReminder: (String) -> Unit = {},
     onRemoveReminder: (Long) -> Unit = {},
+    /**
+     * Kirjoitustila (muistutus tai merkki) on auki. Kutsuja kääntää ruudun pystyyn sen
+     * ajaksi (Tommin päätös 19.9.2026, `docs/UI.md` › Suunta lukittiin › Poikkeus).
+     */
+    onWritingChange: (Boolean) -> Unit = {},
     /**
      * Tämän pelin merkityt asemat ja niiden kirjoitus, ks. [MarkStrip]. Eri lista kuin
      * [reminders], koska elinkaari on eri: merkki elää ottelun yli.
@@ -376,6 +382,7 @@ fun BoardScreen(
                                 reminders = reminders,
                                 onAddReminder = onAddReminder,
                                 onRemoveReminder = onRemoveReminder,
+                                onWritingChange = onWritingChange,
                                 marks = marks,
                                 onMarkPosition = onMarkPosition,
                                 onRemoveMark = onRemoveMark,
@@ -1062,6 +1069,7 @@ private fun LoadedBoard(
     reminders: List<Reminder>,
     onAddReminder: (String) -> Unit,
     onRemoveReminder: (Long) -> Unit,
+    onWritingChange: (Boolean) -> Unit,
     marks: List<MarkedPosition>,
     onMarkPosition: (String) -> Unit,
     onRemoveMark: (Long) -> Unit,
@@ -1105,6 +1113,10 @@ private fun LoadedBoard(
     // yhtä aikaa, koska laudan alla on tilaa yhdelle riville kerrallaan.
     var marking by remember { mutableStateOf(false) }
     var markDraft by remember { mutableStateOf("") }
+    // Kirjoitustila ylös kutsujalle, joka omistaa suunnan. Poistuessa epätosi, ettei
+    // seuraava lauta avaudu pystyyn tilasta joka jäi tänne.
+    LaunchedEffect(composing, marking) { onWritingChange(composing || marking) }
+    DisposableEffect(Unit) { onDispose { onWritingChange(false) } }
 
     // Chat-kortin näkyvyys (Tommin havainto ja kuittaus 27.8.2026): sivu tarjoaa
     // chat-kentän jokaisella siirron jälkeisellä sivulla myös tyhjänä, ja korttina se vei
@@ -1301,6 +1313,16 @@ private fun LoadedBoard(
             // enimmillään neljä; ahtaassa paneelissa ne madalletaan ja kortit luopuvat
             // tyhjästä rivistään. Ehto on mitta eikä laite, ks. [DgBoard.PANEL_COMPACT_BELOW].
             val compactPanel = maxHeight < DgBoard.PANEL_COMPACT_BELOW
+            // Kirjoitustilassa (19.9.2026, ruutu pystyssä) lauta on kuva ja saa vain sen
+            // korkeuden jonka leveys antaa; koko ruutu venyttäisi kiilat. Ehto on tila eikä
+            // mittasuhde: näppäimistön kanssa laatikko on lähes neliö, ja mittasuhteesta
+            // luettu ehto jäi epätodeksi (mitattu tabletilla klo 18.34). Luetaan tässä,
+            // koska rivin sisällä `maxWidth` olisi jo toisen mittauksen.
+            val portraitBoardHeight: Dp? = if (composing || marking) {
+                minOf(maxHeight, DgBoard.frameHeight(frameWidth, numberRowHeight()))
+            } else {
+                null
+            }
             val reminderActions: @Composable () -> Unit = {
                 // Keskustelun aloitus pyydettäessä (Tommin kuittaus 27.8.2026): kun sivulla
                 // on chat-kenttä muttei viestiä, kortti ei piirry itsestään vaan avataan
@@ -1567,7 +1589,11 @@ private fun LoadedBoard(
                     onPress = pressChecked,
                     onDiceTap = onDiceTap,
                     verify = verifyBox,
-                    modifier = Modifier.width(frameWidth).fillMaxHeight(),
+                    modifier = if (portraitBoardHeight != null) {
+                        Modifier.width(frameWidth).height(portraitBoardHeight)
+                    } else {
+                        Modifier.width(frameWidth).fillMaxHeight()
+                    },
                     // **Sama ehto ja sama mitta kuin ennen napeilla** (Tommin valinta
                     // 14.8.2026, `TRAY_TEXT_MIN` uudelleennimetty samalla). Toinen kynnys
                     // omalle sisällölleen olisi toinen ylläpidettävä luku ilman omaa

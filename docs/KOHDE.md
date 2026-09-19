@@ -1703,6 +1703,18 @@ mutta erottelua ei ole tehty. Seuraava koe: kun vahdin kättely venyy yli 1,5 s,
 rinnakkainen yhteys uudesta portista; jos se menee läpi uusintojen yhä pudotessa, pudotus on
 virtakohtainen.
 
+**Kolmas tapaus 19.9.2026 klo 18.17.30–18.17.51 vastasi siihen kokeeseen ilman erillistä
+järjestelyä** (`raakasivut/sessio-19-9-ilta`, rivi 32): `Submit Move` sai 502:n vaiheessa
+`yhdistys` 21 172 ms:ssa, ja SYN-vahti oli ensimmäistä kertaa päällä samalla hetkellä.
+Samojen 21 sekunnin aikana vahti teki 11 kättelyä sivustolle omista porteistaan, kaikki
+läpi, 170–514 ms. Rinnakkaiset yhteydet kulkivat siis koko ajan sillä välin kun proxyn yksi
+SYN uusintoineen putosi, joten **pudotus on virtakohtainen eikä reitin katko**; sivuston
+vastaanottojono tai tilallinen laite matkalla jää jäljelle, kotireititin ja operaattorin
+reitti eivät selitä. Sovellus toipui itse: `Refresh` ja `Site error 502` keskikaistalla
+(nauha `nauha2.mp4`, kehys t≈96 s), lauta haettiin uudelleen (rivi 33, 1000 ms) ja sama
+siirto lähti toisella yrityksellä 200:lla (rivi 34, 797 ms). Ottelu oli ehjä. Kaikki kolme
+tapausta ovat olleet pyyntö heti edellisen sivun perään; se on yhä kolmen tapauksen otos.
+
 **Tyhjän jonon vastaus laudan `Next Game`sta ei ole Top Page vaan lause** (mitattu
 18.9.2026, `sessio-18-9-ilta2` rivi 36): `There are no matches where you can move.` ja
 viisi linkkiä, joista `active matches` kantaa `days_to_view`-parametrin. Ei taulukkoa.
