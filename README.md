@@ -70,6 +70,13 @@ logging proxy and screen captures rather than assumed from the code. Solutions t
 tried and rejected are written down with the reason, in `docs/` where they concern the site
 and in the private working notes where they concern the author.
 
+The measurement tools are in `tyokalut/`. `proxy.py` saves every page the tablet fetches
+during a session, `sessio.py` runs the whole chain (proxy, device setting, screen recording,
+verification, teardown), `synvahti.py` watches the TCP handshake to the site, `kehysdiff.py`
+and `sidonta.py` bind taps, requests and frames into one timeline, and `kuoriproxy.py` answers
+the device from saved pages so that a site setting can be tried without touching the account
+or the site. The docstrings are in Finnish, the command lines are not.
+
 ## Building
 
 Requirements: JDK 21 and the Android SDK (API 36). Android Studio's bundled JDK works.
