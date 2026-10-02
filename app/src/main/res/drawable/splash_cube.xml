@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Käynnistysruudun animaatio, piirtää tyokalut/kuvake.py (write_splash); käsin ei muokata. -->
+<animation-list xmlns:android="http://schemas.android.com/apk/res/android" android:oneshot="true">
+    <item android:drawable="@drawable/splash_cube_00" android:duration="150" />
+    <item android:drawable="@drawable/splash_cube_01" android:duration="50" />
+    <item android:drawable="@drawable/splash_cube_02" android:duration="50" />
+    <item android:drawable="@drawable/splash_cube_03" android:duration="50" />
+    <item android:drawable="@drawable/splash_cube_04" android:duration="50" />
+    <item android:drawable="@drawable/splash_cube_05" android:duration="50" />
+    <item android:drawable="@drawable/splash_cube_06" android:duration="50" />
+    <item android:drawable="@drawable/splash_cube_07" android:duration="50" />
+    <item android:drawable="@drawable/splash_cube_08" android:duration="50" />
+    <item android:drawable="@drawable/splash_cube_09" android:duration="50" />
+    <item android:drawable="@drawable/splash_cube_10" android:duration="50" />
+    <item android:drawable="@drawable/splash_cube_11" android:duration="50" />
+    <item android:drawable="@drawable/splash_cube_12" android:duration="50" />
+    <item android:drawable="@drawable/splash_cube_13" android:duration="50" />
+    <item android:drawable="@drawable/splash_cube_14" android:duration="200" />
+</animation-list>

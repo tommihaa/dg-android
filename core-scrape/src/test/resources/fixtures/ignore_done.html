@@ -1,0 +1,27 @@
+<!--
+  Anonymisoitu kopio AIDOSTA sivuutuksen vastauksesta (proxyn tavut 4.9.2026,
+  GET /bg/ignore?changeto=1&user=<id>). Pelaajanimi vaihdettu, rakenne sellaisenaan.
+
+  Sivu mitattiin koska sovellus paatteli onnistumisen profiilin napin vaihtumisesta
+  eika lukenut vastausta. Kaksi piirretta:
+  1. TITLE on pelkka DailyGammon, eli otsikko EI kerro lopputulosta. Tunnistus ei voi
+     nojata siihen niin kuin Message Sent -sivulla.
+  2. Lause on <P>:n sisalla. Juuri se pudotti SendResultParser.notice-lukeman tyhjaksi,
+     koska luku paattyi ensimmaiseen <p>:hen.
+
+  Purkamisen vastaus (changeto=0) mitattiin samana iltana, ks. ignore_undone.html:
+  sivut ovat samanmuotoiset ja vain lause kertoo suunnan.
+-->
+<HTML><HEAD>
+<TITLE>DailyGammon</TITLE></HEAD>
+<BODY BGCOLOR=#FFFFFF>
+<P>You are now ignoring vastapelaaja.
+<TABLE border=0 cellpadding=0 cellspacing=0 BGCOLOR=#006600><TR><TD VALIGN=top>&nbsp;<IMG SRC=/images/die.gif ALT=DG WIDTH=16 HEIGHT=16 BORDER=0 ALIGN=middle>&nbsp;
+<TD align=center>&nbsp;<A HREF=/bg/top><B><FONT COLOR=#FFFFFF SIZE=-1>Top Page</FONT></B></A>
+<TD width=20 align=center><FONT COLOR=#99FF99>|</FONT><TD align=center><A HREF=/bg/lounge><B><FONT COLOR=#FFFFFF SIZE=-1>Game Lounge</FONT></B></A>
+<TD width=20 align=center><FONT COLOR=#99FF99>|</FONT><TD align=center><A HREF=/bg/forum2><B><FONT COLOR=#FFFFFF SIZE=-1>Discussion</FONT></B></A>
+<TD width=20 align=center><FONT COLOR=#99FF99>|</FONT><TD align=center><A HREF=/links.html><B><FONT COLOR=#FFFFFF SIZE=-1>Links</FONT></B></A>
+<TD width=20 align=center><FONT COLOR=#99FF99>|</FONT><TD align=center><A HREF=/bg/logout><B><FONT COLOR=#FFFFFF SIZE=-1>Log Out</FONT></B></A>
+<TD width=20 align=center><FONT COLOR=#99FF99>|</FONT><TD align=center><A HREF=/help><B><FONT COLOR=#FFFFFF SIZE=-1>Help</FONT></B></A>&nbsp;&nbsp;
+</TD></TR></TABLE>
+</BODY></HTML>

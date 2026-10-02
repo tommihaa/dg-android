@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Sama käynnistysruutu yötilassa, ks. values-v31/themes.xml. -->
+    <style name="Theme.DgAndroid" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/splash_cube</item>
+        <item name="android:windowSplashScreenIconBackgroundColor">@color/ic_launcher_background</item>
+        <item name="android:windowSplashScreenAnimationDuration">1000</item>
+    </style>
+</resources>

@@ -1,0 +1,818 @@
+# Asetukset: mistä luetaan, mihin vaikuttavat, miten kirjoitetaan
+
+Tämä dokumentti on **designehdotus, ei kaanoni**. Se vastaa `docs/AVOIMET.md`:n kahteen
+kärkikohtaan (sivustouskollinen oletuslauta 24.8.2026 ja kirjoittava asetusnäkymä
+24.8.2026). Kohdat kirjattiin erikseen mutta ne koskevat **samaa yhtätoista lomakekenttää**,
+joten yksi dokumentti on vähemmän ristiriitaista kuin kaksi. Suunta on Tommin päättämä,
+tämän sisältö ei ole: valinnat ovat luvussa 6, ja ne on tarkoitus kuitata ennen kuin koodia
+kirjoitetaan. Kaikkiin on vastattu 24.8.2026.
+
+## 1. Kenttäkartta: mitä lomakkeella oikeasti on
+
+Mitattu tiedostosta `raakasivut/profile_settings.html` (kaapattu 1.8.2026, fixture
+`core-scrape/src/test/resources/fixtures/settings_page.html`). Kenttiä on **11**: kahdeksan
+valintaruutua nimillä `0`..`7` ja kolme radioryhmää nimillä `order`, `color`, `board`.
+Sarake *vaikutus lautaan* kertoo, muuttaako asetus sitä mitä lautanäkymä piirtää.
+
+| Kenttä | Selite sivustolla | Vaikutus lautaan |
+|---|---|---|
+| `0` | Confirmation on offering doubles | ei |
+| `1` | Confirmation on accepting doubles | ei. Tommilla **pois testinä** (tietoinen valinta, kerrottu 26.9.2026: yhdistelmä hyväksyntä pois ja kieltäytyminen päällä), joten tarjoussivulla ei ole `Verify Accept`ia ja `Accept` lähtee dialogin kuittauksella |
+| `2` | Confirmation on declining doubles | ei lautaan. Sivu piirtää silloin itse `Verify Decline` -ruudun tarjoussivulle, ja sovellus näyttää sen (`SUBSTANSSI.md` kohta 102, korjaus 26.9.2026) |
+| `3` | Player Name links on game page | **kyllä**, pudottaa paneelit |
+| `4` | Skip Opponent's "Roll Dice" pages | ei lautaan, muuttaa `/bg/nextgamea` |
+| `5` | Skip *all* automatic pages | ei lautaan, muuttaa `/bg/nextgamea` |
+| `6` | Hide pip counts | **kyllä** |
+| `7` | Home boards on left side | **kyllä**, peilaa numerot, laudan ja lokerosarakkeen (8.9.2026). **Ei enää siirrä sivupaneelia**, joka seuraa kätisyyttä 9.9.2026 alkaen (luku 3). Tommilla **pois** 9.9.2026 iltapäivästä alkaen |
+| `order` | "Next" Match Ordering, 4 vaihtoehtoa | ei |
+| `color` | Background Color, 6 vaihtoehtoa | sivun tausta, **jää ulos** (kohta A) |
+| `board` | Board Scheme, 3 vaihtoehtoa | **kyllä** |
+
+**Sivustouskollinen lauta on siis kolme kenttää eikä yksitoista** (`6`, `7`, `board`), ja
+`color` olisi ollut neljäs mutta jää ulos (kohta A). Tämä on kartan tärkein tulos: kysymys
+*"mitä asetukset toteutuu kattaa"* on kapeampi kuin miltä se `AVOIMET.md`:ssä näytti.
+
+**Kenttä `3` mitattiin 24.8.2026, ja se on neljäs riski jota ei ollut listalla.** Tulos ja
+sen luvut ovat `docs/KOHDE.md`:ssä; tähän kuuluu se osa joka muuttaa tätä designia. Ilman
+pelaajanimen linkkiä `parsePlayers` palauttaa **tyhjän listan**, koska linkki on sen ainoa
+valitsin. Lauta jäsentyy silti, joten mikään ei kerro puutteesta: ruudulta katoavat nimet,
+pisteet ja pip-luvut, pip-vahdilla ei ole mitään mihin verrata, ja koska rooli tunnetaan vain
+vahdin kautta, roolivärit menevät varasuunnalle.
+
+**Tämä on korjattava ennen lautatiloja eikä niiden mukana**, ja syy on ajoitus. Vika koskee
+sovellusta jo nyt, mutta se ei ole näkynyt kenellekään: Tommilla asetus on päällä. Uusi
+käyttäjä on juuri se jota varten sivustouskollinen tila rakennetaan, ja hänellä asetus voi
+olla pois. Tila jonka arvo on rinnastettavuus selaimeen näyttäisi silloin laudan ilman
+nimiä, pisteitä ja pip-lukuja, eli epäsuhta olisi suurin juuri siinä tilassa.
+
+**Korjattu 24.8.2026, Tommin päätös tehdä se ennen yhdistelmämittausta.** Sivu säilyttää
+solun ja sen sisällön (`<B>vastapelaaja</B>`, `155 pips`, `score: 7`); vain `<a>` katoaa.
+`parsePlayers` tunnistaa paneelin nyt kahdella tuntomerkillä: entinen käyttäjälinkki ja sen
+rinnalla pistekenttä solun **omasta** tekstistä (`td:matchesOwn(score:)`). Nimi luetaan
+linkistä kun se on, muuten solun ensimmäisestä `<b>`:stä; pistekenttä on samassa solussa ja
+sekin lihavoitu, mutta se tulee nimen jälkeen, joten järjestys erottaa ne tulkitsematta
+tekstiä. `PlayerPanel.userId` on tässä tilassa null, koska käyttäjänumero on vain linkissä.
+Fixture `move_board_no_name_links.html`, testi `BoardParserPlayerLinksTest`.
+
+Linkkiehto jäi paikalleen vaikka uusi kattaa mitatut sivut yksinään: pistekenttää ei ole
+todistettu olevan joka pelimuodossa, joten jälkimmäinen on varasuunta eikä korvaaja.
+
+**Yksi väite jouduttiin korjaamaan kirjoittaessa.** Ensimmäinen versio perusteli tiukempaa
+valitsinta sillä että väljempi `td:contains(score:)` poimisi laudan ympäriltä ulompia
+soluja. Testi kaatui, koska sivun taulukot ovat litteät: kaksi `<table>`ä eikä kumpikaan
+solun sisällä, joten ulompaa solua ei ole olemassakaan ja molemmat muodot antavat tänään
+saman tuloksen. Tiukempi jäi silti valinnaksi tulevaisuuden varalta, ja testi vertaa lukuja
+keskenään, jolloin rakenteen muuttuminen näkyy punaisena.
+
+**Kohta E mitattiin samana päivänä, ja korjauksen viimeinen oletus piti.** Kolmas otos
+samasta ottelusta, linkit pois ja `Hide pip counts` päällä: 0 käyttäjälinkkiä, 2
+pistekenttäsolua, 2 paneelia, nimet ja pisteet tallessa, pipit null. `score:` on siis
+paikallaan myös silloin kun pip-rivi ei ole, eikä tunnistus jää yhden oletuksen varaan.
+Fixture `move_board_no_links_no_pips.html`.
+
+Sama ajo todensi korjauksen livenä: `paneeleja=2` siinä tapauksessa jossa se oli ennen
+korjausta 0. `PlayerPanel.backgroundColor` ei silti kelpaa kolmanneksi tuntomerkiksi, koska
+se on kanonissa hypoteesi.
+
+## 2. Mistä asetukset luetaan
+
+**Asetussivulta, ei laudalta.** `/bg/profile` on kanonissa kuluttamaton kohde,
+`SettingsParser` on olemassa ja `DgPages.isSettingsPage` tunnistaa vastauksen. Laudalta
+päättely olisi houkuttelevaa, koska lauta haetaan joka tapauksessa, mutta se kaatuu kolmeen
+kohtaan:
+
+1. **`Hide pip counts` ei ole pääteltävissä ilman että vahti hiljenee.** Puuttuva pip-luku on
+   laudalla juuri se merkki jonka pip-vahti tulkitsee epäonnistuneeksi jäsennykseksi. Jos
+   sovellus alkaisi lukea puuttumisen asetukseksi, se selittäisi oman vikansa pois. Vahti on
+   sovelluksen ainoa automaattinen tunnistin hiljaa väärin menneelle jäsennykselle, eikä sitä
+   saa maksaa tästä.
+2. **`Home boards on left side` on tarkoituksella hävitetty.** `BoardParser` lukee pisteen
+   numeron sivun omasta numerorivistä, joten peilaus normalisoituu pois ennen kuin malli
+   syntyy. Sivun asettelusta takaisin päättely olisi juuri sen palauttamista mitä jäsennin
+   heittää pois, ja se päättely meni kerran jo väärin (korjattu 1.8.2026).
+3. **`color` ei näy laudalta mitatusti.** Neljä riskiotosta (`risk_baseline.html`,
+   `risk_hide_pips.html`, `risk_board_classic.html`, `risk_board_mini.html`) ovat kaikki
+   `<BODY BGCOLOR=#FFFFFF>`, ja kaikki neljä otettiin taustavärillä Classic White. Otos ei siis
+   todista sitä että tausta seuraisi asetusta eikä sitäkään ettei se seuraisi.
+
+Vain `board` on laudalta luotettavasti luettavissa (`BoardState.scheme`), ja se on yksi
+kolmesta. Yhden kentän vuoksi ei kannata pitää kahta lähdettä.
+
+**Seuraus jota ei saa ohittaa: lautanäkymä tarvitsee tiedon jota se ei itse hae.** Asetukset
+luetaan siis kerran ja säilötään laitteelle, ja lauta lukee säilöä. Muoto on sama kuin
+`SharedPrefsCredentialsStore`illa: oma `SharedPreferences`-tiedosto ja pieni rajapinta, ei
+uutta kantataulua, koska kyse on yhdestätoista kentästä eikä historiasta.
+
+**Haku tehdään sovelluksen avauksessa, Tommin päätös 24.8.2026.** Ankkuri on
+tunnistautuminen: haku on käynnistyksessä lukon jälkeen, joten lukon ollessa päällä se lähtee
+vasta avauksesta. Lukko on laitekytkin 27.9.2026 alkaen (`AppLockStore`, oletus pois), ja
+pois kytkettynä haku tehdään samassa kohdassa ilman odotusta. Näin selaimessa tehty asetusmuutos näkyy
+laudalla seuraavalla avauksella eikä vasta seuraavassa asetusruudun käynnissä.
+
+Kolme ehtoa jotka tämä valinta asettaa, koska muuten se kaventaisi väitteitä hiljaa:
+
+1. **Haku ei kuulu `TopViewModel`ille.** Se väittää hakevansa oma-aloitteisesti vain Top
+   Pagen, ja `TopViewModelTest` todistaa väitteen kirjaamalla jokaisen polun. Asetushaku saa
+   siis oman omistajansa, jolloin kummankin polkuluettelo pysyy täydellisenä lausumana.
+   Erillään pidettynä väite ei muutu kommentiksi vaan säilyy testattavana.
+2. **Epäonnistunut haku ei tyhjennä säilöä.** Käynnistys lentotilassa on mitattu tavallinen
+   tilanne tässä sovelluksessa, ja tyhjä lukema piirtäisi laudan väärillä asetuksilla.
+   Vanha lukema on vanhentunutta mutta oikeaa tietoa; sama muoto kuin näkymämallien
+   `refreshing`-lipulla.
+3. **Haku ei estä eikä hidasta käynnistystä.** Lauta piirtyy sillä mitä säilössä on, ja
+   uusi lukema vaikuttaa siitä eteenpäin. Asetusten odottaminen käynnistyksessä maksaisi
+   verkkoviiveen joka kerta siitä että kolme kenttää voi olla muuttunut.
+
+## 3. Missä sovelluksen oma valinta asuu
+
+Paikallinen asetus `board_style`, kolme arvoa: `SITE` (sivustouskollinen), `X22` ja
+`MONTE_CARLO_VARIANT`. Oletus on `SITE`, koska se on Tommin päätöksen sisältö; Tommilla
+itsellään arvo on `X22`.
+
+**Kolmas arvo tuli 13.9.2026 Tommin tilauksesta**, malli Gammon Geaux New Orleans 2026
+-finaalin lähetyslaudasta (Ace Point Backgammon). Laji eikä merkki: turnauskokoinen
+puukotelolauta, vihreä huopa, oranssi ja kermanvalkoinen kiila vuorotellen, mustat ja valkoiset
+nappulat. Valmistajaa ei todennettu kuvasta, joten nimi on Tommin antama *Monte Carlo variant*
+eikä valmistajan nimi. Kolme päätöstä samalla kertaa:
+
+- **Oma nappula on valkoinen, vastustaja musta.** Sama logiikka kuin X-22:ssa, jossa oma on
+  vaalea. Väri on rooli kuten X-22:ssa, ei sivuston väri.
+- **Tasaväri ensin, marmorointi myöhemmin.** Lähetyslaudan nappulat ovat pyörrekuvioiset,
+  mutta kuvio on oma piirtotyö ja voi haitata luettavuutta. Käsikokeilu laitteella ennen
+  hienosäätöä.
+- **Tyyli saa vaihtaa huovan ja kehyksen värin.** Tämä on kaanonimuutos, kirjattu luvussa 4.
+
+Valinta asuu **sovelluksen omassa osiossa eikä DailyGammon-asetusten seassa**, ja ero on
+kirjoitettava ruudulle asti. Sama ruutu näyttäisi muuten kahdenlaisia asetuksia joista toiset
+lähtevät verkkoon ja toiset eivät, eikä käyttäjä voi nähdä erotusta ruudusta. Ehdotus:
+asetusnäkymän yläosassa oma osio otsikolla joka sanoo että nämä koskevat vain tätä laitetta,
+ja sivuston lomake sen alla omana kokonaisuutenaan sivuston omassa järjestyksessä.
+
+**Kaksi paikallista valintaa lisää 27.8.2026, Tommin päätös: omia kytkimiä eikä
+lautatilaan sidottuja.** Vaihtoehto jossa `board_style` olisi määrännyt myös nämä
+punnittiin ja Tommi hylkäsi sen; syy on tässä luvussa, ja
+käytännön seuraus on että X-22-laudalla voi pitää sivuston noppaesityksen.
+
+- **`dice_style`**: `COUNTER` (yksi kuutio jokaista siirtoa kohti, tupla laajenee
+  neljäksi) tai `SITE` (tasan kaksi kuutiota kuten sivustolla). **Pelattu kuutio ei katoa
+  vaan harmaantuu** kummassakin (Tommin tilaus 2.9.2026: *"älä poista sitä näytöltä vaan
+  harmauta se"*, oletuksen korvaus eikä kolmas arvo). `Die.spent` kantaa osuuden 0..1:
+  laskurissa ja sivuston ei-tuplassa 0 tai 1, sivuston tuplassa puolikas askelta kohti,
+  koska kaksi kuutiota kantaa neljä askelta. Piirto himmentää kuution 65 prosenttia
+  (`SPENT_DIE_DIM`), jolloin silmät jäävät luettaviksi. Todennettu kuoriproxylla 2.9.2026
+  tallennetusta tuplalaudasta (`sessio-2-9/0179`): esipoimittu muurilta tulo harmaana heti,
+  napautus harmensi toisen, rivi pysyi paikallaan. Ennen 2.9.2026 laskuri poisti
+  kuution siirron myötä. Sivuston oma käytös on mitattu 27.8.2026
+  kaappauksista: 2698 lautasivua ja jokaisella tasan kaksi `die_`-kuvaa, myös tuplan
+  kokoamisen keskellä (`sessio/0154`–`0157`, tuplakakkonen `move_v`→`vvmm`). Ero on
+  pelkkää esitystä: kokoamisen laillisuus ja kirjainjono lasketaan molemmissa samoin.
+- **`score_style`**: `AWAY` (`12-away`, nykyinen) tai `SITE` (sivun oma pistekenttä
+  sellaisenaan). Rahapelissä away ei ole olemassa, jolloin molemmat tilat näyttävät sivun
+  kentän; se oli tähänkin asti varareitti eikä muutu.
+
+- **`busy_style`** (18.9.2026, Tommin tilaus *"haluaisin busy-style asetuksen
+  sovellukseen"*): `ARC` (pyörivä kaari laudan väreillä, 16.9.2026 alkaen, oletus koska se
+  on nykyinen käytös), `OUROBOROS` (häntäänsä syövä käärme kiilan kahdella värillä) tai
+  `CUBE` (vierivä tuplauskuutio, robotti ensin 64:n paikalla, 18.9.2026 illasta). Kaikki 60 tai 52 dp nappien
+  paikalla odotuksen ajan (`BusyIndicator`, `LocalBusyStyle`). Syntyi samana iltana kahden
+  kuoriajon vertailusta (`docs/UI.md` › Kaksi näyttävämpää muotoa). Tommilla arvo
+  `OUROBOROS` pelikokeilua varten, 18.9. klo 19.21 alkaen `CUBE`. Kolme arvoa jäi
+  (Tommin päätös 18.9.2026), ja neljäs tuli 21.9.2026 Tommin tilauksella
+  (*"neljänneksi arvoksi"*): `INFINITY`, käärme liukuu ääretön-merkin (Bernoullin
+  lemniskaatta) rataa pitkin; rata piirtyy reunaviivan värillä ja käärme peittää siitä
+  puolet. Kolmesta chatissa näytetystä vaihtoehdosta Tommi valitsi B:n ja A:n värityksen
+  (*"tee B käärmeen väri mutta gradientti"*), eli sama oranssista vihreään ja takaisin kuin
+  kehäkäärmeellä. Mitta 84 × 48 dp, sama vuotosääntö kuin muilla; pää 0,25 korkeudesta (*"suurenna päätä 20%"* ensimmäisen nauhan jälkeen).
+  Samana yönä asetus laajeni nappilokerosta tyhjän ruudun keskikaareen kaikissa ruuduissa
+  (`BusyCentered`, Tommin valinta neljästä: keskikaari mutta ei Refreshin vaakapalkkia),
+  ja tila siirtyi `MainActivity`n juureen `LocalBusyStyle`lla (`docs/UI.md` › Asetus yltää
+  tyhjän ruudun keskikaareen). Viides arvo `HOURGLASS` tuli 22.9.2026. Samana päivänä
+  kuudes arvo `RANDOM` (Tommin tilaus *"itse voisin käyttää odota-animaatioista myös
+  satunnaista"*): se ei ole muoto vaan tapa valita muoto. Tommin valinta kolmesta oli
+  arpa joka odotuksella ilman samaa kahdesti peräkkäin, ja muoto pysyy saman odotuksen
+  ajan (`BusyIndicator`in `remember`). Deco-kytkin koskee arvottuakin muotoa.
+
+**Kolmas paikallinen kytkin 2.9.2026, ja se on eri lajia: teko eikä esitys.**
+`forced_steps` (`ForcedStepsStore`, oletus pois) poimii pakolliset askeleet valmiiksi kun
+paikallinen kokoaminen alkaa. Pakollinen askel on askel joka on mukana jokaisessa
+laillisessa vuorossa (`CompositionSession.forcedSteps`), ja lukutapa on Tommin kuittaama
+2.9.2026: *"jos joku siirto on pakollinen, niin se pelataan"*, siirto on askel eikä vuoro.
+Lähetys jää aina pelaajalle, ja `Undo Move` tyhjentää myös esipoimitut. Mittaus ja
+perusteet ovat `docs/AVOIMET.md`:ssä (pakkosiirrot), mekanismi `docs/ARKKITEHTUURI.md`:ssä.
+Oletus on pois riskiluokan takia eikä maun: tämä on ensimmäinen laiteasetus joka tekee
+laudalle jotain pelaajan puolesta, ja sellainen otetaan käyttöön nähtynä eikä oletuksena.
+
+*Laiteajo oikealla sivustolla 2.9.2026 (kytkin päällä, proxy `raakasivut/sessio-2-9`):*
+illan 76 asemasta 12:ssa oli pakollinen askel, ja lähetetty siirto sisälsi sen 12/12
+(korpusmittauksen istuntokohtainen rivi, `:core-scrape:korpusTest`). Kaappaus ei erota
+esipoimittua askelta napautetusta, joten se todistaa vain ettei esipoiminta ollut koskaan
+ristiriidassa pelatun kanssa; sen että askel oli valmiina laudalla näkee vain pelaaja.
+
+**Neljäs paikallinen kytkin 2.9.2026, samaa lajia: ahne uloskanto.** `greedy_bearoff`
+(`GreedyBearoffStore`, oletus pois) poimii ahneen uloskannon valmiiksi kun kontaktia ei ole
+(`CompositionSession.greedySteps`, `prefillGreedy`). Tommin tilaus 2.9.2026 pelisession
+keskeltä, lukutapa kuitattu samana päivänä: sovellus poimii, `Submit Move` jää pelaajalle,
+ja ehto lasketaan itse asemasta eikä sivuston napista. Sääntö on mitattu sivuston omasta
+`Submit Greedy Bearoff` -esitäytöstä (`GreedyKorpusTest`, 56 lautaa): esitäyttö on aina
+vuoro joka kantaa ulos eniten, ja sivusto tarjoaa nappinsa täsmälleen silloin kun sellaisen
+vuoron loppuasema on yksikäsitteinen eikä kontaktia ole (56 lautaa nappi, 18 kontaktitonta
+uloskantolautaa ilman nappia, kaikilla 18:lla useampi ahne loppuasema; 24 kontaktillista
+ilman nappia). Sovellus tekee saman ja jatkaa siitä mihin sivusto jättää: kun ahneita
+loppuasemia on useampi, se poimii niiden yhteisen osan ja valinta jää pelaajalle. Korpuksessa
+sovelluksen poiminta on koko vuoro 56/56 sivuston greedy-laudalla, tyhjä 24/24 kontaktissa
+ja yhteinen osa 18/18 muulla (nollasta kolmeen askelta). Kun ahne poimii jotain, se sisältää
+pakolliset askeleet, joten `forced_steps` kokeillaan vain jos ahne ei poiminut mitään.
+Todennettu kuoriproxylla 2.9.2026 kahdella illan laudalla: Kaino (5 ja 4) avautui koko vuoro
+poimittuna ja `Submit Move` näkyvissä, toinen ottelu (tupla 2) kolme askelta neljästä poimittuna ja
+viimeinen valintana. *Oikeaa sivustoa vasten 2.9.2026 yöllä* (`raakasivut/sessio-2-9-yo`):
+neljä uloskantolautaa, kolmella koko vuoro sama kuin sivuston oma greedy ja neljännellä
+yhteinen osa jota Tommi täydensi, sivusto hyväksyi kaikki neljä (`docs/TESTAUS.md` kohta 7).
+
+**Siirtonuolet 29.9.2026, esitys eikä teko, ja se on sijoitettu kahden edellisen viereen.**
+`move_arrows` (`MoveArrowsStore`, tiedosto `dg_move_arrows`, oletus pois) piirtää kootun
+siirron jokaisen askeleen nuolena lähtöpisteen päällimmäisestä kohteen päällimmäiseen siihen
+asti kunnes `Submit Move` lähtee tai `Undo Move` tyhjentää kokoamisen. Tommin idea BGBlitzin ja
+XG:n kaappauksista, lukutapa kuitattu samana päivänä monivalinnalla: nuoli jokaisesta
+askeleesta eikä vain tuplista ja pakkosiirroista, ja kytkin oletuksena pois kuudennen arvon
+takia (`docs/ARVOT.md`). Ryhmä on `Playing`, koska hyöty on suurin juuri esipoiminnan kanssa:
+sovelluksen asettamien nappuloiden kulkua ei näe lopputilasta. Nuolet luetaan samoista
+askelista kuin lähetettävä kirjainjono (`CompositionSession.arrows`), joten ne eivät voi
+näyttää muuta kuin sitä mikä lähtee. Sivun omalla laudalla (kokoaminen kieltäytyi) nuolia ei
+ole, ja selite sanoo sen. Kulkee asetusten siirrossa (`SettingsTransfer.FILES`).
+
+**Vastustajan siirto samassa tiedostossa, oma kytkin (29.9.2026 illalla).** `opponent_arrows`
+(`MoveArrowsStore.opponent`, oletus pois) piirtää vastustajan edellisen siirron nuolina
+vastustajan värillä omalla vuorolla, kunnes ensimmäinen oma askel on koottu. **30.9.2026 illalla
+alkaen vain vastustajan noppien kanssa** (Tommin kuittaus): nuolet häviävät omassa `Roll
+Dice`ssa samalla kun vastustajan nopat, koska ilman noppia ei näe mistä heitosta siirto syntyi. Oma kytkin eikä
+sama, koska tämä maksaa lisähaun (siirtolista laudan omasta `<<Review Game` -linkistä) ja oma
+nuoli ei maksa mitään; selite nimeää hinnan. Sama tiedosto, joten siirto kattaa molemmat, ja
+esikatselu nimeää tiedoston ryhmän otsikolla `Move arrows`. Rivi puuttui siirron
+nimitaulukosta 29.9.2026 asti, jolloin tiedosto näkyi esikatselussa nimellä *Handedness*.
+
+**Viides paikallinen kytkin 2.9.2026: lukuruutujen pystylukko.** `portrait_lock`
+(`PortraitLockStore`, **oletus päällä**) pitää luettelon, viestit, foorumin ja asetukset
+pystyssä kuten 24.8.2026 päätös sanoo (`docs/UI.md`, Suunta lukittiin). Pois kytkettynä ne
+seuraavat laitteen asentoa. Lauta ei seuraa tätä kytkintä; se on Tommin rajaus samassa
+päätöksessä, ja laudan suunnalla on 23.9.2026 alkaen oma kytkin (alla). Oletus on päällä koska lukon mittaus on yhä voimassa puhelimella
+(vaakaikkunassa listalle jäi nolla korkeutta), ja kytkin syntyi tabletin tarpeesta: kädessä
+vaakana oleva tabletti kääntyi pystyyn kun jono tyhjeni. Tommin laitteella kytkin jätettiin
+pois päältä laiteajon jälkeen.
+
+**Kuudes paikallinen valinta 3.9.2026, ja se on lista eikä kytkin: fraasinapit.** `phrases`
+(`PhraseStore`, `SharedPrefsPhrases`) on viestiruudun fraasinappien lista tallennusjärjestyksessä.
+Oletus on kohdan 58 rituaalifraasit `hi`, `gg`, `ty gg u2`, ja säilö erottaa oletuksen
+tyhjästä: käyttäjän tyhjentämä lista pysyy tyhjänä. Fraasit ovat lähetettävän viestin
+sisältöä eivätkä UI-tekstiä, joten ne eivät ole `strings.xml`:ssä. Lisäys ja poisto:
+`docs/UI.md` › *Fraasin lisäys ja poisto*. Ei asetuslomakkeella, koska muokkaus tapahtuu
+siellä missä nappeja käytetään: viestiruudun vastauskentässä ja laudan chat-kortissa, ja
+lista on yksi (`PhraseBook`).
+
+**Seitsemäs ja kahdeksas paikallinen kytkin 4.9.2026: noppien painallus tekona.**
+`dice_submit` ja `dice_swap` (`DiceSubmitStore`, `DiceSwapStore`, **molemmat oletuksena
+pois**) tekevät omista nopista napin. Täydellä vuorolla painallus lähettää siirron, ja
+koskemattomilla nopilla se vaihtaa noppien järjestyksen. Tommin tilaus: *"kun kaikki nopat
+on harmaita, niin noppia painamalla toteutuu Submit move"* ja *"kun yksikään noppa ei ole
+harmaa, niin noppia painamalla toteutuu Swap Dice"*.
+
+Kaksi kytkintä eikä yksi, koska teot ovat eri painoisia. Vaihdon voi perua painamalla
+uudestaan, lähetys päättää vuoron. Sama laji kuin pakkosiirroilla ja ahneella uloskannolla:
+nämä eivät muuta esitystä vaan sitä mitä laudalla oleva painallus tekee, ja siksi oletus on
+pois.
+
+**Kaksi rajaa kysyttiin ja Tommi kuittasi ne samana päivänä.** Lähetyksen ehto on vuoron
+täysinäisyys eikä noppien väri: pakotetussa vuorossa toinen noppa jää harmaantumatta, ja
+juuri silloin sivusto ei salli enempää, joten kirjaimellinen luenta olisi jättänyt
+tavallisimman lyhyen vuoron ulos. Ja ehto luetaan **paikallisesta kokoamisesta**: harmaus on
+kokoamisen ominaisuus, joten sivun omalla laudalla painallus ei tee mitään.
+
+Sääntö asuu yhtenä funktiona (`BoardScreen.diceTapFor`, testi `DiceTapTest`) eikä kahtena
+ehtona piirtokohdassa, koska noppalokeroita on kaksi. Lähetys ei kysy vahvistusta, ja se on
+valinta: sama teko `Submit Move` -napista ei kysy sitäkään, ja kysyminen vain toisessa
+reitissä tekisi niistä eri mieliset. Suoja on kytkin joka on oletuksena pois.
+
+**Oletukset ovat nykyinen käytös** (`COUNTER` ja `AWAY`), eikä se seuraa `board_style`n
+sivustouskollisesta oletuksesta: kumpikin kytkin syntyi havainnosta eikä viasta, ja
+oletuksen vaihtaminen olisi eri päätös jota ei ole kysytty. Jos se joskus kysytään,
+uuden käyttäjän tuttuusperuste puoltaisi `SITE`-arvoja.
+
+**Yhdeksäs paikallinen kytkin 6.9.2026: taustakuvion sumi-e-tila.** `sumi_e`
+(`SkyThemeStore`, **oletus pois**) vaihtaa tekstiruutujen taustakuvion linnut vermilioniin ja
+lisää taivaalle kuun; kuutiot ja asettelu ovat samat molemmissa tiloissa. Tommin päätös
+viidestä kuvaksi piirretystä kandidaatista: *"1 oletukseksi, 4 asetukseksi, lukupinta
+kelpaa"*, eli voimakas yksivärinen on oletus ja yksi värillinen on kytkin. Oletus on pois
+koska Tommin oma sana oli *"värilliset tessellaatiot app-asetus"*: väri on valinta eikä
+lähtötila. Rivi on laiteosion *Lists and screens* -ryhmässä (27.9.2026 alkaen), ja vaihto näkyy heti ruudun omassa
+taustassa. Mittaukset ja lukupinta: `docs/UI.md` › *Tyhjä tila täyteen*.
+
+**Kymmenes paikallinen kytkin 6.9.2026 illalla: taustakuvio päällä vai pois.** `pattern`
+(`SkyThemeStore`, **oletus pois**) kattaa molemmat teemat. Päällä vaalea piirtää
+mustetessellaation kuten 6.9. päivästä alkaen, ja tumma värillisen taivaan jossa jokainen
+ruutu arpoo oman palettinsa ja hahmonsa viidestä (linnut, kalat, sienet, lehdet, tähdet).
+Pois kytkettynä kumpikin teema on pelkkä taustaväri. **Luolan seinä tuli 7.9.2026 molempiin teemoihin
+saman kytkimen alle**, ensin yöllä tumman kuudentena lippuna ja vaalean arvan toisena
+puolikkaana, ja saman päivän jatkosessiossa **täytekuvana**: tessellaatio on aina tausta kun
+kytkin on päällä, ja seinä piirretään vain sisällön alle jäävään vapaaseen tilaan kun sitä on
+vähintään 180 dp. Teeman taustaa ei enää vaihdeta kiveksi. Sumi-e-alakytkin koskee vain
+mustetessellaatiota, eikä kytkimiä tullut lisää (Tommin valinta kolmesta: *"yksi kytkin kuten
+nyt"*). Saman yön kaksi aiempaa versiota (käsijälki mustalla, viisi käsikuviota) hylättiin
+laitekuvista. Ks. `docs/UI.md` › *Tausta ja täytekuva*. Tommin tilaus: *"vie koodiin ja
+sovelluksen omana asetuksena haluaako yksivärisen taustan vai näitä"*, ja oletus heti perään:
+*"oletuksena taustakuva vaalealla ja tummalla taustalla pois päältä."* Ensimmäinen versio
+samana iltana oli tumman oma kytkin oletuksena päällä ja vaalea ilman kytkintä; se eli yhden
+commitin. Rivi on laiteosion Background-otsikon ensimmäinen, ja sumi-e on sen alla
+alakytkimenä, joka vaikuttaa vain kuvion ollessa päällä vaaleassa teemassa. Päätökset ja
+mittaukset: `docs/UI.md` › *Tumma teema sai kuvion*.
+
+**Kätisyys, 9.9.2026, ja se on ensimmäinen paikallinen kytkin joka kuvaa pelaajaa eikä
+sovellusta.** `handedness` (`HandednessStore`, oletus oikeakätinen) kertoo kummalla kädellä
+pelaaja siirtää nappuloita, ja **sivupaneeli menee vastakkaiselle puolelle**: oikeakätisellä
+vasemmalle, vasenkätisellä oikealle. Tommin päätös illalla: *"korjataan kaanoni, nimeä se
+kätisyydeksi"*.
+
+Kytkin korvaa 8.9.2026 tehdyn ratkaisun jossa paneelin puoli johdettiin sivuston `Home boards
+on left side` -kentästä (kenttä `7`). Peruste kumoutui käytössä: peilatessa siirtokäsi ei
+vaihdu, vain paneeli siirtyy, joten puoli riippuu kätisyydestä eikä laudan suunnasta.
+Todistus, kumoutumisen taulukko ja se miksi vasenkätisyys on sama korjaus eikä eri kysymys:
+`docs/UI.md` › *Puoli seuraa kätisyyttä*. Pelaajan oma kuvaus työnjaosta on `SUBSTANSSI.md`
+kohdassa 103.
+
+**Miksi sovelluksen oma eikä tilikenttä.** Kätisyys on pelaajan ja laitteen ominaisuus, ja
+sama tili voi olla auki selaimessa jossa paneelia ei ole lainkaan. Sivustolle ei siis ole
+mitään lähetettävää, ja tämä on samaa lajia kuin pystylukko: ei lähde koskaan verkkoon.
+
+**Pystytilan laudalla kytkin ei vaikuta mihinkään** (Tommin päätös 23.9.2026). Paneelia ei
+ole laudan sivulla, vaan kortit ja napit ovat laudan ylä- ja alapuolella koko leveydellä,
+joten kumpi tahansa peukalo yltää niihin. Selite ja App Help sanovat sen.
+
+**Oletus on oikeakätinen**, jolloin käytös on sama kuin ennen muutosta. Se ei ole kannanotto
+yleisyyteen vaan valinta joka pitää nykyisen käytöksen ennallaan niille jotka eivät kytkintä
+löydä; vasenkätisen on se löydettävä, ja se on tämän ratkaisun tunnustettu hinta.
+
+**Peilaus vapautui samalla.** `Home boards on left side` kääntää nyt laudan, pistenumerot ja
+lokerosarakkeen muttei paneelia, joten sen voi ottaa käyttöön ilman että sivupaneeli siirtyy
+siirtokäden alle. Juuri se hinta sai Tommin kytkemään peilauksen pois 9.9.2026 iltapäivällä.
+
+**Laudan pystytila, 23.9.2026.** `board_follows_device` (`BoardRotationStore`, **oletus
+pois**) antaa laudan seurata laitteen asentoa. Pois kytkettynä lauta on vaakaan kuten ennen.
+Päällä ollessaan lauta piirtyy pystyssä leveyden mittaan, ja sivupaneeli on sen alla. Rivi
+on samassa `Screen orientation` -ryhmässä kuin pystylukko, mutta kytkimet ovat toisistaan
+riippumattomia: pystylukko koskee vain lukuruutuja. Oletus on vaaka, koska pystyssä
+puhelimen nappula on noin 20 dp vaakalaudan 29 dp:n sijaan (Tommin päätös, `docs/UI.md` ›
+*Lauta pystyssä*). Ei lähde koskaan verkkoon.
+
+**Beaverin vahvistus 27.9.2026: yksi kytkin, oletus sivulta.** `Confirm Beaver`
+(`BeaverConfirmStore`, tiedosto `dg_beaver_confirm`, ryhmä *Money game*) lisää dialogin ennen
+money gamen `Beaver!`ia ja `Accept Beaver`ia. Syy on mitattu: sivu ei pyydä beaverille rastia
+eikä sillä ole beaverille asetusta (`raakasivut/sessio-27-9-money-peli/0079`), joten ilman
+kytkintä `Beaver!` lähtee yhdellä napautuksella. **Ensin tehtiin kolme kytkintä** (Accept,
+Beaver, Decline, Tommin tilaus *"luo myös omiin asetuksiin confirm accept beaver ja
+decline"*), ja Tommi karsi kaksi samana aamuna: *"sovelluksen omaksi asetukseksi tarvitaan
+vain confirm beaver - poista ne kaksi muuta, dailygammonin asetukset hoitaa ne"*.
+**Oletus kopioidaan kentästä `0`** (*"kopioi oletukseksi dailygammon asetukset
+double-vastaavuuksille"*), koska beaver on tuplaus. Kenttä luetaan samassa luvussa kuin
+lautakentät (`SiteBoardSettings.confirmDouble`) ja säilötään `dg_site_settings`iin. Oletus
+seuraa sivua niin kauan kuin kytkimeen ei ole koskettu, ja kosketus tallentaa laitteen oman
+arvon. Sivun rasti toimii kuten ennen, eikä `Verify Accept` -rasti vahvista beaveria
+(`cubeActionFor`, `VerifyBox.boxFor`, `CubeConfirmTest`). Ei lähde koskaan verkkoon.
+
+**Koko näyttö 30.9.2026: palkit piiloon koko sovelluksesta.** `Hide the status and navigation
+bars` (`FullScreenStore`, tiedosto `dg_full_screen`, ryhmä *Full screen* taitossa *Screen and
+lock*, **oletus pois**). Tommin tilaus: *"heille jotka haluaa pelata full screen ilman
+mobiililaitteiden palkkeja, ne saa kyllä tarvittaessa näkyviin"*. Laajuus ja pois-tila
+kysyttiin monivalintana. Tommi valitsi koko sovelluksen ja pois-tilaksi nykyisen
+automatiikan. Pois päältä mikään ei siis muutu: lautaruutu piilottaa palkit vain kun ne
+maksaisivat laudan kokoa (`DgBoard.barsAreFree`, 20.8.2026). Päällä piilotus ohittaa kaksi
+aiempaa rajausta käyttäjän omalla valinnalla, lukuruutujen rajauksen 8.8.2026 ja tabletin
+näkyvät palkit 20.8.2026. Piilotuksen omistaa silloin `MainActivity`, ja lautaruutu jättää
+oman piilotuksensa tekemättä, koska sen purku toisi palkit takaisin luetteloon palatessa.
+Palkit saa hetkeksi esiin reunapyyhkäisyllä (`Immersive.kt`). Ei lähde koskaan verkkoon, ja
+se kulkee asetustiedostossa (`SettingsTransfer`).
+
+## 4. Mikä vaihtuu tilan mukana ja mikä ei
+
+Yksi sääntö kattaa oletuslautakohdan avoimet kysymykset 1, 4 ja 5 (mitä *asetukset
+toteutuu* kattaa, koskevatko värisidonnaiset osat molempia tiloja, symmetriset lokerot):
+
+> **Sivustouskollisuus koskee vain sitä mitä sivuston asetus sanoo. Kaikki muu on sovelluksen
+> omaa ja pysyy molemmissa tiloissa samana.**
+
+**Tarkennus 13.9.2026 (Tommin päätös), kun kolmas tyyli tuli.** Sääntö koskee `SITE`n ja
+sovelluksen omien tyylien eroa, ei sovelluksen omien tyylien keskinäistä eroa. Sovelluksen omat
+tyylit (`X22`, `MONTE_CARLO_VARIANT`) saavat erota toisistaan myös huovan, kehyksen ja lokeron
+värissä, koska vihreä huopa on juuri se piirre joka tekee lähetyslaudasta tunnistettavan.
+`SITE` piirtää nämä yhä X-22:n väreillä, koska sivusto ei sano niistä mitään. Geometria pysyy
+kaikissa tyyleissä samana, ja sivupaneelin kortit, nappirivi ja muut sovelluksen omat pinnat
+pysyvät ominaan tyylistä riippumatta; vain lauta vaihtuu. `BoardLook` kantaa siis 13.9.2026
+alkaen myös huovan, kehyksen ja lokeron värit sekä roolivärit. Ulos kannettujen sarake
+(`trayColumn`) on samaa lajia: X-22:ssa ja `SITE`ssä huovan värinen kuten ennen, variantissa
+kotelon puuta, koska Tommin sana samana iltana oli *"bear-off-paneeli ei"* saa olla huovan
+värinen. **Puu on kehystä tummempaa 17.9.2026 alkaen** (Tommin havainto: *"nappilokerosta
+puuttuu reuna"*): kehyksen värisenä sarake sulautui kehykseen, jolloin pelialueen ja
+sarakkeen välinen kehyskaista ja kotelon ulkoreuna katosivat. X-22:n huovan värinen sarake
+saa reunansa siitä että molemmin puolin on kehyksen puuta, ja tummempi puu on sama mekanismi
+eri sävyllä (`MonteCarloVariant.TrayColumn`); `OFF`-lokero on sitä vielä tummempi syvennys.
+Keskikaista on huovan värinen kaikissa tyyleissä (`band`): variantissa ensin (Tommin päätös
+13.9.2026: *"keskikaista oli parempi huovan värisenä"*), X-22 14.9. ja `SITE` 16.9.2026.
+
+**Sivupaneelin tausta seuraa lautatyyliä 17.9.2026 alkaen** (Tommin päätös samana aamuna
+neljän kuorikokeilun jälkeen, kuvat `raakasivut/sessio-17-9-kuori/kokeilu-*.png`). Tämä on
+poikkeus 13.9. tarkennuksen sanaan *"vain lauta vaihtuu"*, ja se on rajattu: `PanelLook`
+kantaa paneelin taustan, korttien reunaviivan, hiljaisen tekstin ja kuution omistajan kehyksen.
+X-22 ja `SITE` pitävät nykyisen mustan (`Palette.PanelBg`) ja nykyiset värit, eli niissä
+mikään ei muutu. Monte Carlo variantti käyttää lokerosarakkeen puuta
+(`MonteCarloVariant.TrayColumn`), ja kolme väriä saa siinä vaaleamman sävyn kontrastin vuoksi
+(mitattu WCAG-suhteina puuta vasten: hiljainen teksti `B5A48C` 5,1, reunaviiva `8C7A64` 3,0,
+kuution kehys `CubeSoft` 7,3; vanhat sävyt olisivat olleet 3,8, 2,1 ja 2,0). Kortit pysyvät
+mustina, joten korttien sisällä värit ovat ennallaan kaikissa tyyleissä. Hylätyt vaihtoehdot:
+huovan vihreä (Tommi: *"vihreä sivupaneeli ei käy"*; kerma olisi ollut 4,2 ja muut alle 2,5)
+ja kehyksen puu `5A3D27` (vaaleampi, oranssi pip-teksti 4,2 ja punainen 2,7; Tommi valitsi
+tummemman). Muut ruudut (luettelo, asetukset, chat) eivät seuraa tyyliä, koska tyyli koskee
+lautaruutua.
+
+Sivusto sanoo kolme asiaa (`6`, `7`, `board`), joten tiloilla oli aluksi **kolme eroa**.
+**Yksi niistä poistui 9.9.2026**, ks. suunta alla.
+
+- **Nappuloiden ja kiilojen värit.** `X22`: kerma on kirjautunut pelaaja ja punainen
+  vastustaja, eli väri on rooli. `SITE`: värit tulevat skeemasta, eli väri on sivuston väri ja
+  rooli luetaan lokeroista ja paneeleista. Roolivärin menetys on tässä tilassa tarkoitus eikä
+  regressio, koska juuri se tekee sovelluksesta ja selaimesta rinnastettavia.
+- ~~**Suunta.**~~ **Ei enää ero, Tommin päätös 9.9.2026.** Kenttä `7` (`Home boards on left
+  side`) peilaa laudan ja siirtää sivupaneelin **molemmissa tiloissa**. Peilaus tehdään
+  **asetuksen perusteella**, ei sivun asettelusta päättelemällä, joten jäsennin saa pitää
+  normalisointinsa ja piirto saa oman tietonsa omasta lähteestään. `docs/UI.md`:n perustelu
+  *"peilaus olisi sen uudelleen päättelemistä minkä jäsennin hävittää"* koskee laudalta
+  päättelyä eikä tätä.
+
+  **Miksi kaanoni muuttui.** Aiempi muoto sanoi että `X22`-suunta on kiinteä, ja
+  `BoardLookTest` vartioi sitä nimenomaisella testillä. Kuoriproxylla mitattiin 9.9.2026 että
+  seuraus oli tämä: asetus luettiin oikein (säilössä luki `home_boards_left = true`) mutta se
+  ei tehnyt mitään, koska Tommin oma tyyli on `X22`. Sivupaneelin puoli oli kytketty samaan
+  lippuun 8.9.2026, joten myöskään paneeli ei liikkunut. Tommin sanat: *"sivupaneelin
+  liikkuvuus oli paha puutos"*. **Kiinteys koskee siis kiiloja ja värejä eli sitä miltä lauta
+  näyttää, ei sitä kummalla puolella pelaajan kotikenttä on**, koska jälkimmäinen on pelaajan
+  oma asetus sivustolla eikä lautatyylin ominaisuus.
+- **Pip-luvun näkyvyys.** Kenttä `6` päällä: sivustolla pip-lukua ei ole. Sovellus ei silti saa
+  piilottaa omaa vahtiaan, joten ehdotus on että **vahdin rivi jää ja vain muurin väliin
+  piirretty luku noudattaa asetusta**. Muuten sivustouskollisuus ostaisi itselleen sen
+  hiljaisuuden joka luvussa 2 kiellettiin.
+
+**Mikä ei vaihdu, ja miksi se on sama vastaus kolmeen kysymykseen.** Geometria pysyy: lokerot,
+paneelit, nappirivi, mitat ja kiilojen muoto. Symmetriset lokerot (DG Mobile -havainto
+24.8.2026) kuuluvat siis molempiin tiloihin, koska sivusto ei sano lokeroista mitään; kysymys
+niistä ei ole tilakysymys vaan asettelukysymys, ja se ratkeaa erikseen. Samasta syystä
+nappirivin kaista pysyy sovelluksen omana pintana molemmissa tiloissa, jolloin sitä vasten
+lasketut kontrastiluvut kelpaavat sellaisinaan eikä niitä tarvitse laskea uudelleen per tila.
+
+**Taustaväri (`color`) jää ulos, Tommin päätös 24.8.2026.** Sivustouskollisuus koskee lautaa,
+ja sovelluksen omat pinnat pysyvät ominaan. Vaihtoehto oli mitattu eikä makuasia: mukaan
+otettuna tila saisi kuusi mahdollista taustaa, ja kolme skeemaa kertaa kuusi taustaa on **18
+yhdistelmää** joiden kontrastia ei voi tarkistaa etukäteen yksi kerrallaan, vaan se olisi
+laskettava ajossa taustan kirkkaudesta. Se oli ainoa avoin kohta joka olisi kasvattanut työn
+kokoluokkaa, joten tämä päätös pitää työn väriarvojen vaihtona.
+
+Seuraus jonka pitää olla tiedossa: sovellus ja selain eivät ole taustaväriltään samat, jos
+pelaaja on valinnut jonkin muun kuin Classic Whiten. Rinnastettavuus koskee siis lautaa eikä
+ruutua kokonaisuutena.
+
+**Lomake sanoo tämän ääneen 25.9.2026 alkaen (Tommin päätös).** Background Color -kortit
+antoivat ymmärtää, että valinta näkyisi sovelluksessa. Ryhmä on nyt tavallinen valintalista,
+ja sen alla on rivi joka kertoo valinnan vaikuttavan vain selaimeen. Kenttä pysyy
+lomakkeessa ja lähtee joka lähetyksessä, koska puuttuva radioryhmä nollaisi tilin
+taustavärin (`SettingsUpdate.MissingRadioGroups`). Board Scheme -kortit piirretään samasta
+syystä sovelluksen omalle pinnalle eikä sivun taustavärille: ne näyttävät laudan sellaisena
+kuin sovellus sen piirtää.
+
+**Board Scheme -ryhmässä Miniä ei voi valita (Tommin päätös 25.9.2026).** Sovellus ei näytä
+Mini-lautaa (`docs/AVOIMET.md`, rajaus 13.8.2026), joten valinta sovelluksesta rikkoisi
+laudan. Esto koskee vain valitsemista: sivustolla jo asetettu Mini näkyy valittuna ja lähtee
+lomakkeen mukana muuttumattomana, koska koko lomake lähetetään aina.
+
+**Neljä puulautaa tulivat 30.9.2026** (Tommi Sage Pron laudasta: *"nätti on ja puuvärejä ei
+vielä dg android app sisällä"*). Mockupin neljä vaihtoehtoa koottiin oikeista puusarjoista eikä
+Sagen laudasta, ja Tommi valitsi kaikki omiksi tyyleikseen: `MAPLE` (vaahterakenttä,
+pähkinäkehys), `WALNUT` (tumma pähkinä, vaahtera- ja eebenpuu-upotus), `OAK_LEATHER` (tammikehys,
+tasainen nahkakenttä) ja `OLIVE` (oliivipuu, vihreät ja punaruskeat kiilat). Roolivärit kuten
+X-22: oma nappula vaalea, vastustajan tumma vaalealla renkaalla. Syy piirretään ohuina
+aaltoilevina viivoina huovalle, keskikaistalle, kehykselle ja muurille (`WoodGrain.kt`), ja
+kuvio lasketaan kiinteästä siemenestä, joten se ei värise. Kiilat ovat tasaisia. Paneeli on
+lokerosarakkeen puuta kuten variantissa (`PanelLook.wood`). Satunnaislaudan oletusjoukko ei
+muuttunut: puulaudat tulevat siihen rastilla. Värit: `DgBoard.Wood`.
+
+**Teema kokoaa sovelluksen omat valinnat yhdeksi maailmaksi (Tommin tilaus 22.9.2026).**
+Laiteosion ylimpänä on `Theme`: `Plain` on entinen käytös ja oletus, `Deco` on mustaa emalia,
+kultaa ja pieniä rattaita. Ensimmäinen versio kattaa kolme palaa (Tommin kuittaus samana
+iltana): sovelluksen värit ja otsikkokirjasimen (`DecoColorScheme`, aina tumma), laudan
+(`BoardStyle.DECO`: kultaiset ja mustan emalin kiilat jadehuovalla, pähkinäkehys, norsunluu ja
+musta nappula kultarenkaalla, musta paneeli) sekä odotuksen ilmaisimen deco-viimeistelyn.
+Noppia, kuutiota ja taustakuviota teema ei vielä koske.
+
+**Viimeistelyn paljaat muodot saivat vaaleaan tilaan tummemman paletin 27.9.2026** (Tommi:
+*"deco odotus-animaatiot ovat valjuja vaaleassa tilassa"*). Ouroboros, ääretön-merkki ja
+tiimalasi piirtyvät ilman emalipohjaa, ja kerma ja kulta hukkuivat vaalealle pohjalle.
+Laitekaappauksista kahdesta vaihtoehdosta (emalipohja tai tummempi paletti) Tommi valitsi
+paletin: vaaleassa kulta on tumma pronssi ja kerma muste (`BusyDeco.kt`, `decoBare`).
+
+Teema **kirjoittaa** laudan ja viimeistelyn eikä lukitse niitä: ne jäävät omiksi
+asetuksikseen hienosäätöä varten. Paluu `Plain`iin palauttaa sen laudan ja viimeistelyn jotka
+olivat ennen Decoa, paitsi jos pelaaja on sillä välin vaihtanut laudan itse pois Decosta.
+Deco-lauta on roolivärinen kuten X-22, joten sivuston värejä se ei noudata. Toinen teema on
+työnimeltään Portal (Stargate-innoitteinen; sarjan nimeä ja glyfejä ei käytetä).
+
+### Vaalea Deco (suunniteltu ja toteutettu 26.9.2026)
+
+Tommin tilaus: *"suunnitellaan art decolle vaalea vastine teemaksi"*. Kolme valintaa samana
+iltana mockupeista ja monivalinnoista:
+
+1. **Paletti A, norsunluu ja messinki** (B samppanja ja jade sekä C marmori ja musta lakka
+   hylättiin). Tämä on tumman Decon suora käänteinen: tausta on norsunluuta, teksti lähes
+   mustaa ja aksentti tummaa messinkiä. Napit pysyvät mustana lakkana kultatekstillä, joten
+   teema tunnistetaan Decoksi.
+2. **Deco seuraa laitetta.** Themessä on yhä yksi Deco-kortti. Laitteen vaalea tila antaa
+   vaalean Decon ja tumma tila tumman, kuten Plain tekee jo nyt. Kolmatta teemakorttia ei tule.
+3. **Lauta vaalenee, ympäristö pysyy mustana.** Huopa, kiilat, nappulat ja kehys vaalenevat.
+   Lautaruudun tausta, pelaajakortit ja napit pysyvät mustana emalina, sillä lautaruutu on
+   kiinteästä `DgBoard.Palette`sta tumma kaikissa teemoissa. Koko ruudun vaalennus hylättiin
+   tässä vaiheessa, koska se muuttaisi kaikki kiinteät Palette-viittaukset teemariippuviksi ja
+   koskisi myös Plainia. **Kumottu 27.9.2026**, ks. alla Vaalea lautaruutu.
+
+**Lähtöarvot ja mitatut kontrastit** (WCAG, norsunluu `#F6EFE0` / luettelorivi `#EDE3CC`):
+teksti `#2A241A` 13,4 / 12,1, messinki `#7A5C14` 5,4 / 4,9, hiljainen `#6B5D40` 5,6 / 5,0 ja
+jade `#1F6B5C` (otteluluettelon `Grace`, tertiary kuten tummassa) 5,5 / 5,0. Tumman Decon
+kulta `#D4AF37` jää tekstinä 1,8:aan, joten vaaleassa se on vain koriste: reunus `#C9A14A`
+(2,1) on viiva eikä teksti. Napin kulta `#E9C766` mustalla lakalla `#1B1A17` on 10,6.
+Messinki rivin päällä on 4,9, eli vain niukasti yli AA-rajan 4,5, joten sen käyttö pienessä
+tekstissä luetaan laitteelta.
+
+**Toteutuksen palat**, koodista luettuna 26.9.2026:
+
+- `dgDark()` (`DgTheme.kt`) lakkaa sanomasta että Deco on aina tumma. Deco on silloin tumma
+  vain laitteen tummassa tilassa, ja kaikki jotka lukevat `dgDark()`ia seuraavat mukana.
+- Uusi `DecoLightColorScheme` (`lightColorScheme`) yllä olevilla arvoilla, ja teeman valinta
+  `deco && dark -> DecoColorScheme`, `deco -> DecoLightColorScheme`. Typografia (Poiret One)
+  on sama molemmissa.
+- `tabLabelColor` käyttää Decossa kultaa (`DecoColorScheme.primary`), ja vaaleassa sen on
+  oltava messinkiä.
+- Uusi `BoardStyle` vaalealle Deco-laudalle ja `DgBoard.DecoLight`-paletti: norsunluuhuopa
+  `#E7DCC2`, kulta- ja lakkakiilat, pähkinäkehys, nappulat kuten mockupissa. Teema kirjoittaa
+  laudan samalla tavalla kuin tumma Deco kirjoittaa omansa. Laitteen tilan vaihtuessa kesken
+  käytön lauta vaihtuu tyylien välillä, ja paluu Plainiin palauttaa edeltävän laudan kuten nyt.
+- `PanelLook.DECO`, `CubeLook.DECO`, `DecoButtons.kt` ja `BusyDeco.kt` pysyvät tummina, koska
+  ne piirtyvät mustaan ympäristöön (valinta 3).
+- Asetuskortin esikatselu näyttää laitteen tilan mukaisen Decon. Help (`help_a_settings`)
+  kertoo, että Deco seuraa laitteen vaaleaa ja tummaa tilaa, ja `docs/OHJE.md` päivitetään.
+- Todennus laitteella molemmissa tiloissa: luettelo, asetukset, lauta ja keskustelu, sekä
+  tilan vaihto kesken ottelun.
+
+**Toteutus poikkesi suunnitelmasta yhdessä kohdassa:** uutta `BoardStyle`a ei tullut. Tallennettu
+tyyli on yhä `DECO`, ja `BoardLook.of` saa lipun `decoLight`, jonka kutsuja lukee
+`decoLightBoard()`ista (teema on Deco ja laite vaalea). Syy: vaaleus on laitteen tila eikä
+pelaajan valinta, joten sen tallentaminen olisi vaatinut tyylin uudelleenkirjoituksen joka
+tilanvaihdossa, ja uusi arvo olisi ilmestynyt Board look -kortiksi. Seuraus on sama kuin
+suunnitelmassa: tilan vaihto vaihtaa laudan heti, ja Plain palauttaa edeltävän laudan.
+Plain-teemassa valittu Deco-lauta pysyy tummana, koska vaalea lauta kuuluu teemaan.
+
+Laudan arvot (`DgBoard.DecoLight`): huopa `#E7DCC2`, kiilat `#C9A14A` ja `#1B1A17`, kehys
+`#8A6440`, lokero `#6E4D30`, oma nappula `#FFFBF2` ja vastustajan `#1B1A17`, rengas messinkiä
+`#9C7A2A`. Oma nappula on huopaa vaaleampi, joten sen reunan kantaa rengas.
+
+Laitteella 26.9.2026 (tabletti, vaalea tila): asetusten teema- ja lautakortit sekä luettelo
+kaapattu. Ottelua ei avattu, koska avaaminen kuluttaa, eikä laitteen tummaa tilaa vaihdettu.
+
+### Ottelukohtainen lauta (toteutettu 27.9.2026)
+
+Tommin tilaus: *"ottelun vaihtuessa vaihtuva lauta voisi parantaa pelisession immersiota,
+toteuta sellainen asetus joka arpoo sovelluksen lautoja"*. Neljä valintaa monivalinnoista ja
+mockupista samana yönä:
+
+1. **Ottelulla on oma lauta.** Valinta lasketaan ottelun numerosta eikä arvota, joten sama
+   ottelu näyttää aina samalta. Peräkkäisillä otteluilla voi olla sama lauta. Hylätyt: uusi
+   arvonta joka vaihdossa ja uusi arvonta joka avauksella.
+2. **Pelaaja valitsee arvonnan laudat.** Oletusjoukko on sovelluksen omat kolme (X-22,
+   Monte Carlo variant ja Deco), ja sivustouskollisen saa rastilla mukaan.
+3. **Oma kytkin** `A different board each match` korttien alla eikä viides kortti. Valittu
+   lauta jää talteen ja palaa kun kytkin sammuu.
+4. **Kortit saavat rastit** (mockupin A). Kytkin päällä radiot vaihtuvat rasteiksi, ja
+   viimeinen rasti ei poistu, koska tyhjästä joukosta ei arvota. Hylätty B oli nimirivi
+   kytkimen alla.
+
+**Toteutus:** `BoardShuffle.kt` (säilö ja `boardForMatch`) sekä `MainActivity`, joka antaa
+lautaruudulle ottelun laudan tallennetun tyylin sijaan. Ottelu pidetään muistissa lataus- ja
+virhetilojen yli, jotta paneeli ei välähdä tallennetun laudan väreissä. Paneeli, kuutio ja
+vaalean Decon sääntö seuraavat arvottua lautaa samoin kuin valittua. Teema kirjoittaa yhä
+Board lookin, mutta kytkimen ollessa päällä ottelu piirtyy joukon laudalla.
+
+### Vaalea lautaruutu (päätetty 27.9.2026)
+
+Tommin havainto: *"tumman moodin kanssa näyttää hyvältä ja nyt tuntuu siltä että vaalealle
+moodille pitäisi lisätä peliin vaalea tausta"*. Tämä kumoaa Vaalean Decon valinnan 3, jonka
+mukaan lautaruudun ympäristö pysyi mustana. Kaksi valintaa samana päivänä monivalinnasta ja
+tabletin mittakaavaan piirretyistä luonnoksista (`docs/kuvat/vaalea-lautaruutu-deco.png` ja
+`vaalea-lautaruutu-plain.png`, asema kaappauksesta `katko-vaaka.png`):
+
+1. **Koko näyttö vaalenee:** tausta, pelaajakortit, ottelukortti, avattavat ja napit. Hylätyt
+   olivat pelkkä tausta (kortit mustina saarekkeina) sekä tausta ja kortit ilman nappeja.
+2. **Molemmat teemat.** Deco saa norsunluun, Plain luettelon lämpimän valkoisen. Tumma tila
+   pysyy ennallaan.
+
+**Mikä vaalenee ja mikä ei.** Ympäristö seuraa vaaleassa tilassa **teemaa eikä lautaa**:
+kaikki Plainin laudat (X-22, Monte Carlo variant, sivustouskollinen, Plainissa valittu Deco)
+saavat saman vaalean paneelin. Tummassa tilassa paneeli seuraa lautaa kuten ennen. Itse lauta
+ei muutu: X-22:n musta huopa jää vaaleaan kehykseen tummana saarena, ja vaalean Decon lauta on
+jo vaalea. Laudan päällä piirtyvät asiat (lokero, nopat, kuutio, nappulat) seuraavat lautaa
+kuten ennenkin.
+
+**Arvot luonnoksesta:**
+
+| Rooli | Vaalea Deco | Vaalea Plain |
+|---|---|---|
+| Tausta | `#F6EFE0` | `#FBF8F4` |
+| Kortin täyttö | `#EDE3CC` | `#F1EBE4` |
+| Kortin reuna | `#C9A14A` | `#B8AA98` |
+| Teksti | `#2A241A` | `#1E1A16` |
+| Hiljainen teksti | `#6B5D40` | `#4C443B` |
+| Aksentti (pipit, linkit) | `#7A5C14` | `#6B5844` |
+| Ensisijainen nappi | lakka `#1B1A17`, kulta `#E9C766` | `#6B5844`, `#FBF8F4` |
+| Ääriviivanappi | `#6B5D40` | `#4C443B` |
+
+Aksentti on kummassakin teeman oma eikä tumman tilan oranssi, joka jäisi vaalealla alle
+AA-rajan. Pelaajan nimen Rarity-väri luetaan vaalealla sävyllä. Järjestelmäpalkin ikonit
+tummuvat, koska tausta on vaalea.
+
+**Toteutus:** `PanelLook` saa tekstiroolit (teksti, toissijainen, hiljainen, aksentti) ja
+nappiroolit, ja `PanelLook.of` ottaa laitteen tilan ja teeman. Paneelissa piirtyvät
+`Palette.TextPrimary`-, `TextSecondary`- ja `Accent`-viittaukset luetaan `LocalPanelLook`ista.
+Laudan sisäiset viittaukset jäävät `Palette`en.
+
+**Todennettu laitteella 27.9.2026** kuoriproxylla (tabletti pystyssä, vaalea tila, sivut
+`sessio-27-9-yo`:n `0081` ja `0087`, airlock 503). Vaalea Deco ja Plain molemmat
+siirtovuorossa ja paikallisen siirron jälkeen, jolloin `Submit Move` ja `Undo Move` näkyvät.
+Plainissa ottelun arvottu lauta oli Deco, joka piirtyi tummana vaalean ympäristön keskellä.
+Järjestelmäpalkin ikonit olivat tummat. Kaappaukset `raakasivut/sessio-27-9-yo/kehykset/
+lautaruutu-vaalea-deco.png` ja `-plain.png`. Tabletin teema palautettiin Decoksi ja
+asetukset luettiin samoiksi kuin ennen. Vaakatilaa ja laitteen tummaa tilaa ei ajettu;
+tumma polku on koodissa ennallaan (`PanelLook.of(style)`).
+
+## 5. Kirjoittava asetusnäkymä
+
+Kirjoittavalta ruudulta vaadittiin vastaus neljään kysymykseen ennen kuin nappia lisätään
+(uskollisuuden todistus, lähetetäänkö koko lomake, miten epäonnistuminen näytetään, otetaanko
+lähtötila talteen). Vastaukset:
+
+**Uskollisuus todistetaan kiertokokeella, ja kiertokoe on jo ajettu oikeaa tiliä vasten.**
+`core-net/src/test/kotlin/fi/tommi/dg/net/LiveSettings.kt` sisältää `writeSettings`in ja
+`SettingsRiskCaptureLiveTest` sen ympärille rakennetun `applyAndVerify`n, joka lähettää
+muutoksen ja **lukee asetussivun uudestaan** ennen kuin jatkaa. Sitä ajettiin 3.8.2026
+neljästi peräkkäin, ja `finally`-lohko palautti alkutilan ja vertasi sen kenttä kentältä
+lähtötilaan. Kirjoittava toteutus ei siis ole uusi kyky vaan olemassa olevan siirto
+testilähteestä tuotantoon.
+
+Siirron ehto: **yksi kopio pysyy yhtenä kopiona.** `LiveSettings` sanoo itse olevansa
+tarkoituksella yksi toteutus, ja siirron jälkeen live-testin on kutsuttava tuotantokoodia eikä
+säilytettävä omaansa. Kaksi rinnakkaista lähetintä samalle lomakkeelle olisi juuri se riski
+jonka `SettingsParser` poisti.
+
+**Lähetetään aina koko lomake.** Osittaista lähetystä ei ole olemassa: rastittamaton ruutu ei
+lähde mukana lainkaan, joten palvelin ei erota kohtia *"tätä ei muutettu"* ja *"tämä otettiin
+pois"*. `writeSettings` vartioi tämän jo kahdella tarkistuksella, jotka molemmat pysäyttävät
+ennen verkkoa: valinnaton radioryhmä ja tuntematon valintaruutu.
+
+**Kolmas vartio on lisättävä, koska sitä ei ole.** Lähetys saa käyttää vain sitä kenttäjoukkoa
+joka luettiin, ja lukemisen ja lähettämisen välissä sivu on voinut muuttua. Ehdotus:
+lähetykseen liitetään sen sivun kenttänimet joilta ruutu piirrettiin, ja jos lähetystä
+edeltävä luku antaa eri joukon, lähetys ei lähde vaan ruutu pyytää päivitystä. Sivuston kentät
+ovat paljaita numeroita, joten renumerointi osuisi muuten hiljaa väärään ruutuun, ja koska
+lähetys koskee koko lomaketta, yksi väärä ruutu on kaksi väärää asetusta.
+
+**Siirto tehty 25.8.2026, ja vartioita on neljä eikä kolme.** Kokoaminen asuu nyt
+`core-domain`issa (`SettingsPage.update`), ja `LiveSettings.writeSettings` on sen kuori.
+Sijainti on osa taetta: `FormSubmission`in konstruktori on `core-domain`in sisäinen, joten
+asetuslähetyksen voi tuottaa vain tuo funktio, samalla tavalla kuin lautasivun napin voi
+tuottaa vain `BoardForm.press`. Vartiot pysäyttävät ennen verkkoa tässä järjestyksessä:
+kenttäjoukko muuttunut, radioryhmä ilman valintaa, tuntematon radioryhmä, tuntematon
+valintaruutu.
+
+**Neljäs vartio on lisäys tähän designiin eikä sen toteutus.** `UnknownRadioGroups` on
+`UnknownToggles`in pari toisessa kenttätyypissä: ilman sitä ryhmänimi jota lomakkeella ei ole
+lähtisi mukana ylimääräisenä kenttänä, eikä kutsupaikka saisi tietää osoittaneensa asetukseen
+jota ei ole. Vika on samaa lajia kuin ne kolme jotka design nimesi, mutta se on kirjattu
+erikseen koska sitä ei pyydetty.
+
+**Järjestys on osa turvaa.** Kenttäjoukon vertailu on ensimmäisenä siksi, että kaikki muut
+vartiot mittaavat annettua tilaa lomaketta vasten. Väärää lomaketta vasten mitattu tulos on
+oikean näköinen mutta väärä, eli tasan se vikamuoto jota nämä vartiot ovat vastassa.
+Vertailu koskee joukkoa eikä järjestystä, koska ryhmien järjestys on sivun järjestys eikä
+sopimus.
+
+**Metodi luetaan lomakkeelta samalla kertaa.** `SettingsPage` kantaa nyt lomakkeen oman
+`method`in, ja se on POST toisin kuin lautasivun toimintolomakkeet. Itse valittu metodi
+lähettäisi kentät paikkaan josta palvelin ei niitä lue, eikä se olisi virhe vaan asetus joka
+näyttää tallentuvan muttei tallennu. Sama sääntö kuin lautasivulla 22.8.2026.
+
+**Epäonnistunut lähetys näytetään dialogina, ja ruudun tila jää ennalleen.** Sama muoto kuin
+laudalla 24.8.2026 (*epäonnistunut teko säilyttää laudan: dialogi kertoo tilanteen, ei
+pollausta*). Kolme lopputulosta joilla on eri teksti: lähetys ei lähtenyt (verkko), lähetys
+lähti mutta paluuluku ei täsmää (vaarallisin, ja ainoa jossa käyttäjää pyydetään tarkistamaan
+selaimella), istunto vanheni. Vasta täsmäävä paluuluku muuttaa ruudun näyttämän tilan.
+
+**Lähtötila otetaan talteen, ja se on tämän ruudun halvin vakuutus.** Ensimmäinen onnistunut
+luku ennen ensimmäistä kirjoitusta säilötään laitteelle sellaisenaan, sen päivän kanssa jona
+se luettiin, eikä sitä ylikirjoiteta myöhemmillä luvuilla. Ruudulle tulee toiminto joka
+palauttaa sen. Tämä vastaa suoraan siihen lauseeseen jonka vuoksi ruutu oli lukutilassa:
+alkuperäistä tilaa ei ollut enää missään. Nyt se on yhdessä paikassa.
+
+**Mimikointi tarkoittaa sivuston omaa rakennetta ja sanastoa.** Ryhmät sivun järjestyksessä,
+otsikot sivun `<H4>`-teksteistä, selitteet sivun englannista, lähetysnappi sivun omalla
+tekstillä `Update Preferences`. Käännöksiä ei tehdä, koska käyttäjä menee sivustolle etsimään
+samaa asetusta samalla nimellä. Muutokset pidetään paikallisina siihen asti että nappia
+painetaan, ja napin vieressä sanotaan monta asetusta on muuttumassa, koska yhden ruudun
+raksitus lähettää silti kaikki yksitoista kenttää.
+
+**Salasana- ja profiililomakkeisiin ei kosketa.** Sivulla on kolme lomaketta
+(`/bg/profile/pw`, `/bg/profile/pub`, `/bg/profile/pref`) eikä niitä erota id tai class.
+Jäsennin rajaa jo `action`iin, ja sama rajaus on lähetyksen ainoa sallittu kohde.
+
+**Rajaus sanotaan ruudulla (Tommin päätös 22.9.2026).** Lomakkeen yllä on rivi joka kertoo
+että `Change Password` ja `Public Profile` jäävät sivustolle, ja sen napautus avaa
+`/bg/profile`-sivun laitteen selaimessa (`SiteOnlyNote`). Rajaus itse ei muuttunut. Perusteet
+ovat kolme: teot ovat harvinaisia, salasanan vaihto sovelluksessa vaatisi tallennetun
+tunnuksen vaihtoa samassa teossa, jotta hiljainen istunnon uusiminen ei lukitse sovellusta
+ulos, ja lomake avaisi `docs/KAUPPA.md`:n data safety -vastaukset uudelleen. Selaimessa tehty
+salasanan vaihto johtaa sovelluksessa yhteen uuteen kirjautumiseen.
+
+## 6. Ratkenneet ja avoimet kohdat
+
+Kaikki viisi kohtaa ratkesivat 24.8.2026. Neljä Tommin kuittauksella ja viides mittauksella,
+jonka kohdan D mittaus synnytti.
+
+**A. Taustaväri jää ulos, ratkennut 24.8.2026.** Ks. luku 4.
+
+**B. Haku joka avauksella, ratkennut 24.8.2026.** Ankkuri on tunnistautuminen ja lukon
+ollessa pois sama kohta käynnistystä. Tarkennus oli tarpeen, koska tunnistautuminen toistuu
+joka käynnistyksellä mutta kirjautuminen tapahtuu kerran tunnusten syöttöä kohti, eivätkä ne
+ole saman tahtisia. Ks. luku 2 ja sen kolme ehtoa.
+
+**C. Kaikki yksitoista kenttää ovat muokattavissa, ratkennut 24.8.2026.** Ruutu on sivuston
+lomake eikä sen puolikas. Koko lomake lähtee joka tapauksessa, joten rajaus olisi koskenut
+vain sitä mitä käyttäjä voi muuttaa, ei sitä mitä lähtee. Kentät `4` ja `5` muuttavat siis
+`/bg/nextgamen` käyttäytymistä käyttäjän omalla valinnalla. Tästä seuraa vaatimus ruudulle:
+ne kaksi kenttää koskevat sitä kuluttavaa reittiä joka on sovelluksen ykkösominaisuuden ehto,
+ja se on sanottava niiden vieressä samalla tavalla kuin `messages_queue_explain` sanoo sen
+avausnapin vieressä. Manuaali ei ole näkyvissä sillä hetkellä kun ruutua raksitetaan.
+
+**D. Kenttä `3` mitattiin ennen koodausta, Tommin päätös 24.8.2026.** Mittaus tehtiin samana
+päivänä ja se muutti työjärjestystä: `parsePlayers` on korjattava ennen lautatiloja, koska
+ilman linkkiä se palauttaa tyhjän listan. Ks. luku 1 ja `docs/KOHDE.md`.
+
+**E. Yhdistelmä mitattu, ratkennut 24.8.2026.** Korjaus tehtiin ensin Tommin päätöksellä ja
+mittaus heti perään. Oletus piti: `score:` on paikallaan myös ilman pip-riviä. Ks. luku 1.
+
+## 7. Todennussuunnitelma
+
+Järjestys on sama kuin riskin järjestys, eli kirjoitus todennetaan ennen kuin se on ruudulla
+saatavilla.
+
+0. ~~`parsePlayers` korjattuna niin että paneelit löytyvät ilman pelaajanimen linkkiä, ja
+   yhdistelmä `3` pois ja `6` pois mitattuna.~~ **Tehty 24.8.2026**,
+   `BoardParserPlayerLinksTest` ja `PlayerNameLinksCaptureLiveTest`.
+1. ~~`SettingsParserTest` ja uusi lähetyksen kokoamisen testi fixturea vasten, ilman
+   verkkoa.~~ **Tehty 25.8.2026**, kaksi testiä eikä yksi: `SettingsUpdateTest`
+   (`core-domain`, vartiot käsin rakennetulla sivulla) ja `SettingsUpdateFixtureTest`
+   (`core-scrape`, koko ketju kaapatulta sivulta). Jako on tarkoituksellinen: käsin
+   rakennettu sivu ei voi paljastaa jäsentimen ja kokoajan välistä eroa, koska se on
+   kirjoitettu molempia varten.
+2. ~~Kiertokoe live-ajona: luettu tila lähetettynä takaisin tuottaa saman sivun kenttä
+   kentältä. Tämä on `applyAndVerify` nykyisessä muodossaan, nyt tuotantokoodia kutsuen.~~
+   **Ajettu 25.8.2026**, oma testi `SettingsRoundTripLiveTest`. Ennen ja jälkeen: rastit
+   `[0, 1, 3, 4, 5]`, radiot `{order=0, color=0, board=1}`, metodi POST, kenttäjoukko sama.
+
+   **Oma testi eikä riskitestin osa, ja ero koskee riskiä.** `SettingsRiskCaptureLiveTest`
+   hakee lisäksi lautasivun neljästi, ja lautasivun lukeminen lukee myös keskustelun.
+   Live-testi ei arkistoi mitään, joten se veisi mahdollisen viestin sivustolta eikä
+   mihinkään. Kiertokoe ei tarvitse lautaa lainkaan.
+
+   Tämä on ainoa live-testi repossa ilman palautuslohkoa, ja syy on että lähetettävä tila on
+   täsmälleen luettu tila: palautettavaa ei synny edes keskeytyksessä.
+3. ~~Kenttä `3` mitattuna samalla koejärjestelyllä.~~ **Tehty 24.8.2026**, ja se siirsi
+   `parsePlayers`in korjauksen tämän listan ensimmäiseksi kohdaksi.
+4. ~~Laiteajo: molemmat lautatilat samasta ottelusta, ja sivustouskollinen tila rinnakkain
+   selaimen kanssa. Tämä on se vertailu jota varten koko tila on olemassa, eikä sitä voi
+   todentaa ilman Tommin silmiä.~~ **Ajettu 25.8.2026** (SM-T970, ottelu Nine Lives #4293):
+   sivustouskollinen tila piirtyi Blue/White-väreillä ja X-22 omillaan samasta asemasta,
+   ja Tommi kuittasi näkymät. Peilaus todennettiin yksikkötestein ja fixturesta
+   (`move_board_vasen.html`), ei laitteella, koska laitetodennus vaatisi asetusmuutoksen
+   Tommin tilillä.
+
+Toteutuksen kotipaikat: `BoardLook` (`app/ui/BoardLook.kt`, tilan ratkaisu ja
+skeemavärit), `SiteSettingsStore` ja `SiteSettingsRefresher` (`app/session/`, säilö ja
+avaushaku), `BoardStyleStore` (paikallinen valinta), `SettingsPage.siteBoardSettings`
+(`core-domain`, kenttien tulkinta selitteistä). Tämä dokumentti jää designin
+perustelumuistioksi; koodin ja tämän erotessa koodi ja sen testit voittavat.
+
+**Paikallinen kytkin 26.9.2026: rarity-värit.** `rarity` (`RarityStore`, **oletus päällä**,
+kuudennen arvon toinen nimetty poikkeus `docs/ARVOT.md`:ssä) kattaa pelaajanimien värin
+ratingin mukaan kaikissa näkymissä ja Inboxin viestimäärän värin, sekä 2.10.2026 alkaen
+turnausten nimet kierrosmäärän mukaan (`docs/UI.md` › *Turnausten rarity-värit*). Pois
+kytkettynä `MainActivity` tarjoaa rating-hauiksi null-funktiot ja kierrosmäärille tyhjän
+varaston, joten yksikään ruutu ei tarvitse omaa ehtoaan. Ks. `docs/UI.md` › *Rarity-värit
+kaikkiin pelaajanimiin ja kytkin*.

@@ -1,0 +1,1855 @@
+package fi.tommi.dg.app
+
+import android.content.Intent
+import android.net.Uri
+import android.content.res.Configuration
+import android.graphics.Color
+import android.os.Build
+import android.os.Bundle
+import java.time.Duration
+import java.time.Instant
+import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import android.content.pm.ActivityInfo
+import androidx.activity.compose.setContent
+import androidx.activity.SystemBarStyle
+import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.isImeVisible
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.platform.LocalConfiguration
+import kotlinx.coroutines.delay
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.fragment.app.FragmentActivity
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavHostController
+import androidx.navigation.NavType
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
+import fi.tommi.dg.app.session.SettingsTransfer
+import fi.tommi.dg.app.session.appLockAvailable
+import fi.tommi.dg.app.session.requestAppLockAuthentication
+import fi.tommi.dg.app.ui.AppLockScreen
+import fi.tommi.dg.app.ui.ArchiveEdgeState
+import fi.tommi.dg.app.ui.ArchiveExportFilename
+import fi.tommi.dg.app.ui.BackupUiState
+import fi.tommi.dg.app.ui.BackupStatus
+import fi.tommi.dg.app.ui.BoardRoute
+import fi.tommi.dg.app.ui.PageRoute
+import fi.tommi.dg.app.ui.PageScreen
+import fi.tommi.dg.app.ui.PageUiState
+import fi.tommi.dg.app.ui.PageViewModel
+import fi.tommi.dg.app.ui.SessionExpiredState
+import fi.tommi.dg.app.ui.BoardScreen
+import fi.tommi.dg.app.ui.MatchReplyUi
+import fi.tommi.dg.app.ui.BoardUiState
+import fi.tommi.dg.app.ui.NotABoardKind
+import fi.tommi.dg.app.ui.BoardViewModel
+import fi.tommi.dg.app.ui.DISCUSSION_ROUTE
+import fi.tommi.dg.app.ui.DgTab
+import fi.tommi.dg.app.ui.ExportUiState
+import fi.tommi.dg.app.ui.DgTabAccent
+import fi.tommi.dg.app.ui.DgTabRow
+import fi.tommi.dg.app.ui.DgTheme
+import fi.tommi.dg.app.session.AppTheme
+import fi.tommi.dg.app.session.BoardStyle
+import fi.tommi.dg.app.ui.LocalBusyDeco
+import fi.tommi.dg.app.ui.LocalBusyStyle
+import fi.tommi.dg.app.ui.LocalPlayerRating
+import fi.tommi.dg.app.ui.LocalPlayerRatingByName
+import fi.tommi.dg.app.ui.LocalRarityOn
+import fi.tommi.dg.app.ui.LocalTournamentRounds
+import fi.tommi.dg.app.session.TournamentRoundsStore
+import fi.tommi.dg.app.ui.DiscussionScreen
+import fi.tommi.dg.app.ui.DropsScreen
+import fi.tommi.dg.app.ui.DiscussionUiState
+import fi.tommi.dg.app.ui.DiscussionViewModel
+import fi.tommi.dg.app.ui.HelpScreen
+import fi.tommi.dg.app.ui.HideSystemBarsWhileVisible
+import fi.tommi.dg.app.ui.INFO_ROUTE
+import fi.tommi.dg.app.ui.InfoScreen
+import fi.tommi.dg.app.ui.InfoSearchViewModel
+import fi.tommi.dg.app.ui.InfoSection
+import fi.tommi.dg.app.ui.LOUNGE_ROUTE
+import fi.tommi.dg.app.ui.LoungeScreen
+import fi.tommi.dg.app.ui.MatchesSegment
+import fi.tommi.dg.app.ui.OwnTournamentsUiState
+import fi.tommi.dg.app.ui.OwnTournamentsViewModel
+import fi.tommi.dg.app.ui.LoungeUiState
+import fi.tommi.dg.app.ui.LoungeViewModel
+import fi.tommi.dg.app.ui.LocalDgWallpaper
+import fi.tommi.dg.app.ui.LocalReportTyping
+import fi.tommi.dg.app.ui.rememberDgWallpaper
+import fi.tommi.dg.app.ui.dgScreenBackground
+import kotlin.random.Random
+import fi.tommi.dg.app.ui.tabFor
+import fi.tommi.dg.app.ui.MESSAGES_ROUTE
+import fi.tommi.dg.app.ui.MARKS_ROUTE
+import fi.tommi.dg.app.ui.MarksScreen
+import fi.tommi.dg.app.ui.MessagesScreen
+import fi.tommi.dg.app.ui.InvitationActionUiState
+import fi.tommi.dg.app.ui.MessagesViewModel
+import fi.tommi.dg.app.ui.QueueUiState
+import fi.tommi.dg.app.ui.SettingsScreen
+import fi.tommi.dg.app.ui.SettingsUiState
+import fi.tommi.dg.app.ui.SettingsViewModel
+import fi.tommi.dg.app.ui.SETTINGS_ROUTE
+import fi.tommi.dg.app.ui.TOP_ROUTE
+import fi.tommi.dg.app.ui.TopScreen
+import fi.tommi.dg.app.ui.TopUiState
+import fi.tommi.dg.app.ui.tabRowInsets
+import fi.tommi.dg.app.ui.TopViewModel
+import fi.tommi.dg.domain.MatchId
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+
+/**
+ * `FragmentActivity` eikä `ComponentActivity`: `BiometricPrompt` vaatii sen.
+ */
+class MainActivity : FragmentActivity() {
+
+    /**
+     * **Käynnistysruudun kuutio kääntyy loppuun (Tommin tilaus 1.10.2026).** Järjestelmä
+     * poistaa käynnistysruudun heti kun ensimmäinen ruutu on piirretty, ja nopea käynnistys
+     * katkaisisi tuplauksen kierron kesken. Kuuntelija pitää ruudun auki animaation loppuun ja
+     * häivyttää sen sitten. Animaatio ja kesto ovat teemassa (`values-v31/themes.xml`).
+     */
+    private fun keepSplashUntilCubeTurned() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return
+        splashScreen.setOnExitAnimationListener { view ->
+            val start = view.iconAnimationStart
+            val duration = view.iconAnimationDuration
+            val left = if (start != null && duration != null) {
+                Duration.between(Instant.now(), start.plus(duration)).toMillis().coerceAtLeast(0)
+            } else {
+                0L
+            }
+            view.postDelayed({
+                view.animate().alpha(0f).setDuration(SPLASH_FADE_MS).withEndAction { view.remove() }
+            }, left)
+        }
+    }
+
+    @OptIn(ExperimentalLayoutApi::class)
+    override fun onCreate(savedInstanceState: Bundle?) {
+        // **Palkkien ikonit kerrotaan tässä, ja 26.8.2026 alkaen ne kerrotaan yöasetuksen
+        // mukaan.** Argumentiton `enableEdgeToEdge()` lukisi saman asetuksen itse, mutta
+        // ero on siinä mitä tapahtuu kun asetus ja sovelluksen tausta ovat eri mieltä.
+        // Ennen tummaa teemaa sovellus piirsi aina vaalean taustan, jolloin yötilan
+        // valitsemat vaaleat ikonit jäivät vaalealle taustalle eli näkymättömiin (mitattu
+        // Pixel 8a, 21.8.2026), ja siksi tyyli lyötiin kiinni vaaleaksi. Nyt tausta seuraa
+        // yöasetusta, joten ikonien on seurattava samaa asetusta eikä vakiota.
+        //
+        // `light` tarkoittaa vaaleaa **taustaa** ja siis tummia ikoneita, ei vaaleita.
+        // Lautaruutu on tämän poikkeus ja hoitaa oman tilansa itse, ks.
+        // `DarkSystemBarIconsWhileVisible`.
+        //
+        // Yöasetuksen vaihto käynnistää activityn uudelleen (`uiMode` ei ole
+        // `configChanges`-listalla), joten tämä luetaan uudelleen silloin kun se muuttuu.
+        val night = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK ==
+            Configuration.UI_MODE_NIGHT_YES
+        val barStyle = if (night) {
+            SystemBarStyle.dark(Color.TRANSPARENT)
+        } else {
+            SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT)
+        }
+        enableEdgeToEdge(statusBarStyle = barStyle, navigationBarStyle = barStyle)
+        super.onCreate(savedInstanceState)
+        keepSplashUntilCubeTurned()
+
+        // **Näyttöloven alle saa piirtää (Tommin päätös 16.9.2026).** Androidin oletus
+        // (`DEFAULT`) kieltää sen vaakatilassa, ja Pixel 8a:lla kielto vei laudan
+        // sivupaneelista 121 px eli viidenneksen sen leveydestä, vaikka itse reikä on
+        // 67 px:n ympyrä keskellä paneelin reunaviivaa. Tämä on lupa eikä asettelu:
+        // lukuruudut väistävät loven yhä `safeDrawingPadding`illa, ja vain lautaruutu
+        // väistää pelkät palkit (`BoardScreen`, `docs/UI.md` › Lovi ja sivupalkki).
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+            window.attributes = window.attributes.apply {
+                layoutInDisplayCutoutMode =
+                    android.view.WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+            }
+        }
+
+        val container = (application as DgApplication).container
+
+        // Manifesti sanoo kylmää käynnistystä varten `portrait`. Jos pystylukko on kytketty
+        // pois (Tommin päätös 2.9.2026, `docs/UI.md`), suunta vapautetaan tässä ennen
+        // ensimmäistä ruutua eikä vasta navigoinnin efektissä, jotta kädessä vaakana oleva
+        // tabletti ei ehdi kääntyä pystyyn ja takaisin.
+        if (!container.portraitLock.get()) {
+            requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+        }
+
+        setContent {
+            // Teema asuu tässä, koska se valitsee koko sovelluksen värit (Tommi 22.9.2026).
+            var appTheme by remember { mutableStateOf(container.appTheme.get()) }
+            DgTheme(appTheme) {
+                Surface {
+                    // Lukko on prosessin käynnistyksen kohdalla, ei jokaisen taustalta
+                    // palaamisen. Laite jolla ei ole omaa suojausta (ei sormenjälkeä,
+                    // kasvoja eikä PIN/kuvio/salasanaa) ei voi koskaan avata tätä lukkoa,
+                    // joten sellaisella laitteella sitä ei näytetä lainkaan. Lukko on asetus
+                    // 27.9.2026 alkaen (`AppLockStore`, oletus pois); asetusruudussa tehty
+                    // vaihto vaikuttaa seuraavasta käynnistyksestä.
+                    val lockAvailable = remember { appLockAvailable(this@MainActivity) }
+                    var appLockOn by remember { mutableStateOf(container.appLock.get()) }
+                    var settingsFolds by remember { mutableStateOf(container.settingsFold.get()) }
+                    var locked by remember { mutableStateOf(appLockOn && lockAvailable) }
+
+                    fun retry() {
+                        requestAppLockAuthentication(
+                            activity = this@MainActivity,
+                            onSuccess = { locked = false },
+                            onFailure = { /* Jää lukkoon; käyttäjä yrittää uudelleen napista. */ },
+                        )
+                    }
+
+                    LaunchedEffect(Unit) {
+                        if (locked) retry()
+                    }
+
+                    if (locked) {
+                        AppLockScreen(onRetry = ::retry)
+                        return@Surface
+                    }
+
+                    // Odotuksen ilmaisin on koko sovelluksen asetus 21.9.2026 alkaen (Tommin
+                    // tilaus *"haluaisin että asetus yltää niihin asti"*): tila asuu tässä ja
+                    // tarjotaan `LocalBusyStyle`lla kaikille ruuduille, joten tyhjän ruudun
+                    // keskikaari ja laudan nappilokero lukevat saman arvon. Asetusruutu
+                    // kirjoittaa tähän samaan tilaan, jolloin muutos näkyy heti palattaessa.
+                    var busyStyle by remember { mutableStateOf(container.busyStyle.get()) }
+                    var busyDeco by remember { mutableStateOf(container.busyStyle.deco()) }
+                    // Rarity-värit ovat koko sovelluksen kytkin (Tommin tilaus 26.9.2026):
+                    // pois kytkettynä rating-haut palauttavat null, joten mikään ruutu ei
+                    // tarvitse omaa ehtoaan. Tilana samasta syystä kuin odotuksen ilmaisin.
+                    var rarityOn by remember { mutableStateOf(container.rarity.get()) }
+                    CompositionLocalProvider(
+                        LocalBusyStyle provides busyStyle,
+                        LocalBusyDeco provides busyDeco,
+                        LocalRarityOn provides rarityOn,
+                        LocalPlayerRating provides
+                            if (rarityOn) container.playerRatings::rating else { _ -> null },
+                        LocalPlayerRatingByName provides
+                            if (rarityOn) container.playerRatings::ratingByName else { _ -> null },
+                        LocalTournamentRounds provides
+                            if (rarityOn) container.tournamentRounds else TournamentRoundsStore.NONE,
+                    ) {
+
+                    // Asetusten avaushaku (`docs/ASETUKSET.md` luku 2): kerran per
+                    // käynnistys, lukon jälkeen, taustalla. Lauta piirtyy sillä mitä
+                    // säilössä on, ja uusi lukema vaikuttaa siitä eteenpäin; epäonnistunut
+                    // haku ei kirjoita mitään. Ilman tunnuksia ei haeta, koska vastaus
+                    // olisi joka tapauksessa kirjautumissivu eikä asetussivu.
+                    LaunchedEffect(Unit) {
+                        if (container.credentials.get() != null) {
+                            withContext(Dispatchers.IO) {
+                                container.siteSettingsRefresher.refresh()
+                            }
+                        }
+                    }
+
+                    val navController = rememberNavController()
+
+                    // **Suunta luetaan navigoinnista eikä ruudun sivuvaikutuksesta**
+                    // (24.8.2026, toinen yritys). Ensimmäinen versio oli lautaruudussa
+                    // `DisposableEffect`inä, joka palautti suunnan poistuessaan. Laitteella se
+                    // ei purrut: laudalta palattua aktiviteetin pyydetty suunta oli
+                    // `UNSPECIFIED` eikä `PORTRAIT`, eli lukko oli poissa (mitattu
+                    // `dumpsys activity activities`illa, Galaxy Tab S7+ 24.8.2026). Poistuminen
+                    // osuu keskelle konfiguraatiomuutosta, koska ruutu on juuri kääntymässä.
+                    //
+                    // Tässä asetus tehdään sen jälkeen kun kohde on jo voimassa, ja jokainen
+                    // navigointi asettaa sen uudelleen. Yksi omistaja, yksi paikka, eikä
+                    // riippuvuutta siitä milloin edellinen ruutu ehtii purkautua.
+                    //
+                    // **Pystylukko on laiteasetus 2.9.2026 alkaen** (Tommin päätös, `docs/UI.md`),
+                    // lauta on vaakaan aina. Pois kytkettynä lukuruudut seuraavat laitteen
+                    // asentoa (`UNSPECIFIED`). Asetus luetaan tilana, jotta asetusruudussa
+                    // tehty vaihto vaikuttaa heti eikä vasta seuraavassa navigoinnissa.
+                    val entry by navController.currentBackStackEntryAsState()
+                    val onBoard = entry?.destination?.route == BoardRoute.PATTERN
+                    var portraitLock by remember { mutableStateOf(container.portraitLock.get()) }
+                    // Koko näyttö (Tommin tilaus 30.9.2026) piilottaa palkit tässä koko
+                    // sovellukselta. Tilana samasta syystä kuin pystylukko. Lautaruutu saa
+                    // tiedon, jotta sen oma piilotus ei purkautuessaan tuo palkkeja takaisin.
+                    var fullScreen by remember { mutableStateOf(container.fullScreen.get()) }
+                    HideSystemBarsWhileVisible(enabled = fullScreen)
+                    // Laudan pystytila on oma kytkimensä 23.9.2026 alkaen (Tommin päätös,
+                    // oletus vaaka). Tilana samasta syystä kuin pystylukko.
+                    var boardRotates by remember { mutableStateOf(container.boardRotation.get()) }
+                    var leftHanded by remember { mutableStateOf(container.handedness.get()) }
+                    // Taustakuvion väritila tilana samasta syystä kuin pystylukko: vaihto
+                    // asetusruudussa näkyy heti sen omassa taustassa.
+                    var sumiE by remember { mutableStateOf(container.skyTheme.get()) }
+                    var pattern by remember { mutableStateOf(container.skyTheme.pattern()) }
+                    // Taustakuvien kansio tilana samasta syystä: valinta asetusruudussa
+                    // näkyy heti sen omassa tyhjässä tilassa. Ks. `DgWallpaper.kt`.
+                    var wallpaperFolder by remember { mutableStateOf(container.wallpaper.folder()) }
+
+                    // Kirjoitushetki (muistutus tai merkki) kääntää laudan pystyyn, koska
+                    // vaakanäppäimistö vie puolet ruudusta (Tommin päätös 19.9.2026,
+                    // `docs/UI.md` › Suunta lukittiin › Poikkeus). Tila asuu täällä, koska
+                    // suunta on activityn.
+                    var boardWriting by remember { mutableStateOf(false) }
+
+                    // Otteluluettelon malli on activityn tasolla eikä reitin, jotta paluu
+                    // laudalta ei laukaise uutta Top Page -hakua. Lista on yhä oikeaa tietoa
+                    // siitä hetkestä jolloin se haettiin, ja Refresh on käyttäjän oma valinta.
+                    // Poikkeus 18.9.2026: paluu toisesta sovelluksesta luettelon ollessa auki
+                    // hakee sen uudestaan (`RefreshOnForeground`), koska silloin on kulunut
+                    // aikaa jonka pituutta sovellus ei tiedä.
+                    val topModel: TopViewModel = viewModel(
+                        factory = TopViewModel.Factory(
+                            container.pages,
+                            container.credentials,
+                            container.matchOrder,
+                            container.listedRounds,
+                            // Luettelon rivit ottelumuistiin, ks. `MatchMemory`.
+                            container.matchMemory,
+                            container.playerRatings,
+                        )
+                    )
+
+                    // Kirjautumisruutu on pystyssä pystylukosta riippumatta (Tommin päätös
+                    // 1.10.2026). Vaakana näppäimistö peitti Pixel 8a:lla molemmat kentät ja
+                    // Log In -napin; pystyssä se peittää vain tilittömän rivin, jota tilitön
+                    // käyttäjä lukee kirjoittamatta mitään. Ehto luetaan tässä eikä
+                    // ruudusta, koska suunta on activityn ja sillä on yksi omistaja.
+                    val topState by topModel.state.collectAsStateWithLifecycle()
+                    val signingIn = entry?.destination?.route == TOP_ROUTE &&
+                        topState is TopUiState.SignedOut
+
+                    // Puhelimella kirjoittaminen kääntää ruudun pystyyn kaikilla ruuduilla, kuten
+                    // laudalla (Tommin päätös 1.10.2026). Mitattu Pixel 8a:lla vaakana:
+                    // näppäimistön yläpuolelle jäi noin 130 dp, eikä foorumin kuusirivinen
+                    // kenttä mahtunut sinne nappeineen millään vierityksellä. Tabletti jää
+                    // vaakaan, koska siellä kenttä ja nappi mahtuvat (`keepInViewWhileTyping`).
+                    //
+                    // Ehto on kenttäfokus ja näkyvä näppäimistö yhdessä: kosketuksella vain
+                    // tekstikenttä saa fokuksen, ja näppäimistö erottaa kirjoittamisen siitä
+                    // että haun jälkeen fokus jää kenttään. Paluu vaakaan odottaa hetken, koska
+                    // näppäimistö voi välähtää piiloon kierron aikana, ja ilman viivettä ruutu
+                    // kääntyisi edestakaisin.
+                    var fieldFocused by remember { mutableStateOf(false) }
+                    // Dialogin kenttä ilmoittaa itse, koska dialogi on oma ikkunansa (`LocalReportTyping`).
+                    var dialogFieldFocused by remember { mutableStateOf(false) }
+                    val reportTyping: (Boolean) -> Unit = remember { { dialogFieldFocused = it } }
+                    val imeVisible = WindowInsets.isImeVisible
+                    val phone = LocalConfiguration.current.smallestScreenWidthDp < 600
+                    var phoneTyping by remember { mutableStateOf(false) }
+                    LaunchedEffect(phone, onBoard, fieldFocused, dialogFieldFocused, imeVisible) {
+                        val typing = phone && !onBoard && (fieldFocused || dialogFieldFocused)
+                        when {
+                            typing && imeVisible -> phoneTyping = true
+                            !typing -> phoneTyping = false
+                            phoneTyping -> {
+                                delay(500)
+                                phoneTyping = false
+                            }
+                        }
+                    }
+
+                    LaunchedEffect(onBoard, portraitLock, boardWriting, boardRotates, signingIn, phoneTyping) {
+                        this@MainActivity.requestedOrientation = orientationFor(
+                            onBoard = onBoard,
+                            portraitLock = portraitLock,
+                            writing = boardWriting,
+                            boardRotates = boardRotates,
+                            signingIn = signingIn || phoneTyping,
+                        )
+                    }
+
+                    // Välilehtipalkki on NavHostin yläpuolella ja piirtyy kaikilla
+                    // välilehdillä muttei laudalla: portti on sama reittipredikaatti kuin
+                    // suuntalukolla yllä, joten palkki ja vaakatila eivät voi erota.
+                    //
+                    // popUpTo(TOP_ROUTE) pitää pinon aina korkeintaan kahtena (top ja
+                    // päällä oleva välilehti tai lauta), joten järjestelmä-back miltä
+                    // tahansa välilehdeltä palaa otteluluetteloon ja siitä ulos.
+                    // saveState/restoreState säilyttää välilehden tilan ja näkymämallit
+                    // vaihtojen yli, eli paluu välilehdelle ei hae sivua uudestaan;
+                    // Refresh on käyttäjän oma valinta kuten otteluluettelossa.
+                    fun openTab(tab: DgTab) {
+                        navController.navigate(tab.route) {
+                            popUpTo(TOP_ROUTE) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    }
+
+                    // Porautumisruutu ei ole välilehti, ja ilman tätä palkki väitti
+                    // vastakkaista: `tabFor` palauttaa nullin, jolloin `DgTabRow` korosti
+                    // varakohdettaan Matchesia. Mitattu laitteella 27.8.2026 avaamalla
+                    // profiili, ja korostus oli väärä myös silloin kun profiili avattiin
+                    // Loungesta. Palkki on siis pois samoin kuin laudalla.
+                    val onPage = entry?.destination?.route == PageRoute.PATTERN
+
+                    // Asetusruutu on 4.9.2026 alkaen samaa lajia kuin lauta ja
+                    // porautumisruutu: oma reitti välilehtien ulkopuolella, joten palkkia ei
+                    // piirretä ja ruutu kuluttaa tilapalkin insetin itse.
+                    val onSettings = entry?.destination?.route == SETTINGS_ROUTE
+                    // Merkityt asemat samaa lajia kuin asetukset (15.9.2026). Ensimmäinen
+                    // laiteajo näytti palkin ja korosti Matchesia, koska ehto puuttui.
+                    val onMarks = entry?.destination?.route == MARKS_ROUTE
+
+                    // Välilehden sävy kattaa palkin ja ruudun, jotta korostettu välilehti
+                    // ja sen ruudun aksentit ovat samaa väriä. Lauta ja porautumisruutu
+                    // saavat nullin `tabFor`ista, eli ne jäävät perusteemaan.
+                    DgTabAccent(tab = tabFor(entry?.destination?.route)) {
+                    // Ruudun tausta maalataan tässä yhdessä paikassa, ja ruutujen
+                    // `Scaffold`it ovat läpinäkyviä. Kuvio on vaalean teeman oma
+                    // (`DgPattern.kt`), ja lautanäkymä on sen ulkopuolella samalla
+                    // rajauksella kuin muutkin lautaa koskevat poikkeukset tässä
+                    // tiedostossa.
+                    //
+                    // Taivas arvotaan joka ruudun avauksessa (Tommin valinta 6.9.2026
+                    // kolmesta: käynnistys, ruudun avaus, päivä). Siemen sidotaan
+                    // reittiin, joten välilehden vaihto arpoo uuden ja saman ruudun
+                    // uudelleenpiirto pitää entisen. Tilaa ei tallenneta.
+                    val route = entry?.destination?.route
+                    val skySeed = remember(route) { Random.nextInt() }
+                    // Täytekuva (taustakuvat sisällön alle jäävässä tilassa, `DgFill.kt`)
+                    // saa saman siemenen kuin taivas, ja lauta on ulkona kuten kuviostakin.
+                    // Tila ratkaisee näkyykö se, ei arpa (Tommin päätös 7.9.2026). Kansio on
+                    // oma kytkimensä eikä riipu kuviosta (Tommin päätökset 15.9.2026).
+                    // Kadonnut oikeus unohtaa kansion, jotta asetusruutu pyytää valitsemaan
+                    // uudestaan eikä vaikene.
+                    val wallpaper = rememberDgWallpaper(
+                        folder = if (onBoard) null else wallpaperFolder,
+                        seed = skySeed,
+                        onLost = {
+                            container.wallpaper.forget()
+                            wallpaperFolder = null
+                        },
+                    )
+                    CompositionLocalProvider(
+                        LocalDgWallpaper provides wallpaper,
+                        LocalReportTyping provides reportTyping,
+                    ) {
+                    Column(
+                        modifier = Modifier.fillMaxSize().dgScreenBackground(!onBoard, skySeed, sumiE, pattern),
+                    ) {
+                        if (!onBoard && !onPage && !onSettings && !onMarks) {
+                            DgTabRow(
+                                selected = tabFor(entry?.destination?.route),
+                                onSelect = ::openTab,
+                            )
+                        }
+
+                    NavHost(
+                        navController = navController,
+                        startDestination = TOP_ROUTE,
+                        // Tilapalkin inset kulutetaan tässä kun palkki on piirretty, ja
+                        // syy on mitattu (Pixel 8a 26.8.2026): `DgTabRow` kuluttaa insetin
+                        // omassa modifier-ketjussaan, mutta kulutus ei näy sisarelle, joten
+                        // jokainen välilehtiruutu varasi saman 32 dp:n toistamiseen ja
+                        // palkin alle jäi tyhjä kaistale. Laudalla ja porautumisruudulla
+                        // ehto ei päde: niissä palkkia ei piirretä, joten ruutu tarvitsee
+                        // insetin itse. Mitattu 27.8.2026: ilman tätä porautumisruudun
+                        // otsikkorivi piirtyi kellon ja akun päälle.
+                        //
+                        // Näppäimistön väistö on tässä yhdessä paikassa kaikille ruuduille
+                        // paitsi laudalle, jolla on omansa (Tommin päätös 1.10.2026: jokainen
+                        // kirjoituskenttä väistää). Edge-to-edge-sovelluksessa manifestin
+                        // `adjustResize` ei siirrä sisältöä yksin. Mitattu 1.10.2026: tabletilla
+                        // vaakana foorumin Create New Thread jäi näppäimistön alle.
+                        // `imePadding` kuluttaa myös navigointipalkin alareunan, joten ruutujen
+                        // oma alareunan inset ei tuplaudu.
+                        modifier = when {
+                            onBoard -> Modifier.weight(1f)
+                            onPage || onSettings || onMarks -> Modifier.weight(1f).imePadding()
+                            else -> Modifier.weight(1f).consumeWindowInsets(tabRowInsets()).imePadding()
+                        }.onFocusChanged { fieldFocused = it.hasFocus },
+                    ) {
+                        composable(TOP_ROUTE) {
+                            val state by topModel.state.collectAsStateWithLifecycle()
+                            // Auki oleva segmentti on reitin tilaa eikä näkymämallin:
+                            // se on valinta ruudulla, ei mitään mitä sivustolta luetaan.
+                            var segment by rememberSaveable {
+                                mutableStateOf(MatchesSegment.YourTurn)
+                            }
+                            // Omien turnausten polku Top Pagelta virtana, samasta syystä
+                            // kuin loungella: kertakuva olisi väärä null aina kun ruutu
+                            // avataan ennen luettelon latautumista.
+                            val tournamentsPathUpstream = remember(topModel) {
+                                topModel.state.map {
+                                    (it as? TopUiState.Loaded)?.page?.activeTournamentsPath
+                                }
+                            }
+                            // Oman profiilin polku samasta sivusta: Refresh hakee sen
+                            // `Active games` -listan ottelumuistiin (15.9.2026).
+                            val profilePathUpstream = remember(topModel) {
+                                topModel.state.map {
+                                    (it as? TopUiState.Loaded)?.page?.user?.profilePath
+                                }
+                            }
+                            val tournamentsModel: OwnTournamentsViewModel = viewModel(
+                                factory = OwnTournamentsViewModel.Factory(
+                                    pages = container.pages,
+                                    pathUpstream = tournamentsPathUpstream,
+                                    countSink = container.ownTournamentCount,
+                                    profilePathUpstream = profilePathUpstream,
+                                    matchMemory = container.matchMemory,
+                                    ratings = container.playerRatings,
+                                    waitStore = container.tournamentWaits,
+                                    roundsStore = container.tournamentRounds,
+                                )
+                            )
+                            val tournamentWaits by tournamentsModel.waits
+                                .collectAsStateWithLifecycle()
+                            val ratingsRevision by tournamentsModel.ratingsRevision
+                                .collectAsStateWithLifecycle()
+                            val tournamentExtrasRunning by tournamentsModel.extrasRunning
+                                .collectAsStateWithLifecycle()
+                            val tournaments by tournamentsModel.state
+                                .collectAsStateWithLifecycle()
+                            val opponentsRefresh by tournamentsModel.opponents
+                                .collectAsStateWithLifecycle()
+                            // Turnauslistan katkennut istunto: sama uloskirjaus kuin
+                            // `SignOutOnExpiry`ssä mutta ilman ruudun sulkemista, koska lista
+                            // asuu juuriruudussa (27.9.2026, ks. `OwnTournamentsUiState`).
+                            LaunchedEffect(tournaments) {
+                                if (tournaments == OwnTournamentsUiState.SessionExpired) {
+                                    container.signOut()
+                                    topModel.signOut()
+                                }
+                            }
+                            // Järjestys on oma virtansa samasta syystä kuin näkymämallissa:
+                            // se on laitteen valinta eikä sivulta saatua tilaa.
+                            val order by topModel.order.collectAsStateWithLifecycle()
+                            // Reunapäivä tulee arkistosta suoraan eikä näkymämallin kautta:
+                            // se on paikallista tietoa eikä otteluluettelon tilaa, ja
+                            // TopViewModel pysyy luokkana joka vain hakee sivun.
+                            // Alkuarvo on oma tilansa eikä sama null jolla tyhjä arkisto
+                            // kerrotaan. Ennen 5.9.2026 se oli sama, ja rivi väitti arkiston
+                            // olevan tyhjä siihen asti että Room vastasi (kaavahaku 5.9.2026).
+                            // Kirjautunut tili, luettuna uudestaan aina kun luettelon tila
+                            // vaihtuu: kirjautuminen ja Sign out kulkevat molemmat sen kautta,
+                            // joten tämä seuraa tiliä ilman omaa virtaa. Arkisto on
+                            // tilikohtainen 16.9.2026 alkaen (`MessageArchive`).
+                            val account = remember(state) { container.credentials.get()?.login }
+                            // Ennen 16.9.2026 tallennetut rivit ovat omistajattomia, ja
+                            // ensimmäinen kirjautunut tili ottaa ne. Idempotentti, joten
+                            // toistuva ajo on halpa eikä tee mitään toisella kerralla.
+                            LaunchedEffect(account) {
+                                if (account != null) {
+                                    withContext(Dispatchers.IO) { container.messages.claimUnowned(account) }
+                                }
+                            }
+                            val archiveEdge by remember(account) {
+                                container.messages.observeNewestStoredAt(account)
+                                    .map(ArchiveEdgeState::from)
+                            }.collectAsStateWithLifecycle(initialValue = ArchiveEdgeState.Unknown)
+                            // Jono luetaan samalla tavalla ja samasta syystä: se on kannassa
+                            // eikä verkossa, joten se on luettavissa myös silloin kun
+                            // otteluluettelon haku epäonnistui.
+                            val pending by remember { container.actions.observeAll() }
+                                .collectAsStateWithLifecycle(initialValue = emptyList())
+                            // Ottelumuisti samalla tavalla: kannassa eikä verkossa, ja
+                            // turnauslista lukee sitä otteluille joita luettelo ei näytä.
+                            val remembered by remember { container.matchMemory.observeAll() }
+                                .collectAsStateWithLifecycle(initialValue = emptyMap())
+                            // Merkittyjen asemien määrä otsakeriville, kannasta eikä
+                            // verkosta kuten reunapäivä. Ks. `MarkBook`.
+                            val markCount by remember { container.marks.observeAll().map { it.size } }
+                                .collectAsStateWithLifecycle(initialValue = 0)
+                            WakeOnReconnect(container.network, topModel::onNetworkAvailable)
+                            RefreshOnForeground(topModel::onForeground)
+                            TopScreen(
+                                state = state,
+                                order = order,
+                                onSort = topModel::sortBy,
+                                archiveEdge = archiveEdge,
+                                onSignIn = topModel::signIn,
+                                // Refresh koskee auki olevaa listaa, ei aina Top Pagea.
+                                onRefresh = {
+                                    when (segment) {
+                                        MatchesSegment.YourTurn -> topModel.refresh()
+                                        MatchesSegment.Tournaments -> tournamentsModel.refresh()
+                                    }
+                                },
+                                segment = segment,
+                                onSelectSegment = { chosen ->
+                                    segment = chosen
+                                    // Laiska haku: turnaussivu haetaan vasta avattaessa ja
+                                    // vain kerran, kuten se haettiin loungessakin.
+                                    if (chosen == MatchesSegment.Tournaments) {
+                                        tournamentsModel.onOpened()
+                                    }
+                                },
+                                tournaments = tournaments,
+                                remembered = remembered,
+                                opponentsRefresh = opponentsRefresh,
+                                tournamentWaits = tournamentWaits,
+                                ratingsRevision = ratingsRevision,
+                                tournamentExtrasRunning = tournamentExtrasRunning,
+                                // Ratas vie asetuksiin omalle reitilleen, ei välilehdelle:
+                                // paluu palaa tähän ruutuun eikä Info-listaan (4.9.2026).
+                                onOpenSettings = { navController.navigate(SETTINGS_ROUTE) },
+                                // Reitti rakennetaan sivun omasta linkistä, ja ilman linkkiä
+                                // sitä ei rakenneta lainkaan: rivi ei ole klikattava.
+                                onOpenMatch = { match ->
+                                    BoardRoute.of(match)?.let(navController::navigate)
+                                },
+                                pending = pending,
+                                // Reitti syntyy tallennetusta polusta sellaisenaan, eli
+                                // samasta linkistä jolla ruutu alun perin avattiin. Mitään ei
+                                // koota kannasta.
+                                onOpenPending = { navController.navigate(BoardRoute.of(it)) },
+                                // Ilmoituksen nappi valitsee arkistovälilehden samalla
+                                // navigoinnilla kuin palkki, jottei pinoon synny toista
+                                // muotoa samasta siirtymästä.
+                                onOpenPage = { navController.navigate(PageRoute.of(it)) },
+                                onOpenMessages = { openTab(DgTab.Messages) },
+                                markCount = markCount,
+                                onOpenMarks = { navController.navigate(MARKS_ROUTE) },
+                            )
+                        }
+
+                        composable(MARKS_ROUTE) {
+                            // Lista luetaan kannasta suoraan ilman näkymämallia, kuten
+                            // jono ja ottelumuisti otteluluettelossa: ruudulla ei ole
+                            // tilaa jota pitäisi hakea tai säilyttää, vain kaksi virtaa
+                            // ja yksi poisto.
+                            val marks by remember { container.marks.observeAll() }
+                                .collectAsStateWithLifecycle(initialValue = emptyList())
+                            val remembered by remember { container.matchMemory.observeAll() }
+                                .collectAsStateWithLifecycle(initialValue = emptyMap())
+                            val scope = rememberCoroutineScope()
+                            MarksScreen(
+                                marks = marks,
+                                remembered = remembered,
+                                onRemove = { id -> scope.launch { container.marks.remove(id) } },
+                                onBack = { navController.popBackStack() },
+                            )
+                        }
+
+                        composable(MESSAGES_ROUTE) {
+                            // Jonon polku luetaan Top Pagen omasta linkistä ja annetaan
+                            // suoraan, ei reitin yli. Reitti vaatisi koodauksen ja purun, ja
+                            // tämä on kuluttava osoite: väärin purettu polku ei tuottaisi
+                            // virhettä vaan peruuttamattoman teon.
+                            //
+                            // Virtana eikä arvona: kertakuva olisi ollut null aina kun ruutu
+                            // avataan ennen kuin luettelo on latautunut, ja ruutu olisi
+                            // sanonut ettei mitään odota. Ks. MessagesViewModel.
+                            val queuePathUpstream = remember(topModel) {
+                                topModel.state.map {
+                                    (it as? TopUiState.Loaded)?.page?.messageQueuePath
+                                }
+                            }
+
+                            val messagesModel: MessagesViewModel = viewModel(
+                                factory = MessagesViewModel.Factory(
+                                    pages = container.pages,
+                                    forms = container.forms,
+                                    archive = container.messages,
+                                    queuePathUpstream = queuePathUpstream,
+                                    // Lauta jonosta pyyhkii luettelon ilmoituksen (18.9.2026).
+                                    onMessagesDrained = topModel::clearMessageNotice,
+                                    // Oma nimi lähetetyn viestin lähettäjäksi. Luetaan
+                                    // kutsuhetkellä eikä oteta talteen, jotta uloskirjautuminen
+                                    // näkyy tässäkin.
+                                    self = { container.credentials.get()?.login },
+                                    filterStore = container.messageFilter,
+                                    phraseBook = container.phraseBook,
+                                    reminders = container.reminders,
+                                )
+                            )
+                            val queue by messagesModel.queue.collectAsStateWithLifecycle()
+                            val importState by messagesModel.import.collectAsStateWithLifecycle()
+                            val phrases by messagesModel.phrases.collectAsStateWithLifecycle()
+                            val messages by messagesModel.messages.collectAsStateWithLifecycle()
+                            val path by messagesModel.queuePath.collectAsStateWithLifecycle()
+                            val draft by messagesModel.draft.collectAsStateWithLifecycle()
+                            val reply by messagesModel.reply.collectAsStateWithLifecycle()
+                            val invitationAction by messagesModel.invitationAction.collectAsStateWithLifecycle()
+                            // **Kutsuun vastaaminen on teko sivustolla, joten luettelo haetaan
+                            // uudelleen** (Tommin havainto 27.9.2026). Hyväksytty money game
+                            // -kutsu jätti Matchesiin *Something is waiting* -ilmoituksen ja
+                            // vanhan listan, kunnes Refresh korjasi ne: proxyn lokissa
+                            // hyväksynnän (5.19.07) jälkeinen ainoa Top Page oli käsin painettu
+                            // Refresh (5.19.21). Sama sääntö kuin laudan paluussa (`leaveBoard`,
+                            // 16.9.2026), mutta haku lähtee heti vastauksesta eikä paluusta,
+                            // koska viestiruudusta poistutaan välilehdellä eikä yhtä reittiä ole.
+                            LaunchedEffect(invitationAction) {
+                                if (invitationAction is InvitationActionUiState.Answered) {
+                                    topModel.refresh(matchesKnownStale = true)
+                                }
+                            }
+                            val fresh by messagesModel.fresh.collectAsStateWithLifecycle()
+                            val filter by messagesModel.filter.collectAsStateWithLifecycle()
+                            val replyTarget by messagesModel.replyTarget.collectAsStateWithLifecycle()
+                            val quote by messagesModel.quote.collectAsStateWithLifecycle()
+
+                            // Otteluluettelon nykyiset ottelut lajimerkinnän linkkiä varten.
+                            // Sama tila jota luettelo itse näyttää, ei erillistä hakua.
+                            val topStateForLinks by topModel.state.collectAsStateWithLifecycle()
+                            val currentMatches =
+                                (topStateForLinks as? TopUiState.Loaded)?.page?.matches
+                                    ?: emptyList()
+
+                            // Sama käsittely kuin kahdessa muussa ruudussa ja samasta syystä:
+                            // tunnusvaraston omistaa TopViewModel.
+                            SignOutOnExpiry(queue, container, topModel, navController)
+
+                            // Kirjoitus on tässä eikä näkymämallissa, koska se vaatii
+                            // `ContentResolver`in eikä `MessagesViewModel` tunne Androidia
+                            // enempää kuin muutkaan mallit. Malli antaa vain sen mitä
+                            // kirjoitetaan (`exportJson`), tämä lohko päättää minne.
+                            val exportContext = LocalContext.current
+                            val exportScope = rememberCoroutineScope()
+                            val exportLauncher = rememberLauncherForActivityResult(
+                                ActivityResultContracts.CreateDocument("application/json"),
+                            ) { uri ->
+                                if (uri != null) {
+                                    exportScope.launch {
+                                        val json = messagesModel.exportJson()
+                                        withContext(Dispatchers.IO) {
+                                            exportContext.contentResolver.openOutputStream(uri)
+                                                ?.use { it.write(json.toByteArray(Charsets.UTF_8)) }
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Tuonti (16.9.2026): peilikuva viennistä. Lukeminen on tässä
+                            // samasta syystä kuin kirjoitus, ja malli saa vain tekstin
+                            // (`importJson`). Tyyppisuodatin on väljä, koska tiedostonhallinta
+                            // nimeää `.json`in vaihtelevasti (`application/json`, `text/plain`
+                            // tai ei mitään), ja tiukka suodatin piilottaisi oman tiedoston
+                            // valitsimesta ilman virhettä. Malli tunnistaa muodon itse.
+                            val importLauncher = rememberLauncherForActivityResult(
+                                ActivityResultContracts.OpenDocument(),
+                            ) { uri ->
+                                if (uri != null) {
+                                    exportScope.launch {
+                                        val text = withContext(Dispatchers.IO) {
+                                            runCatching {
+                                                exportContext.contentResolver.openInputStream(uri)
+                                                    ?.use { it.readBytes().toString(Charsets.UTF_8) }
+                                            }.getOrNull()
+                                        }
+                                        messagesModel.importJson(text ?: "")
+                                    }
+                                }
+                            }
+
+                            // **Näkyvä varmuuskopio** (Tommin valinta 1.9.2026,
+                            // `docs/AVOIMET.md`). Sama kirjoitus kuin `Export`illa ja sama
+                            // syy sille että se on täällä eikä näkymämallissa: tarvitaan
+                            // `ContentResolver`, jota mikään malli ei tunne.
+                            //
+                            // Ero `Export`iin on kohde ja toisto: vienti kysyy paikan joka
+                            // kerta, tämä kysyy sen kerran ja kirjoittaa samaan tiedostoon
+                            // uudestaan. Siksi osoite otetaan pysyväksi
+                            // (`takePersistableUriPermission`), ja siksi kirjoitus on `wt`
+                            // eikä `w`: ilman katkaisua lyhyempi arkisto jättäisi edellisen
+                            // kopion hännän tiedoston loppuun, eli rikkinäisen JSONin joka
+                            // näyttää onnistuneelta.
+                            var backupTarget by remember { mutableStateOf(container.backup.target()) }
+                            var backupSaved by remember { mutableStateOf(container.backup.lastSaved()) }
+                            var backupFailed by remember { mutableStateOf(false) }
+
+                            val writeBackup: (String) -> Unit = { uri ->
+                                exportScope.launch {
+                                    val json = messagesModel.exportJson()
+                                    val ok = withContext(Dispatchers.IO) {
+                                        runCatching {
+                                            exportContext.contentResolver
+                                                .openOutputStream(Uri.parse(uri), "wt")
+                                                ?.use { it.write(json.toByteArray(Charsets.UTF_8)) }
+                                                ?: error("no stream")
+                                        }.isSuccess
+                                    }
+                                    if (ok) {
+                                        val now = System.currentTimeMillis()
+                                        container.backup.saveTime(now)
+                                        backupSaved = now
+                                        backupFailed = false
+                                    } else {
+                                        // Osoite unohdetaan, koska sama epäonnistuminen
+                                        // toistuisi joka avauksella eikä ruutu voi korjata
+                                        // sitä itse. Aika jää näkyviin: se kertoo mistä
+                                        // hetkestä kopio on, ja se on nyt tärkeämpi tieto
+                                        // kuin ennen vikaa. Rivin teksti on
+                                        // `backup_failed_saved`, ja `BackupStore.forget`
+                                        // säilyttää ajan myös käynnistyksen yli.
+                                        container.backup.forget()
+                                        backupTarget = null
+                                        backupFailed = true
+                                    }
+                                }
+                            }
+
+                            val backupLauncher = rememberLauncherForActivityResult(
+                                ActivityResultContracts.CreateDocument("application/json"),
+                            ) { uri ->
+                                if (uri != null) {
+                                    // Pysyvä oikeus on koko toiston ehto. Ilman tätä osoite
+                                    // toimisi tämän kerran ja epäonnistuisi seuraavalla
+                                    // käynnistyksellä — hiljainen vika juuri siinä
+                                    // ominaisuudessa joka on olemassa hiljaisuutta vastaan.
+                                    runCatching {
+                                        contentResolver.takePersistableUriPermission(
+                                            uri,
+                                            Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
+                                        )
+                                    }
+                                    container.backup.saveTarget(uri.toString())
+                                    backupTarget = uri.toString()
+                                    backupSaved = null
+                                    backupFailed = false
+                                    writeBackup(uri.toString())
+                                }
+                            }
+
+                            // Automaattinen kopio kerran vuorokaudessa, ruudun avautuessa.
+                            // Sovellus ei aja mitään taustalla eikä tämä muuta sitä: ehto on
+                            // `BackupStatus.isDue`, ja se laukeaa vain kun viestiruutu on
+                            // auki. Rajaus on kirjattu sinne, ei tähän.
+                            //
+                            // Avain on `messages`, joten kopio syntyy myös silloin kun
+                            // arkisto kasvaa ruudun ollessa auki — mutta vain jos vuorokausi
+                            // on täynnä, joten jokainen uusi viesti ei kirjoita tiedostoa.
+                            LaunchedEffect(backupTarget, messages) {
+                                val target = backupTarget ?: return@LaunchedEffect
+                                if (BackupStatus.isDue(backupSaved, System.currentTimeMillis())) {
+                                    writeBackup(target)
+                                }
+                            }
+
+                            // Selityskappale auki vain ensimmäisellä kerralla (Tommi
+                            // 21.9.2026). Luetaan kerran ruudun avauksessa, jotta
+                            // merkintä ei sulje kappaletta kesken saman katselun.
+                            val explainSeen = remember { container.queueExplain.seen() }
+                            LaunchedEffect(Unit) { container.queueExplain.markSeen() }
+
+                            MessagesScreen(
+                                messages = messages,
+                                queue = queue,
+                                queuePath = path,
+                                onFetchNext = messagesModel::fetchNext,
+                                explainSeen = explainSeen,
+                                invitationAction = invitationAction,
+                                onAcceptInvitation = messagesModel::acceptInvitation,
+                                onDeclineInvitation = messagesModel::declineInvitation,
+                                onCounterOffer = messagesModel::counterOffer,
+                                onDismissInvitationAction = messagesModel::dismissInvitationAction,
+                                draft = draft,
+                                reply = reply,
+                                onDraftChange = messagesModel::draftChanged,
+                                onSendReply = messagesModel::sendReply,
+                                phrases = phrases,
+                                onAddPhrase = messagesModel::addPhrase,
+                                onRemovePhrase = messagesModel::removePhrase,
+                                quote = quote,
+                                onQuoteChange = messagesModel::quoteChanged,
+                                filter = filter,
+                                onFilterChange = messagesModel::filterChanged,
+                                fresh = fresh,
+                                replyTargetId = replyTarget?.id,
+                                onMessageClick = messagesModel::openReply,
+                                // Lajimerkinnän ottelulinkki: aktiivinen ottelu avautuu
+                                // lautana otteluluettelon omasta linkistä (sama
+                                // `BoardRoute.of(match)` kuin luettelon rivillä), muu
+                                // ottelu siirtohistoriana. Review-polku luetaan luettelosta
+                                // kun ottelu on siellä; **listalta pudonneelle ottelulle
+                                // polku kootaan tunnisteesta**, ja se on nimetty poikkeus
+                                // sääntöön "osoite luetaan": muoto `/bg/game/<id>/0/list`
+                                // on mitattu neljästä eri lähteestä (Top Page, profiili,
+                                // turnaus, pelaajan turnauslista), haku on kuluttamaton
+                                // GET, ja väärä osoite tuottaa porautumisruudun
+                                // "ei tunnettu sivu" -tilan eikä tekoa. Ilman kokoamista
+                                // päättyneellä ottelulla ei olisi linkkiä lainkaan, ja juuri
+                                // sen Tommi pyysi 30.8.2026.
+                                onOpenMatch = { id ->
+                                    val match = currentMatches.firstOrNull { it.id.value == id }
+                                    val route = match?.let { BoardRoute.of(it) }
+                                        ?: PageRoute.of(
+                                            match?.reviewPath ?: "/bg/game/$id/0/list"
+                                        )
+                                    navController.navigate(route)
+                                },
+                                onExport = if (messages.isEmpty()) {
+                                    null
+                                } else {
+                                    {
+                                        exportLauncher.launch(
+                                            ArchiveExportFilename.of(System.currentTimeMillis()),
+                                        )
+                                    }
+                                },
+                                onImport = { importLauncher.launch(arrayOf("*/*")) },
+                                importState = importState,
+                                onDismissImport = messagesModel::importDismissed,
+                                backup = BackupUiState.of(
+                                    target = backupTarget,
+                                    lastSaved = backupSaved,
+                                    failedNow = backupFailed,
+                                ),
+                                // Nimi on päivätön, toisin kuin viennissä: tämä on **se**
+                                // ajantasainen kopio eikä yksi monista, ja päivätty nimi
+                                // vanhenisi heti ensimmäisessä ylikirjoituksessa.
+                                onSetUpBackup = { backupLauncher.launch("dg-archive.json") },
+                                onBackupNow = { backupTarget?.let(writeBackup) },
+                            )
+                        }
+
+                        composable(LOUNGE_ROUTE) {
+                            // Loungen polku Top Pagen navigointipalkista, virtana samasta
+                            // syystä kuin jonon polku yllä: kertakuva olisi väärä nolla
+                            // ennen luettelon latautumista.
+                            val loungePathUpstream = remember(topModel) {
+                                topModel.state.map {
+                                    (it as? TopUiState.Loaded)?.page?.loungePath
+                                }
+                            }
+                            val loungeModel: LoungeViewModel = viewModel(
+                                factory = LoungeViewModel.Factory(
+                                    pages = container.pages,
+                                    // Kolmas ruutu joka saa tämän: kutsun hyväksyminen on
+                                    // teko sivustolla. Ks. FormSender ja docs/UI.md.
+                                    forms = container.forms,
+                                    loungePathUpstream = loungePathUpstream,
+                                    // Listojen taitto muistetaan laitteella (21.9.2026).
+                                    foldStore = container.loungeFold,
+                                    ratings = container.playerRatings,
+                                )
+                            )
+                            val state by loungeModel.state.collectAsStateWithLifecycle()
+                            val folds by loungeModel.folds.collectAsStateWithLifecycle()
+                            val hall by loungeModel.hall.collectAsStateWithLifecycle()
+                            val hallCount by loungeModel.hallCount.collectAsStateWithLifecycle()
+                            val join by loungeModel.join.collectAsStateWithLifecycle()
+                            val signup by loungeModel.signup.collectAsStateWithLifecycle()
+                            val players by loungeModel.players.collectAsStateWithLifecycle()
+                            val search by loungeModel.search.collectAsStateWithLifecycle()
+
+                            // Sama käsittely kuin muissa ruuduissa ja samasta syystä:
+                            // tunnusvaraston omistaa TopViewModel.
+                            SignOutOnExpiry(state, container, topModel, navController)
+
+                            // Tournament Hall on loungen oma jakso 21.9.2026 illasta (Tommin
+                            // tarkennus), ei enää `PageScreen` tässä reitissä: sisältö
+                            // avautuu otsikon alle kuten pelaajalista. Hallin rivit
+                            // (turnaussivut) menevät yhä porautumisreitille.
+                            // Oma profiili kolmikon ensimmäisenä (27.9.2026), polku Top Pagelta.
+                            val topState by topModel.state.collectAsStateWithLifecycle()
+                            val self = (topState as? TopUiState.Loaded)?.page?.user
+                            LoungeScreen(
+                                state = state,
+                                self = self,
+                                join = join,
+                                signup = signup,
+                                players = players,
+                                hall = hall,
+                                hallCount = hallCount,
+                                // Refresh koskee loungea ja auki olevia haettuja jaksoja.
+                                onRefresh = loungeModel::refresh,
+                                onOpenSettings = { navController.navigate(SETTINGS_ROUTE) },
+                                onRefreshPlayers = loungeModel::refreshPlayers,
+                                onRefreshHall = loungeModel::refreshHall,
+                                onOpenPlayerListLink = loungeModel::openPlayerListLink,
+                                // Porautuminen sivun omalla polulla: tarjoajan profiili,
+                                // pelaajalistan rivi tai turnaussivu.
+                                onOpenPage = { navController.navigate(PageRoute.of(it)) },
+                                onJoin = loungeModel::join,
+                                onDismissJoinResult = loungeModel::clearJoinResult,
+                                // Otsikot kytkevät listat kiinni ja auki (21.9.2026).
+                                folds = folds,
+                                onTogglePlayers = loungeModel::togglePlayers,
+                                onToggleHall = loungeModel::toggleHall,
+                                onToggleInvitations = loungeModel::toggleInvitations,
+                                onToggleTournaments = loungeModel::toggleTournaments,
+                                // Ilmoittautuminen ja sen peruutus rivin omilla linkeillä
+                                // (3.9.2026, kaanonimuutos SUBSTANSSI kohtaan 52).
+                                onSignUp = loungeModel::signUp,
+                                onCancelSignup = loungeModel::cancelSignup,
+                                onDismissSignupResult = loungeModel::clearSignupResult,
+                                // Pelaajahaku loungen omalla lomakkeella (3.9.2026). Lomake
+                                // luetaan tilasta, joten kenttä on ruudulla vain kun sivu antoi sen.
+                                searchAvailable = (state as? LoungeUiState.Loaded)?.page?.searchForm != null,
+                                search = search,
+                                onSearch = loungeModel::searchPlayers,
+                                onClearSearch = loungeModel::clearSearch,
+                            )
+                        }
+
+                        composable(DISCUSSION_ROUTE) {
+                            val forumPathUpstream = remember(topModel) {
+                                topModel.state.map {
+                                    (it as? TopUiState.Loaded)?.page?.forumPath
+                                }
+                            }
+
+                            val discussionModel: DiscussionViewModel = viewModel(
+                                factory = DiscussionViewModel.Factory(
+                                    pages = container.pages,
+                                    // Palstan kirjoituslomakkeet, Tommin päätös 3.9.2026.
+                                    // Ks. FormSender ja docs/UI.md.
+                                    forms = container.forms,
+                                    forumPathUpstream = forumPathUpstream,
+                                )
+                            )
+                            val state by discussionModel.state.collectAsStateWithLifecycle()
+                            val thread by discussionModel.thread.collectAsStateWithLifecycle()
+                            val archive by discussionModel.archive.collectAsStateWithLifecycle()
+                            val compose by discussionModel.compose.collectAsStateWithLifecycle()
+                            val post by discussionModel.post.collectAsStateWithLifecycle()
+                            val hide by discussionModel.hide.collectAsStateWithLifecycle()
+                            val draftTitle by discussionModel.draftTitle.collectAsStateWithLifecycle()
+                            val draftComment by discussionModel.draftComment.collectAsStateWithLifecycle()
+                            val boards by discussionModel.boards.collectAsStateWithLifecycle()
+                            val selectedBoard by discussionModel.selectedBoard
+                                .collectAsStateWithLifecycle()
+
+                            SignOutOnExpiry(state, container, topModel, navController)
+
+                            val topState by topModel.state.collectAsStateWithLifecycle()
+                            val self = (topState as? TopUiState.Loaded)?.page?.user
+                            DiscussionScreen(
+                                state = state,
+                                self = self,
+                                thread = thread,
+                                archive = archive,
+                                boards = boards,
+                                selectedBoard = selectedBoard,
+                                onRefresh = discussionModel::refresh,
+                                onOpenSettings = { navController.navigate(SETTINGS_ROUTE) },
+                                onSelectBoard = discussionModel::selectBoard,
+                                onOpenThread = discussionModel::openThread,
+                                onCloseThread = discussionModel::closeThread,
+                                onOpenArchive = discussionModel::openArchive,
+                                onOpenMonth = discussionModel::openMonth,
+                                onCloseArchive = discussionModel::closeArchive,
+                                compose = compose,
+                                post = post,
+                                draftTitle = draftTitle,
+                                draftComment = draftComment,
+                                onDraftTitleChange = discussionModel::setDraftTitle,
+                                onDraftCommentChange = discussionModel::setDraftComment,
+                                onOpenNewThread = discussionModel::openNewThread,
+                                onOpenComment = discussionModel::openComment,
+                                // Rungon sivustonsisäinen linkki samalle porautumisreitille
+                                // kuin muutkin sivun linkit (21.9.2026).
+                                onOpenPage = { navController.navigate(PageRoute.of(it)) },
+                                onCloseCompose = discussionModel::closeCompose,
+                                onPost = discussionModel::post,
+                                onDismissPost = discussionModel::dismissPost,
+                                hide = hide,
+                                onHide = discussionModel::hide,
+                                onDismissHide = discussionModel::dismissHide,
+                                onToggleHidden = discussionModel::toggleHidden,
+                            )
+                        }
+
+                        /*
+                         * Info-välilehti: listarivit ja niiden takana olevat ruudut samassa
+                         * reitissä.
+                         *
+                         * **Porautuminen tapahtuu paikallaan eikä omalle reitilleen**
+                         * (`docs/UI.md` 26.8.2026). Syy on välilehtipalkki: omalla
+                         * reitillään `tabFor` palauttaisi nullin, palkki katoaisi ja
+                         * asetusruutu näyttäisi laudalta. Sama ratkaisu kuin Discussionin
+                         * ketjulla, ja `BackHandler` on siellä samasta syystä: se sulkee
+                         * ensin sub-ruudun ja vasta sen jälkeen poistutaan välilehdeltä.
+                         *
+                         * Valinta on `rememberSaveable`issa, jotta se säilyy sekä
+                         * välilehtien vaihdon (`restoreState`) että prosessin tapon yli.
+                         */
+                        composable(INFO_ROUTE) {
+                            var openSection by rememberSaveable {
+                                mutableStateOf<InfoSection?>(null)
+                            }
+                            BackHandler(enabled = openSection != null) { openSection = null }
+
+                            when (openSection) {
+                                null -> {
+                                    // Haun näkymämalli elää välilehden reitillä, joten
+                                    // kerran noudettu DG Help säilyy porautumisen yli.
+                                    val searchModel: InfoSearchViewModel = viewModel(
+                                        factory = InfoSearchViewModel.Factory(container.pages),
+                                    )
+                                    val siteHelp by searchModel.site.collectAsStateWithLifecycle()
+                                    InfoScreen(
+                                        siteHelp = siteHelp,
+                                        onLoadSiteHelp = searchModel::load,
+                                        onOpen = { openSection = it },
+                                        // Sama kolmen rivin käsittely kuin katkenneella
+                                        // istunnolla (`SignOutOnExpiry`): tunnukset pois, keksi
+                                        // pois ja takaisin edelliseen ruutuun. Pelkkä tunnusten
+                                        // poisto jättäisi istunnon voimaan, jolloin sovellus
+                                        // näyttäisi yhä dataa uloskirjautuneelle käyttäjälle.
+                                        onSignOut = {
+                                            container.signOut()
+                                            topModel.signOut()
+                                            navController.popBackStack()
+                                        },
+                                    )
+                                }
+
+                                // Manuaali ensin, koska se ei tarvitse mitään: ei
+                                // näkymämallia, ei verkkoa eikä istuntoa. Sisältö on
+                                // sovelluksen omaa tekstiä.
+                                InfoSection.Help -> HelpScreen(
+                                    onBack = { openSection = null },
+                                )
+
+                                // Katkohistoria: kaksi virtaa kannasta, ei näkymämallia
+                                // eikä verkkoa. Ottelumuisti nimeää ottelun kuten
+                                // merkityillä asemilla.
+                                InfoSection.Drops -> {
+                                    val drops by remember { container.drops.observeNewestFirst() }
+                                        .collectAsStateWithLifecycle(initialValue = emptyList())
+                                    val remembered by remember { container.matchMemory.observeAll() }
+                                        .collectAsStateWithLifecycle(initialValue = emptyMap())
+                                    DropsScreen(
+                                        drops = drops,
+                                        remembered = remembered,
+                                        onBack = { openSection = null },
+                                    )
+                                }
+
+                                /*
+                                 * Sivuston omat sivut samalla porautumisruudulla kuin
+                                 * profiilit ja turnaukset: laji luetaan vastauksesta
+                                 * (`PageViewModel`), ja polku on vakio koska nämä ovat
+                                 * sivuston juuren staattisia sivuja eikä sivulta
+                                 * luettuja linkkejä. Ruutu pysyy välilehden sisällä;
+                                 * vastauksen omat linkit (joita näillä sivuilla ei
+                                 * porautumismielessä ole) menisivät porautumisreitille.
+                                 */
+                                InfoSection.SiteHelp, InfoSection.SiteLinks, InfoSection.Resign -> {
+                                    val path = when (openSection) {
+                                        InfoSection.SiteHelp -> "/help"
+                                        // Top Pagen navigointipalkin oma linkki, vakiopolku.
+                                        InfoSection.Resign -> "/bg/resign"
+                                        else -> "/links.html"
+                                    }
+                                    val pageModel: PageViewModel = viewModel(
+                                        // Avain on polku samasta syystä kuin
+                                        // porautumisreitillä: rivin vaihto on eri malli.
+                                        key = path,
+                                        factory = PageViewModel.Factory(
+                                            pages = container.pages,
+                                            forms = container.forms,
+                                            archive = container.messages,
+                                            path = path,
+                                            self = { container.credentials.get()?.login },
+                                            marks = container.marks,
+                                            ratings = container.playerRatings,
+                                        ),
+                                    )
+                                    val state by pageModel.state.collectAsStateWithLifecycle()
+                                    val resignState by pageModel.resign.collectAsStateWithLifecycle()
+
+                                    SignOutOnExpiry(state, container, topModel, navController)
+
+                                    PageScreen(
+                                        state = state,
+                                        onBack = { openSection = null },
+                                        onRefresh = pageModel::refresh,
+                                        selfName = pageModel.selfName,
+                                        eventId = pageModel.eventId,
+                                        onOpenPath = {
+                                            navController.navigate(PageRoute.of(it))
+                                        },
+                                        resign = resignState,
+                                        onResign = pageModel::resign,
+                                        onDismissResign = pageModel::dismissResign,
+                                    )
+                                }
+
+                            }
+                        }
+
+                        /*
+                         * Asetuslomake omana reittinään (Tommin päätös 4.9.2026, `docs/UI.md`).
+                         *
+                         * Sisäänkäyntejä on kaksi, otteluluettelon ratas ja Infon
+                         * `Settings`-rivi, ja se pakotti reitin: paikallaan porautuva ruutu
+                         * olisi vienyt paluun Info-listaan myös silloin kun lähdettiin
+                         * otteluluettelosta. Palkkia ei piirretä samoin kuin laudalla, ja
+                         * `onBack` on siksi `popBackStack` eikä valinnan nollaus.
+                         */
+                        composable(SETTINGS_ROUTE) {
+                            // Näkymämalli on reitin tasolla eikä activityn: asetusruutu
+                            // haetaan silloin kun se avataan, eikä se ole tilaa jota
+                            // otteluluettelo tarvitsisi. Poistuminen vapauttaa sen.
+                            val settingsModel: SettingsViewModel = viewModel(
+                                factory = SettingsViewModel.Factory(
+                                    pages = container.pages,
+                                    forms = container.forms,
+                                    baseline = container.settingsBaseline,
+                                    siteSettings = container.siteSettings,
+                                )
+                            )
+                            val state by settingsModel.state.collectAsStateWithLifecycle()
+                            val saveResult by settingsModel.saveResult
+                                .collectAsStateWithLifecycle()
+
+                            // Sama käsittely kuin lautanäkymässä ja samasta syystä:
+                            // tunnusvaraston omistaa TopViewModel, joten katkennut istunto
+                            // hoidetaan yhdessä paikassa eikä kahdessa.
+                            SignOutOnExpiry(state, container, topModel, navController)
+
+                            // Tyylivalinta luetaan ja kirjoitetaan tässä eikä näkymämallissa:
+                            // se on laitteen oma asetus eikä sivuston tilaa, joten se ei
+                            // kuulu malliin joka kuvaa mitä sivustolla lukee.
+                            var boardStyle by remember { mutableStateOf(container.boardStyle.get()) }
+                            var boardShuffle by remember { mutableStateOf(container.boardShuffle.on()) }
+                            var shufflePool by remember { mutableStateOf(container.boardShuffle.pool()) }
+                            var diceStyle by remember { mutableStateOf(container.diceStyle.get()) }
+                            var scoreStyle by remember { mutableStateOf(container.scoreStyle.get()) }
+                            var playForcedSteps by remember { mutableStateOf(container.forcedSteps.get()) }
+                            var playGreedyBearoff by remember { mutableStateOf(container.greedyBearoff.get()) }
+                            var confirmBeaver by remember {
+                                mutableStateOf(container.beaverConfirm.effective(container.siteSettings.get()))
+                            }
+                            var diceSubmitTap by remember { mutableStateOf(container.diceSubmit.get()) }
+                            var diceSwapTap by remember { mutableStateOf(container.diceSwap.get()) }
+                            var moveArrows by remember { mutableStateOf(container.moveArrows.get()) }
+                            var opponentArrows by remember { mutableStateOf(container.moveArrows.opponent()) }
+
+                            // Kansiovalitsin taustakuville: sama mekanismi kuin varmuuskopion
+                            // tiedostolla (pysyvä uri-oikeus), mutta kansio ja lukuoikeus.
+                            // Valitsin näyttää kaikki kansion antavat tarjoajat, myös pilven
+                            // jos sellainen on; suositus on laitteen oma kansio, koska pilvi
+                            // hakisi kuvat verkosta joka avauksella (Tommin huoli 15.9.2026).
+                            val wallpaperLauncher = rememberLauncherForActivityResult(
+                                ActivityResultContracts.OpenDocumentTree(),
+                            ) { uri ->
+                                if (uri != null) {
+                                    runCatching {
+                                        contentResolver.takePersistableUriPermission(
+                                            uri,
+                                            Intent.FLAG_GRANT_READ_URI_PERMISSION,
+                                        )
+                                    }
+                                    container.wallpaper.saveFolder(uri.toString())
+                                    wallpaperFolder = uri.toString()
+                                }
+                            }
+
+                            SettingsScreen(
+                                siteBoard = container.siteSettings.get(),
+                                // Tuonti kirjoittaa säilöt, ja uudelleenluonti lukee ne kaikkiin
+                                // tiloihin kerralla (28.9.2026), koska tilat ovat `remember`eitä.
+                                settingsTransfer = remember {
+                                    SettingsTransfer { name -> applicationContext.getSharedPreferences(name, MODE_PRIVATE) }
+                                },
+                                onSettingsImported = { recreate() },
+                                state = state,
+                                saveResult = saveResult,
+                                boardStyle = boardStyle,
+                                onBoardStyleChange = { style ->
+                                    container.boardStyle.save(style)
+                                    boardStyle = style
+                                },
+                                boardShuffle = boardShuffle,
+                                onBoardShuffleChange = { on ->
+                                    container.boardShuffle.saveOn(on)
+                                    boardShuffle = on
+                                },
+                                shufflePool = shufflePool,
+                                onShufflePoolChange = { pool ->
+                                    container.boardShuffle.savePool(pool)
+                                    shufflePool = pool
+                                },
+                                diceStyle = diceStyle,
+                                onDiceStyleChange = { style ->
+                                    container.diceStyle.save(style)
+                                    diceStyle = style
+                                },
+                                scoreStyle = scoreStyle,
+                                onScoreStyleChange = { style ->
+                                    container.scoreStyle.save(style)
+                                    scoreStyle = style
+                                },
+                                busyStyle = busyStyle,
+                                onBusyStyleChange = { style ->
+                                    container.busyStyle.save(style)
+                                    busyStyle = style
+                                },
+                                appTheme = appTheme,
+                                onAppThemeChange = { theme ->
+                                    // Teema kirjoittaa laudan ja ilmaisimen viimeistelyn. Paluu
+                                    // Plainiin palauttaa ne mitä oli ennen Decoa, paitsi jos
+                                    // pelaaja on sillä välin itse vaihtanut laudan pois Decosta.
+                                    if (theme != appTheme) {
+                                        if (theme == AppTheme.DECO) {
+                                            container.appTheme.saveBefore(boardStyle, busyDeco)
+                                            container.boardStyle.save(BoardStyle.DECO)
+                                            boardStyle = BoardStyle.DECO
+                                            container.busyStyle.saveDeco(true)
+                                            busyDeco = true
+                                        } else {
+                                            val (board, deco) = container.appTheme.before()
+                                            val restored = if (boardStyle == BoardStyle.DECO) board else boardStyle
+                                            container.boardStyle.save(restored)
+                                            boardStyle = restored
+                                            container.busyStyle.saveDeco(deco)
+                                            busyDeco = deco
+                                        }
+                                        container.appTheme.save(theme)
+                                        appTheme = theme
+                                    }
+                                },
+                                busyDeco = busyDeco,
+                                onBusyDecoChange = { on ->
+                                    container.busyStyle.saveDeco(on)
+                                    busyDeco = on
+                                },
+                                playForcedSteps = playForcedSteps,
+                                onPlayForcedStepsChange = { enabled ->
+                                    container.forcedSteps.save(enabled)
+                                    playForcedSteps = enabled
+                                },
+                                playGreedyBearoff = playGreedyBearoff,
+                                onPlayGreedyBearoffChange = { enabled ->
+                                    container.greedyBearoff.save(enabled)
+                                    playGreedyBearoff = enabled
+                                },
+                                moveArrows = moveArrows,
+                                onMoveArrowsChange = { enabled ->
+                                    container.moveArrows.save(enabled)
+                                    moveArrows = enabled
+                                },
+                                opponentArrows = opponentArrows,
+                                onOpponentArrowsChange = { enabled ->
+                                    container.moveArrows.saveOpponent(enabled)
+                                    opponentArrows = enabled
+                                },
+                                confirmBeaver = confirmBeaver,
+                                onConfirmBeaverChange = { enabled ->
+                                    container.beaverConfirm.save(enabled)
+                                    confirmBeaver = enabled
+                                },
+                                diceSubmitTap = diceSubmitTap,
+                                onDiceSubmitTapChange = { enabled ->
+                                    container.diceSubmit.save(enabled)
+                                    diceSubmitTap = enabled
+                                },
+                                diceSwapTap = diceSwapTap,
+                                onDiceSwapTapChange = { enabled ->
+                                    container.diceSwap.save(enabled)
+                                    diceSwapTap = enabled
+                                },
+                                portraitLock = portraitLock,
+                                onPortraitLockChange = { enabled ->
+                                    container.portraitLock.save(enabled)
+                                    portraitLock = enabled
+                                },
+                                fullScreen = fullScreen,
+                                onFullScreenChange = { enabled ->
+                                    container.fullScreen.save(enabled)
+                                    fullScreen = enabled
+                                },
+                                boardRotates = boardRotates,
+                                onBoardRotatesChange = { enabled ->
+                                    container.boardRotation.save(enabled)
+                                    boardRotates = enabled
+                                },
+                                leftHanded = leftHanded,
+                                onLeftHandedChange = { enabled ->
+                                    container.handedness.save(enabled)
+                                    leftHanded = enabled
+                                },
+                                sumiE = sumiE,
+                                onSumiEChange = { enabled ->
+                                    container.skyTheme.save(enabled)
+                                    sumiE = enabled
+                                },
+                                pattern = pattern,
+                                onPatternChange = { enabled ->
+                                    container.skyTheme.savePattern(enabled)
+                                    pattern = enabled
+                                },
+                                wallpaperFolder = wallpaperFolder,
+                                onChooseWallpaperFolder = { wallpaperLauncher.launch(null) },
+                                onClearWallpaperFolder = {
+                                    container.wallpaper.forget()
+                                    wallpaperFolder = null
+                                },
+                                rarity = rarityOn,
+                                onRarityChange = { enabled ->
+                                    container.rarity.save(enabled)
+                                    rarityOn = enabled
+                                },
+                                appLock = appLockOn,
+                                appLockAvailable = lockAvailable,
+                                onAppLockChange = { enabled ->
+                                    container.appLock.save(enabled)
+                                    appLockOn = enabled
+                                },
+                                folds = settingsFolds,
+                                onToggleFold = { group ->
+                                    val next = if (group in settingsFolds) settingsFolds - group else settingsFolds + group
+                                    container.settingsFold.save(next)
+                                    settingsFolds = next
+                                },
+                                // Luetaan piirtohetkellä eikä virtana: lähtötila
+                                // kirjoitetaan kerran eikä se muutu ruudun eliniän aikana.
+                                storedBaseline = settingsModel.storedBaseline,
+                                onRefresh = settingsModel::refresh,
+                                // Sivu haetaan vasta DailyGammon-segmentistä (22.9.2026).
+                                onOpenSite = settingsModel::open,
+                                onSave = settingsModel::save,
+                                onDismissResult = settingsModel::clearSaveResult,
+                                onBack = { navController.popBackStack() },
+                            )
+                        }
+
+                        /*
+                         * Porautumiset: pelaajaprofiili, turnaussivu ja pelaajan
+                         * turnauslistat. Yksi reitti, koska sivun laji luetaan vasta
+                         * vastauksesta (ks. `PageViewModel`).
+                         *
+                         * Reitti on välilehtien ulkopuolella samoin kuin lauta, joten
+                         * palkkia ei piirretä ja paluu on järjestelmän ele tai otsikon
+                         * oma nappi.
+                         */
+                        composable(
+                            route = PageRoute.PATTERN,
+                            arguments = listOf(
+                                navArgument(PageRoute.ARG_PATH) { type = NavType.StringType },
+                            ),
+                        ) { entry ->
+                            // Argumentti tulee purettuna, samoin kuin lautareitillä.
+                            val path = entry.arguments?.getString(PageRoute.ARG_PATH).orEmpty()
+
+                            val pageModel: PageViewModel = viewModel(
+                                // Avain on polku: sama ruutu eri polulla on eri malli,
+                                // muuten profiilista profiiliin porautuminen näyttäisi
+                                // edellisen sivun.
+                                key = path,
+                                factory = PageViewModel.Factory(
+                                    pages = container.pages,
+                                    forms = container.forms,
+                                    archive = container.messages,
+                                    path = path,
+                                    // Oma nimi lähetetyn viestin lähettäjäksi, luettuna
+                                    // kutsuhetkellä kuten viestiruudulla.
+                                    self = { container.credentials.get()?.login },
+                                    marks = container.marks,
+                                    ratings = container.playerRatings,
+                                ),
+                            )
+                            val state by pageModel.state.collectAsStateWithLifecycle()
+
+                            SignOutOnExpiry(state, container, topModel, navController)
+
+                            val draft by pageModel.draft.collectAsStateWithLifecycle()
+                            val sendState by pageModel.send.collectAsStateWithLifecycle()
+                            val actionState by pageModel.action.collectAsStateWithLifecycle()
+
+                            // Haettu .mat-tiedosto menee jakovalikkoon kerran: Ready
+                            // kuitataan heti kun valikko on avattu, ettei ruudun
+                            // uudelleenpiirto avaa sitä toiseen kertaan.
+                            val exportState by pageModel.export.collectAsStateWithLifecycle()
+                            val context = LocalContext.current
+                            val chooserTitle = stringResource(R.string.page_export_chooser)
+                            LaunchedEffect(exportState) {
+                                val ready = exportState as? ExportUiState.Ready
+                                    ?: return@LaunchedEffect
+                                MatchExportShare.share(context, ready.fileName, ready.text, chooserTitle)
+                                pageModel.exportConsumed()
+                            }
+
+                            // Sama fraasilista kuin viestiruudussa ja laudalla (3.9.2026).
+                            val phrases by container.phraseBook.phrases.collectAsStateWithLifecycle()
+                            // Omien turnausten lukema muistista pelaajasivun riville
+                            // (10.9.2026), ei uutta hakua.
+                            val ownTournamentCount by container.ownTournamentCount
+                                .collectAsStateWithLifecycle()
+                            // Keskinäinen saldo profiilin versus-linkiltä (21.9.2026).
+                            val versus by pageModel.versus.collectAsStateWithLifecycle()
+                            PageScreen(
+                                state = state,
+                                onBack = { navController.popBackStack() },
+                                onRefresh = pageModel::refresh,
+                                selfName = pageModel.selfName,
+                                eventId = pageModel.eventId,
+                                ownTournamentCount = ownTournamentCount,
+                                versus = versus,
+                                // Sivun oma linkki sellaisenaan, samalle reitille.
+                                onOpenPath = { navController.navigate(PageRoute.of(it)) },
+                                draft = draft,
+                                send = sendState,
+                                phrases = phrases,
+                                onAddPhrase = container.phraseBook::add,
+                                onRemovePhrase = container.phraseBook::remove,
+                                onDraftChange = pageModel::onDraftChange,
+                                onSend = pageModel::send,
+                                export = exportState,
+                                onExport = pageModel::export,
+                                action = actionState,
+                                onInvite = pageModel::invite,
+                                onIgnore = pageModel::ignore,
+                                onDismissAction = pageModel::dismissAction,
+                            )
+                        }
+
+                        composable(
+                            route = BoardRoute.PATTERN,
+                            arguments = listOf(
+                                navArgument(BoardRoute.ARG_PATH) { type = NavType.StringType },
+                                navArgument(BoardRoute.ARG_MATCH) {
+                                    type = NavType.StringType
+                                    nullable = true
+                                    defaultValue = null
+                                },
+                            ),
+                        ) { entry ->
+                            // Argumentit tulevat purettuina, koska kirjasto purkaa reitin
+                            // itse. Koodauksen häviöttömyyttä väittää DestinationsTest;
+                            // tässä ei siis pureta uudelleen, koska kaksi purkua rikkoisi
+                            // prosenttimerkin sisältävän arvon.
+                            val playPath = entry.arguments?.getString(BoardRoute.ARG_PATH).orEmpty()
+                            val matchId = entry.arguments?.getString(BoardRoute.ARG_MATCH)
+
+                            val boardModel: BoardViewModel = viewModel(
+                                factory = BoardViewModel.Factory(
+                                    pages = container.pages,
+                                    // Ainoa ruutu joka saa tämän. Ks. `FormSender`.
+                                    forms = container.forms,
+                                    // Ainoa ruutu joka kirjoittaa jonoon, samasta syystä
+                                    // kuin `forms`: vain täällä tehdään tekoja.
+                                    queue = container.actions,
+                                    // Ainoa ruutu jolla peli on tiedossa, eli ainoa
+                                    // paikka jossa muistutuksella on koti. Ei kyky
+                                    // sivustolla, ks. `ReminderBook`.
+                                    reminderBook = container.reminders,
+                                    // Ainoa ruutu joka kirjoittaa merkkejä, samasta syystä
+                                    // kuin muistutukset: vain täällä peli ja siirtonumero
+                                    // ovat tiedossa. Ks. `MarkBook`.
+                                    markBook = container.marks,
+                                    // Toinen ruutu joka kirjoittaa arkistoon, ja syy on
+                                    // sama kuin viestiruudulla: ottelun chat näkyy vain
+                                    // siirron jälkeisellä sivulla eikä sivusto säilytä sitä.
+                                    archive = container.messages,
+                                    // Laitteen asetus luetaan laudan avautuessa, ei nyt:
+                                    // funktio eikä arvo, ks. `BoardViewModel`.
+                                    playForcedSteps = { container.forcedSteps.get() },
+                                    playGreedyBearoff = { container.greedyBearoff.get() },
+                                    opponentArrowsOn = { container.moveArrows.opponent() },
+                                    self = { container.credentials.get()?.login },
+                                    playPath = playPath,
+                                    expectedMatchId = matchId?.let(::MatchId),
+                                    // Luettelon kierrokset tunnisteella, ks. `ListedRounds`.
+                                    listedRound = container.listedRounds::of,
+                                    // Luettu lauta ottelumuistiin, ks. `MatchMemory`.
+                                    matchMemory = container.matchMemory,
+                                    // Katko kesken teon historiaan, ks. `DropLog`.
+                                    dropLog = container.drops,
+                                )
+                            )
+                            val state by boardModel.state.collectAsStateWithLifecycle()
+                            val pending by boardModel.pending.collectAsStateWithLifecycle()
+                            val note by boardModel.note.collectAsStateWithLifecycle()
+                            val reminders by boardModel.reminders.collectAsStateWithLifecycle()
+                            val matchReplyState by boardModel.matchReply.collectAsStateWithLifecycle()
+                            val matchReplyDraft by boardModel.matchReplyDraft.collectAsStateWithLifecycle()
+
+                            // Katkennut istunto vie takaisin listalle ja tyhjentää
+                            // istunnon kokonaan. Tunnusten poisto on TopViewModelin työ,
+                            // koska se omistaa tunnusvaraston.
+                            SignOutOnExpiry(state, container, topModel, navController)
+                            LaunchedEffect(state) {
+                                val current = state
+                                // Sivuston oma `To Top` vie Top Pagelle, ja lautanäkymä
+                                // tunnistaa sen jo. Väliruutu ei kuitenkaan ole poistuminen:
+                                // nappi lupaa viedä ylös, joten ruutu suljetaan ja luettelo
+                                // haetaan tuoreena. Juuri päättynyt ottelu on silloin poissa
+                                // listalta, mikä on koko napin tarkoitus. Haku on `/bg/top`,
+                                // joka ei kuluta jonoa (`docs/KOHDE.md`), toisin kuin
+                                // `/bg/nextgame`.
+                                //
+                                // ~~Tuore haku eikä vastauksen kierrätys: sivu on jo haettu
+                                // kerran, mutta sen välittäminen näkymämallista toiseen
+                                // tarkoittaisi toista reittiä samaan tilaan. Yksi kuluttamaton
+                                // pyyntö on halvempi kuin toinen totuus luettelosta.~~
+                                // **Purettu 4.9.2026 illalla mitatun hinnan takia**, ks. alla:
+                                // toinen reitti ei syntynyt, koska luettelo lukee tavut itse.
+                                if (current is BoardUiState.NotABoard &&
+                                    current.kind is NotABoardKind.TopPage
+                                ) {
+                                    // **Odotus tapahtuu kohteessa eikä lähteessä**, ja se on
+                                    // mitattu päätös (4.9.2026 illalla, nauhoitus tabletilta).
+                                    // Väliversiossa paluu odotti listaa laudan reitillä, ja
+                                    // odotusruutu joutui teeskentelemään otteluluetteloa:
+                                    // erot löytyivät yksi kerrallaan (sisältö, suunta,
+                                    // välilehtipalkki, otsikkorivi) ja päälle tuli vielä
+                                    // navigoinnin ristihäivytys. Nyt paluu tehdään heti ja
+                                    // luettelo näyttää oman odotustilansa omassa kehyksessään.
+                                    //
+                                    // **Ja odotusta ei yleensä ole lainkaan**, koska sivu on
+                                    // jo laitteella: sivusto vastasi tähän pyyntöön
+                                    // otteluluettelolla, ja `adopt` lukee juuri ne tavut.
+                                    // Aiemmin ne heitettiin pois ja sama sivu haettiin
+                                    // uudelleen, mikä oli nauhalta mitattu 1,4 sekuntia.
+                                    // Toista reittiä samaan tilaan ei silti synny: tavut
+                                    // kulkevat luettelon omalla lukijalla samaan tilaan kuin
+                                    // sen oma haku, ja lauta vain välittää sivun jota se ei
+                                    // itse osaa lukea.
+                                    //
+                                    // Haku jää varareitiksi sille tapaukselle jossa tavut
+                                    // eivät kelpaakaan luetteloksi. Se ei ole odotettu
+                                    // tilanne, koska `DgPages.isTopPage` on jo sanonut kyllä,
+                                    // mutta tunnistus ja jäsennys ovat eri asioita eikä
+                                    // ruudulle jätetä vanhaa listaa sen varaan.
+                                    //
+                                    // Suuntaan ei kosketa täällä. Sen omistaja on yllä oleva
+                                    // ohjaus, joka asettaa arvon vasta kun kohde on voimassa;
+                                    // vapautus kesken paluun kokeiltiin samana iltana ja
+                                    // purettiin, koska se on se kilpailu josta ohjaus
+                                    // varoittaa 24.8.2026 mitattuna.
+                                    val adopted = topModel.adopt(current.kind.html)
+                                    if (!adopted) topModel.refresh(matchesKnownStale = true)
+                                    navController.popBackStack()
+                                }
+                            }
+
+                            // **Teon jälkeen paluu hakee luettelon uudestaan** (Tommin päätös
+                            // 16.9.2026, `docs/UI.md`). Luettelo elää activityn tasolla eikä
+                            // päivity itsestään, ja 16.9. nauhalta mitattu vanhentunut
+                            // `Your turn` -rivi johti lukutilan lautaan ja turhaan Skip
+                            // Gameen. Katsomiskäynti ei hae, joten säännön hinta ei muutu.
+                            // Sama polku molemmille paluille: järjestelmän eleelle
+                            // (`BackHandler`) ja ruudun omalle napille (`onBack`), jotta
+                            // tieto ei riipu siitä kummalla poistuttiin. Sivuston omalla
+                            // Top Page -vastauksella poistuva `adopt`-reitti yllä ei kulje
+                            // tästä, eikä se hae, koska sivu on jo laitteella.
+                            val leaveBoard = {
+                                if (boardModel.actedOnSite) topModel.refresh(matchesKnownStale = true)
+                                navController.popBackStack()
+                                Unit
+                            }
+                            BackHandler(onBack = leaveBoard)
+
+                            // Paluu on 9.8.2026 alkaen järjestelmän oma ele eikä ruudun nappi
+                            // (Tommin valinta), joten `navController` hoitaa sen itse.
+                            // **Poikkeus 1.9.2026: lukukelvoton sivu saa näkyvän paluun**,
+                            // koska ruutu piilottaa palkit eikä elettä silloin näy — ja
+                            // koska laudan tilan säästäminen ei ole peruste ruudulla jolla
+                            // ei ole lautaa. Ehto on `BoardScreen`in puolella, ks. `onBack`.
+                            WakeOnReconnect(container.network, boardModel::onNetworkAvailable)
+                            // Sama fraasilista kuin viestiruudussa (Tommin tilaus 3.9.2026).
+                            // Omistaja on sovellus eikä kumpikaan näkymämalli, ks. `PhraseBook`.
+                            val phrases by container.phraseBook.phrases.collectAsStateWithLifecycle()
+                            // Ottelukohtainen lauta (Tommi 27.9.2026, `BoardShuffle.kt`). Ottelu
+                            // pidetään muistissa lataus- ja virhetilojen yli, jotta paneeli ei
+                            // välähdä tallennetun laudan väreissä ennen kuin sivu on luettu.
+                            // Ottelun vaihtuessa uusi numero tulee laudan mukana, ja lauta
+                            // vaihtuu samalla.
+                            var shownMatch by remember { mutableStateOf<fi.tommi.dg.domain.MatchId?>(null) }
+                            val currentMatch = (state as? fi.tommi.dg.app.ui.ActingSurface)?.matchId ?: shownMatch
+                            SideEffect { if (currentMatch != shownMatch) shownMatch = currentMatch }
+                            val shuffledStyle = if (container.boardShuffle.on() && currentMatch != null) {
+                                fi.tommi.dg.app.session.boardForMatch(currentMatch.value, container.boardShuffle.pool())
+                            } else {
+                                container.boardStyle.get()
+                            }
+                            BoardScreen(
+                                state = state,
+                                pending = pending,
+                                note = note,
+                                onRefresh = boardModel::refresh,
+                                onFollow = boardModel::follow,
+                                onPress = boardModel::press,
+                                phrases = phrases,
+                                onAddPhrase = container.phraseBook::add,
+                                onRemovePhrase = container.phraseBook::remove,
+                                // Luettava sivu avataan sivunlukijalla, samalla reitillä kuin
+                                // muualtakin. Lautanäkymä ei osaa siirtolistaa eikä turnausta,
+                                // ja lukijat niille ovat olleet olemassa jo ennen tätä.
+                                onOpenPage = { navController.navigate(PageRoute.of(it)) },
+                                onSendChat = boardModel::sendChat,
+                                // Päättymissivun Reply to, ks. `BoardViewModel.matchReply`.
+                                matchReply = MatchReplyUi(
+                                    send = matchReplyState,
+                                    draft = matchReplyDraft,
+                                    selfName = boardModel.selfName,
+                                    onOpen = boardModel::openMatchReply,
+                                    onDraftChange = boardModel::onMatchReplyDraftChange,
+                                    onSend = boardModel::sendMatchReply,
+                                ),
+                                onBack = leaveBoard,
+                                reminders = reminders,
+                                onAddReminder = boardModel::addReminder,
+                                onRemoveReminder = boardModel::removeReminder,
+                                onWritingChange = { boardWriting = it },
+                                onMarkPosition = boardModel::markPosition,
+                                // Luetaan piirtohetkellä eikä oteta talteen: tyyli vaihdetaan
+                                // asetusruudussa, ja lautaruutu koostuu aina uudestaan siihen
+                                // tullessa, joten tuore luku riittää ilman virtaa.
+                                style = shuffledStyle,
+                                siteSettings = container.siteSettings.get(),
+                                diceStyle = container.diceStyle.get(),
+                                scoreStyle = container.scoreStyle.get(),
+                                // Luetaan piirtohetkellä kuten kaksi ylläolevaa: laudalle
+                                // tullaan asetusruudun jälkeen, joten muutos on voimassa
+                                // seuraavassa ottelussa ilman erillistä virtaa.
+                                diceSubmitTap = container.diceSubmit.get(),
+                                diceSwapTap = container.diceSwap.get(),
+                                moveArrows = container.moveArrows.get(),
+                                // Sama lukuhetki. Oletus seuraa sivun tuplausvahvistusta
+                                // kunnes pelaaja koskee kytkimeen (27.9.2026).
+                                confirmBeaver = container.beaverConfirm.effective(container.siteSettings.get()),
+                                leftHanded = leftHanded,
+                                fullScreen = fullScreen,
+                            )
+                        }
+                    }
+                    }
+                    }
+                    }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Kutsuu [onAvailable]a aina kun yhteys palaa, niin kauan kuin ruutu on näkyvissä.
+ *
+ * **Sidottu koostumukseen eikä sovellukseen**, ja se on tämän ratkaisun kantava valinta.
+ * Reittinsä jättänyt ruutu ei koostu, joten se ei myöskään herää: taustalle jäänyt näkymä
+ * ei hae mitään, ja pyyntöjä syntyy vain sinne mihin käyttäjä katsoo. Se vastaa
+ * `docs/AVOIMET.md`:n avoimeen puoleen, ja vastaus on kapein mahdollinen.
+ *
+ * Haku tulee heti eikä viiveellä, koska ehto on jo tiukka: näkymämalli hakee vain jos
+ * edellinen haku kaatui verkkoon. Viive suojaisi tahdilta jota tässä ei synny.
+ */
+/**
+ * Ruudun suunta yhtenä sääntönä, jotta se on sama molemmissa kutsupaikoissa.
+ *
+ * Lauta on vaakaan, muut ruudut seuraavat pystylukkoa (`docs/UI.md`, Tommin päätös
+ * 2.9.2026). Kirjoitushetki kääntää laudan pystyyn (19.9.2026), ja [boardRotates] antaa
+ * laudan seurata laitteen asentoa (23.9.2026, oletus pois).
+ *
+ * Sääntö nostettiin omakseen 4.9.2026 illalla, kun paluu laudalta asetti suunnan ennen ruudun
+ * vaihtoa. Se asetus purettiin samana iltana mittauksen perusteella, joten kutsupaikkoja on
+ * taas yksi. Funktio jäi silti, koska se on nyt kirjoitettuna se mitä ennen luettiin
+ * `when`-lohkosta kutsupaikan sisältä: **kaksi ehtoa, kolme arvoa, ja lauta ensin.**
+ *
+ * [signingIn] (1.10.2026) on kirjautumisruutu tai puhelimella kirjoittaminen, jotka ovat
+ * pystyssä aina. Se tulee laudan jälkeen ja ennen pystylukkoa, koska lukko pois päältä ei
+ * saa kääntää niitä vaakaan.
+ */
+internal fun orientationFor(
+    onBoard: Boolean,
+    portraitLock: Boolean,
+    writing: Boolean = false,
+    boardRotates: Boolean = false,
+    signingIn: Boolean = false,
+): Int = when {
+    onBoard && writing -> ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+    onBoard && boardRotates -> ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+    onBoard -> ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+    signingIn -> ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+    portraitLock -> ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+    else -> ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+}
+
+@Composable
+private fun WakeOnReconnect(network: NetworkAvailability, onAvailable: () -> Unit) {
+    // Avaimena vain verkko: kuuntelija rekisteröidään kerran eikä jokaisella
+    // uudelleenkoostumuksella. Kutsuttava luetaan tuoreena, jottei vanha viittaus jää
+    // elämään pitkäikäiseen kuuntelijaan.
+    val latest by rememberUpdatedState(onAvailable)
+    LaunchedEffect(network) {
+        network.availability().collect { latest() }
+    }
+}
+
+/**
+ * Sovellus palasi etualalle otteluluettelon ollessa auki: luettelo haetaan uudestaan
+ * (Tommin tilaus 18.9.2026, DG Mobile tekee saman). Päätös siitä haetaanko on
+ * [TopViewModel.onForeground]in, tämä vain kertoo hetken.
+ *
+ * **Ensimmäinen `ON_RESUME` ohitetaan.** Tarkkailija saa sen heti rekisteröityessään, koska
+ * aktiviteetti on jo `RESUMED` kun ruutu koostuu, ja se osuisi sekä käynnistykseen (haku on
+ * jo käynnissä `init`istä) että jokaiseen paluuseen laudalta tai välilehdeltä, jossa ruutu
+ * koostuu uudestaan. Katsomiskäynti laudalla ei saa hakea (`docs/UI.md`), ja teon jälkeinen
+ * paluu hakee jo omaa reittiään. Vasta seuraava `ON_RESUME` on paluu toisesta sovelluksesta
+ * tai lukitulta näytöltä, ja siitä haetaan.
+ */
+@Composable
+private fun RefreshOnForeground(onForeground: () -> Unit) {
+    val latest by rememberUpdatedState(onForeground)
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    DisposableEffect(lifecycle) {
+        var first = true
+        val observer = LifecycleEventObserver { _, event ->
+            if (event != Lifecycle.Event.ON_RESUME) return@LifecycleEventObserver
+            if (first) first = false else latest()
+        }
+        lifecycle.addObserver(observer)
+        onDispose { lifecycle.removeObserver(observer) }
+    }
+}
+
+/**
+ * Katkennut istunto: tunnukset pois, keksi pois ja takaisin edelliseen ruutuun.
+ *
+ * **Yksi määritelmä kuuden kopion tilalle (1.9.2026, H1).** Sama kolmen rivin käsittely oli
+ * kirjoitettu erikseen jokaiseen ruutuun, kukin oman hierarkiansa `SessionExpired`ille.
+ * Ehto luetaan nyt merkinnästä [SessionExpiredState], joten ruutu kertoo vain **mitä tilaa**
+ * seurataan eikä sitä mitä katkeaminen tarkoittaa.
+ *
+ * Tunnusten poisto on `TopViewModel`in työ, koska se omistaa tunnusvaraston; keksin poisto
+ * on containerin, koska pelkkä tunnusten poisto jättäisi istunnon voimaan.
+ */
+@Composable
+private fun SignOutOnExpiry(
+    state: Any?,
+    container: AppContainer,
+    topModel: TopViewModel,
+    navController: NavHostController,
+) {
+    LaunchedEffect(state) {
+        if (state is SessionExpiredState) {
+            container.signOut()
+            topModel.signOut()
+            navController.popBackStack()
+        }
+    }
+}
+
+/** Käynnistysruudun häivytys kierron jälkeen, ks. `keepSplashUntilCubeTurned`. */
+private const val SPLASH_FADE_MS = 150L

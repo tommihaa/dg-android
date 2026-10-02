@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  dailygammon.com ei tarjoa HTTPS:ää lainkaan: portti 443 hylkää yhteyden. Selkokielinen
+  liikenne on siis pakko sallia, mutta vain tälle yhdelle domainille. Oletus pysyy
+  kieltona, jotta mahdollinen tuleva riippuvuus ei pääse puhumaan salaamattomana
+  huomaamatta.
+
+  includeSubdomains on tarkoituksella true: sivusto vastaa sekä www-alkuisena että ilman.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false" />
+
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">dailygammon.com</domain>
+    </domain-config>
+</network-security-config>

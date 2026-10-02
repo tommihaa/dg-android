@@ -1,0 +1,29 @@
+<!--
+  Kopio AIDOSTA luovutuksen vastauksesta (proxyn tavut 4.9.2026 illalla,
+  POST /bg/resign/doit kentilla <ottelun id> ja reellysure). Sivulla ei ole
+  yhtaan tunnistetta, joten tavut ovat sellaisenaan.
+
+  Sivu oli mittaamatta siihen asti, ja koodi oletti etta vastaus voi olla
+  luovutussivu itse. Se ei ole: tama on oma sivunsa, ja siina on kolme piirretta
+  joita luovutussivulla ei ole.
+  1. TITLE kertoo lopputuloksen: "DailyGammon: Post Resignation".
+  2. Runko sanoo luvun omin sanoin: "1 match resigned." Sovellus laskee luvun
+     kadonneista riveista, eli sivustolla on tasta oma lukemansa.
+  3. Lomaketta ei ole, joten ResignParser ei lue tata. Kaytannossa se tarkoittaa
+     etta koodin varareitti (hae /bg/resign uudestaan) on se joka aina ajetaan,
+     ja lokista 4.9.2026 nakyy juuri se: POST, ja heti perassa GET /bg/resign.
+-->
+<HTML><HEAD><TITLE>DailyGammon: Post Resignation</TITLE></HEAD>
+<META http-equiv="Pragma" CONTENT="no-cache">
+<BODY BGCOLOR=#FFFFFF>
+<TABLE border=0 cellpadding=0 cellspacing=0 BGCOLOR=#006600><TR><TD VALIGN=top>&nbsp;<IMG SRC=/images/die.gif ALT=DG WIDTH=16 HEIGHT=16 BORDER=0 ALIGN=middle>&nbsp;
+<TD align=center>&nbsp;<A HREF=/bg/top><B><FONT COLOR=#FFFFFF SIZE=-1>Top Page</FONT></B></A>
+<TD width=20 align=center><FONT COLOR=#99FF99>|</FONT><TD align=center><A HREF=/bg/lounge><B><FONT COLOR=#FFFFFF SIZE=-1>Game Lounge</FONT></B></A>
+<TD width=20 align=center><FONT COLOR=#99FF99>|</FONT><TD align=center><A HREF=/bg/forum2><B><FONT COLOR=#FFFFFF SIZE=-1>Discussion</FONT></B></A>
+<TD width=20 align=center><FONT COLOR=#99FF99>|</FONT><TD align=center><A HREF=/links.html><B><FONT COLOR=#FFFFFF SIZE=-1>Links</FONT></B></A>
+<TD width=20 align=center><FONT COLOR=#99FF99>|</FONT><TD align=center><A HREF=/bg/logout><B><FONT COLOR=#FFFFFF SIZE=-1>Log Out</FONT></B></A>
+<TD width=20 align=center><FONT COLOR=#99FF99>|</FONT><TD align=center><A HREF=/help><B><FONT COLOR=#FFFFFF SIZE=-1>Help</FONT></B></A>&nbsp;&nbsp;
+</TD></TR></TABLE>
+<BR>1 match resigned.
+<BR>Back to <A HREF=/bg/resign>resigns</A>
+</BODY></HTML>

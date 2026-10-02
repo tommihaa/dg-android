@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      Android 12+ näyttää käynnistysruudun ennen kuin Compose piirtää. Kuvake on animaatio:
+      sama tuplauskuutio kuin kotinäytöllä kääntyy ensimmäisen tuplauksen tapaan, pää ylhäältä
+      sivulle ja 2 päälle (Tommin tilaus 1.10.2026). Kuvat piirtää tyokalut/kuvake.py.
+      Kuvakkeen tausta on kotinäytön kuvakkeen musta emali, joten ympyrä näyttää samalta kuin
+      pyöreä kuvake. Kesto on luettava teemasta Android 12:ssa; MainActivity pitää ruudun auki
+      sen loppuun asti, muuten nopea käynnistys katkaisisi kierron.
+    -->
+    <style name="Theme.DgAndroid" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/splash_cube</item>
+        <item name="android:windowSplashScreenIconBackgroundColor">@color/ic_launcher_background</item>
+        <item name="android:windowSplashScreenAnimationDuration">1000</item>
+    </style>
+</resources>

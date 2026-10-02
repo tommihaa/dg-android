@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Käynnistyskuvake: Deco-tuplauskuutio, musta emali ja kultareunat, kultainen Androidin pää
+  ykköspinnassa ja auringonsäteet (Tommin valinta B 22.9.2026; teal-versio 21.9.2026 gitissä). Etuala on PNG viidessä tiheydessä, koska numerot ovat
+  tekstiä eikä VectorDrawable tunne sitä; piirtää tyokalut/kuvake.py, käsin ei muokata.
+  Tausta on musta emali (values/ic_launcher_background.xml). minSdk 26, joten
+  adaptiivinen kuvake riittää eikä vanhaa mipmap-kuvaa tarvita.
+-->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/ic_launcher_background" />
+    <foreground android:drawable="@mipmap/ic_launcher_foreground" />
+</adaptive-icon>

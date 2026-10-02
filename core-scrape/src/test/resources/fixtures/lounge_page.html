@@ -1,0 +1,98 @@
+<!--
+  Anonymisoitu kopio oikeasta Game Loungesta (kaapattu sessio/0574_bg_lounge.html,
+  fixture 26.8.2026). Rakenne, attribuuttien kirjoitusasu ja rivitys ovat sellaisenaan;
+  käyttäjänimet, käyttäjänumerot sekä tarjous- ja tapahtumatunnisteet on vaihdettu ja
+  turnausten nimet keksitty. Rivimäärää on karsittu, mutta mitatut erikoismuodot ovat
+  mukana: turnausrivi ilman Sign Upia, kaksi Has Note -lisäsolullista riviä (toinen ilman
+  Sign Upia, toinen sen kanssa) ja kaksi eri aikarajaa kutsuriveillä. Kommentillinen
+  kutsurivi on syntetisoitu sarakkeen kattamiseksi; mitatuissa riveissä solu oli tyhjä.
+  Jo ilmoittauduttu rivi (Cancel Signup ja Has Note) on lisätty 3.9.2026 kaappauksesta
+  sessio-3-9/0004_bg_lounge.html samalla anonymisoinnilla.
+-->
+<HTML><HEAD>
+    <TITLE>DailyGammon Lounge</TITLE>
+</HEAD>
+<BODY BGCOLOR=#FFFFFF>
+<TABLE border=0 cellpadding=0 cellspacing=0 BGCOLOR=#006600><TR><TD VALIGN=top>&nbsp;<IMG SRC=/images/die.gif ALT=DG WIDTH=16 HEIGHT=16 BORDER=0 ALIGN=middle>&nbsp;
+<TD align=center>&nbsp;<A HREF=/bg/top><B><FONT COLOR=#FFFFFF SIZE=-1>Top Page</FONT></B></A>
+<TD width=20 align=center><FONT COLOR=#99FF99>|</FONT><TD align=center><A HREF=/bg/lounge><B><FONT COLOR=#FFFFFF SIZE=-1>Game Lounge</FONT></B></A>
+<TD width=20 align=center><FONT COLOR=#99FF99>|</FONT><TD align=center><A HREF=/bg/forum2><B><FONT COLOR=#FFFFFF SIZE=-1>Discussion</FONT></B></A>
+<TD width=20 align=center><FONT COLOR=#99FF99>|</FONT><TD align=center><A HREF=/links.html><B><FONT COLOR=#FFFFFF SIZE=-1>Links</FONT></B></A>
+<TD width=20 align=center><FONT COLOR=#99FF99>|</FONT><TD align=center><A HREF=/bg/logout><B><FONT COLOR=#FFFFFF SIZE=-1>Log Out</FONT></B></A>
+<TD width=20 align=center><FONT COLOR=#99FF99>|</FONT><TD align=center><A HREF=/help><B><FONT COLOR=#FFFFFF SIZE=-1>Help</FONT></B></A>&nbsp;&nbsp;
+</TD></TR></TABLE>
+<h2>Welcome to the DailyGammon waiting lounge, pelaaja.</h2>
+<p><TABLE><CAPTION>Matches waiting for opponents:</CAPTION>
+<TR><TH><TH>
+<TH>Type</TH>
+<TH>Length</TH>
+<TH>Player</TH>
+<TH>Timeout</TH>
+<TH>Comment</TH>
+</TR>
+<TR>
+<TD><TD><A HREF=/bg/lounge?action=accept&id=11&userid=10001>Join</A>
+<TD>backgammon</TD>
+<TD align=center>1</TD>
+<TD><A HREF=/bg/user/10002>vastustaja</A></TD>
+<TD>Once a Day (200/+4/24)</TD>
+<TD></TD>
+</TR>
+<TR>
+<TD><TD><A HREF=/bg/lounge?action=accept&id=12&userid=10001>Join</A>
+<TD>nack</TD>
+<TD align=center>3</TD>
+<TD><A HREF=/bg/user/10002>vastustaja</A></TD>
+<TD>Once a Day (200/+4/24)</TD>
+<TD>friendly game welcome</TD>
+</TR>
+<TR>
+<TD><TD><A HREF=/bg/lounge?action=accept&id=21&userid=10001>Join</A>
+<TD>backgammon</TD>
+<TD align=center>1</TD>
+<TD><A HREF=/bg/user/10003>toinen vast.</A></TD>
+<TD>Twice a Day (100/+2/15)</TD>
+<TD></TD>
+</TR>
+</TABLE>
+<p><FORM ACTION=/bg/lounge METHOD=POST>
+<INPUT TYPE=hidden NAME=action VALUE=submit>
+Offer to play a game of <SELECT NAME=variant><OPTION VALUE=1 SELECTED>backgammon
+<OPTION VALUE=2>nack
+<OPTION VALUE=3>double-repeat
+</SELECT>
+ of match length <SELECT NAME=length><OPTION VALUE=1>1<OPTION VALUE=3>3<OPTION VALUE=5 selected>5<OPTION VALUE=7>7<OPTION VALUE=-1>Cubeless Money<OPTION VALUE=-2>Money</SELECT>
+<br>with a comment:<INPUT TYPE=text NAME=comment MAXLENGTH=80 SIZE=50>
+<br>Time Control: <SELECT NAME=time_control>
+<OPTION VALUE=0 SELECTED>Never</OPTION>
+<OPTION VALUE=3>Twice a Day (100/+2/15)</OPTION>
+<OPTION VALUE=7>Once a Day (200/+4/24)</OPTION>
+</SELECT>
+<INPUT TYPE=submit VALUE=Submit>
+</FORM>
+<HR><TABLE><CAPTION>Tournament Sign-Up</caption>
+<tr><th align=left>Tournament Name<th align=left>Variant<th>Length
+<th>Rounds<th colspan=2>Time<th>Grace
+<tr><td><a href=/bg/event/900001>Sample Championship</a><td>backgammon<td align=center>11<td align=center>9<td>150:00<td>+2:00<td>24:00<td><a href=/bg/lounge?action=signup&event=900001&userid=10001>Sign Up</a>
+<tr><td><a href=/bg/event/900002>Sample Nack</a><td>nack<td align=center>7<td align=center>8<td>150:00<td>+2:00<td>24:00<td><a href=/bg/lounge?action=signup&event=900002&userid=10001>Sign Up</a>
+<tr><td><a href=/bg/event/900003>Closed Champs #1</a><td>backgammon<td align=center>3<td align=center>10<td>200:00<td>+4:00<td>24:00<td>&nbsp;
+<td><a href=/bg/event/900003><B>Has Note</B></a>
+<tr><td><a href=/bg/event/900004>Noted Marathon #2</a><td>backgammon<td align=center>21<td align=center>6<td>250:00<td>+1:00<td>24:00<td><a href=/bg/lounge?action=signup&event=900004&userid=10001>Sign Up</a>
+<td><a href=/bg/event/900004><B>Has Note</B></a>
+<tr><td><a href=/bg/event/900007>Signed Champs #5</a><td>nack<td align=center>1<td align=center>10<td>200:00<td>+4:00<td>24:00<td><a href=/bg/lounge?action=cancel&event=900007&userid=10001>Cancel Signup</a>
+<td><a href=/bg/event/900007><B>Has Note</B></a>
+<tr><td><a href=/bg/event/900005>Plain Closed #3</a><td>backgammon<td align=center>5<td align=center>4<td>200:00<td>+4:00<td>24:00<td>&nbsp;
+<tr><td><a href=/bg/event/900006>Ordinary Fives #4</a><td>backgammon<td align=center>5<td align=center>6<td>200:00<td>+4:00<td>24:00<td><a href=/bg/lounge?action=signup&event=900006&userid=10001>Sign Up</a>
+</table>
+<HR>Visit the <A HREF=/bg/thall>Tournament Hall</A> to see active and completed tournaments.
+<HR>See a <A HREF=/bg/plist>List of Players </A> and find out how you're doing.
+<HR><FORM METHOD=POST ACTION=/bg/plist>Find a player whose name starts with: <INPUT TYPE=text NAME=like MAXLENGTH=40 SIZE=40><INPUT TYPE=hidden NAME=type VALUE=name></FORM>
+<TABLE border=0 cellpadding=0 cellspacing=0 BGCOLOR=#006600><TR><TD VALIGN=top>&nbsp;<IMG SRC=/images/die.gif ALT=DG WIDTH=16 HEIGHT=16 BORDER=0 ALIGN=middle>&nbsp;
+<TD align=center>&nbsp;<A HREF=/bg/top><B><FONT COLOR=#FFFFFF SIZE=-1>Top Page</FONT></B></A>
+<TD width=20 align=center><FONT COLOR=#99FF99>|</FONT><TD align=center><A HREF=/bg/lounge><B><FONT COLOR=#FFFFFF SIZE=-1>Game Lounge</FONT></B></A>
+<TD width=20 align=center><FONT COLOR=#99FF99>|</FONT><TD align=center><A HREF=/bg/forum2><B><FONT COLOR=#FFFFFF SIZE=-1>Discussion</FONT></B></A>
+<TD width=20 align=center><FONT COLOR=#99FF99>|</FONT><TD align=center><A HREF=/links.html><B><FONT COLOR=#FFFFFF SIZE=-1>Links</FONT></B></A>
+<TD width=20 align=center><FONT COLOR=#99FF99>|</FONT><TD align=center><A HREF=/bg/logout><B><FONT COLOR=#FFFFFF SIZE=-1>Log Out</FONT></B></A>
+<TD width=20 align=center><FONT COLOR=#99FF99>|</FONT><TD align=center><A HREF=/help><B><FONT COLOR=#FFFFFF SIZE=-1>Help</FONT></B></A>&nbsp;&nbsp;
+</TD></TR></TABLE>
+</BODY></HTML>

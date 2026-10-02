@@ -1,0 +1,6 @@
+# Merkistöfixture on tarkoituksella windows-1252-tavuja eikä UTF-8:aa, ja sen arvo on juuri
+# siinä että tavut ovat koskemattomat. `core.autocrlf` on tällä koneella `true`, joten ilman
+# tätä riviä git kääntäisi rivinvaihdot ulos- ja sisäänpäin ja muuttaisi tiedoston tavuja.
+# Rajaus on tahallaan yhteen tiedostoon: muut fixturet ovat jo puussa CRLF-muunnoksen kanssa,
+# ja `-text` niille näyttäisi koko joukon muuttuneena ilman että mikään oikeasti muuttui.
+core-scrape/src/test/resources/fixtures/forum_thread.html -text

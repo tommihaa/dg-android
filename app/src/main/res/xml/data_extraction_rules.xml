@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Mitä laitteelta saa lähteä, API 31 ja uudemmat. Vanhemmilla pätee backup_rules.xml, ja
+  tiedostojen on sanottava sama asia: jos ne eroavat, laite valitsee eron mukaan hiljaa.
+
+  Lista kertoo mikä otetaan mukaan, ei mitä jätetään pois. Ero on tarkoituksellinen.
+  Poissulkeva lista vanhenee hiljaa, koska seuraava kannan tai asetustiedoston lisäys
+  päätyisi kopioon ilman että kukaan päättää siitä. Mukaan ottava lista epäonnistuu
+  toiseen suuntaan: uusi tallennuspaikka jää kopion ulkopuolelle kunnes se lisätään tähän.
+  Se on oikea suunta, koska puuttuva varmuuskopio huomataan palautettaessa ja liikaa
+  kopioitu yksityisviesti ei huomata koskaan.
+
+  Viestiarkisto on mukana 13.8.2026 alkaen (Tommin päätös). Se on ainoa olemassa oleva
+  kopio historiasta, eikä sitä voi hakea takaisin mistään, koska sivustolla ei ole
+  arkistoa. Perustelu kokonaisuudessaan on docs/ARKKITEHTUURI.md:n sovellusosiossa.
+
+  Tunnukset (dg_credentials) eivät ole mukana, eikä siinä ole harkittavaa: KeystoreKey
+  pitää avaimen järjestelmän puolella, joten kopioitu salattu salasana olisi toisella
+  laitteella tavuja joita mikään ei avaa.
+
+  Kannasta on mukana kolme tiedostoa eikä yksi, koska Room kirjoittaa WAL-tilassa. Pelkkä
+  dg.db olisi kopio josta puuttuvat viimeisimmät kirjoitukset, eli hiljaa vajaa arkisto
+  juuri niiltä päiviltä jotka kiinnostavat eniten.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <include domain="database" path="dg.db" />
+        <include domain="database" path="dg.db-wal" />
+        <include domain="database" path="dg.db-shm" />
+    </cloud-backup>
+    <device-transfer>
+        <include domain="database" path="dg.db" />
+        <include domain="database" path="dg.db-wal" />
+        <include domain="database" path="dg.db-shm" />
+    </device-transfer>
+</data-extraction-rules>

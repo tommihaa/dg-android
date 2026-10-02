@@ -1,0 +1,87 @@
+<!--
+  Anonymisoitu kopio TOISEN pelaajan profiilista (kaapattu raakasivut/user_profile_other.html,
+  fixture 27.8.2026). Nimet ja tekstit ovat keksittyjä, rakenne sellaisenaan.
+
+  Kaksi mitattua eroa omaan profiiliin, ja ne ovat tämän tiedoston syy: ottelutaulukoita ei
+  ole lainkaan (osoitteessa ei ole active- eikä finished-parametria), ja sivulla on kolme
+  lomaketta sekä "matches versus you" -linkki.
+
+  **Kolmas ero poistettiin 29.8.2026, koska se ei ollut ero.** Tässä luki että toisen
+  pelaajan rivistössä on Home Page eikä E-mailia. Laiteajo kumosi sen: toisen pelaajan
+  profiililla näkyi sekä Real Name, Location, E-mail että Comment. Rivistö riippuu siis
+  siitä mitä pelaaja on itse täyttänyt, ei siitä kenen profiili on kyseessä, ja juuri niin
+  `ProfileParser` lukee sen jo nyt (rakenteesta eikä nimilistasta). Yhden sivun rivistö oli
+  luettu koko sivulajin ominaisuudeksi.
+
+  **Kaikki kolme lomaketta ovat tässä 29.8.2026 alkaen, ja se on korjaus.** Aiemmin mukana oli
+  vain kutsulomake, eli fixture väitti sivusta vähemmän kuin raakasivu sanoo. Puuttunut
+  "Quick message" -lomake (POST /bg/sendmsg/<id>) on juuri se jonka ProfileParser lukee, joten
+  katve olisi jättänyt sen testaamatta sillä ainoalla sivulla jolla se on.
+
+  Järjestys on merkitsevä eikä kosmeettinen: kutsulomake on sivulla ENNEN viestilomaketta,
+  joten "ensimmäinen lomake" olisi väärä tapa valita se. Ignore-lomake on mukana samasta
+  syystä, vaikka sitä ei käytetä mihinkään: se on sivun oma tosiasia lomakkeiden joukossa.
+
+  Kutsulomake täydennettiin 3.9.2026 raakasivun koko muotoon (kolme valintaa, kaksi
+  tekstikenttää, valintaruutu), koska se ja Ignore luetaan siitä päivästä alkaen
+  lähetettäviksi (ProfileForms). Vain nimi on vaihdettu.
+-->
+<HTML><HEAD><TITLE>DailyGammon: Info on player toinenpelaaja</TITLE></HEAD>
+<META http-equiv="Pragma" CONTENT="no-cache">
+<BODY BGCOLOR=#FFFFFF>
+<TABLE border=0 cellpadding=0 cellspacing=0 BGCOLOR=#006600><TR><TD VALIGN=top>&nbsp;<IMG SRC=/images/die.gif ALT=DG WIDTH=16 HEIGHT=16 BORDER=0 ALIGN=middle>&nbsp;
+<TD align=center>&nbsp;<A HREF=/bg/top><B><FONT COLOR=#FFFFFF SIZE=-1>Top Page</FONT></B></A>
+<TD width=20 align=center><FONT COLOR=#99FF99>|</FONT><TD align=center><A HREF=/bg/lounge><B><FONT COLOR=#FFFFFF SIZE=-1>Game Lounge</FONT></B></A>
+<TD width=20 align=center><FONT COLOR=#99FF99>|</FONT><TD align=center><A HREF=/help><B><FONT COLOR=#FFFFFF SIZE=-1>Help</FONT></B></A>&nbsp;&nbsp;
+</TD></TR></TABLE>
+<TABLE width=100%><TR><TD valign=top>
+<TABLE>
+<TR><TH ALIGN=RIGHT>Real Name</TH>
+<TD>http://example.invalid/yksi http://example.invalid/kaksi
+<TR><TH ALIGN=RIGHT>Location</TH>
+<TD>20.0107,-76.9098
+<TR><TH ALIGN=RIGHT>Home Page</TH>
+<TD><A HREF="http://example.invalid/koti">http://example.invalid/koti</A>
+<TR><TH ALIGN=RIGHT>Comment</TH>
+<TD>2402.64/10034 8th Oct 2017
+</TABLE>
+<TD align=center valign=center><u>player</u><br><font color=#006600 size=+2><b><i>toinenpelaaja</i></b></font><TD align=right valign=top>
+<table><TR><TD align=right>Rating</TD><TD align=right><FONT size=+1>2326.39</FONT>
+</TD></TR><TR><TD>Experience</TD><TD align=right><FONT size=+1>10765</FONT><br></TD></TR></table>
+<A href=/bg/user/21666?sort_win_loss=1&finished=1&active=1&versus=90001>matches versus you</A>
+<br><a href=/bg/userevent/21666>active tournaments</a>
+<br><a href=/bg/userwins/21666>tournament wins</a>
+</TR></TABLE><p>
+<TABLE width=100%><TR><TD>
+<FORM action=/bg/invite/new METHOD=POST>
+<INPUT type=hidden name=player value=21666>
+Invite toinenpelaaja to a game of <SELECT NAME=variant><OPTION VALUE=1 SELECTED>backgammon
+<OPTION VALUE=2>nack
+<OPTION VALUE=3>double-repeat
+</SELECT>
+<br> of match length <SELECT NAME=length><OPTION VALUE=1>1<OPTION VALUE=3>3<OPTION VALUE=5 selected>5<OPTION VALUE=7>7<OPTION VALUE=9>9<OPTION VALUE=11>11<OPTION VALUE=13>13<OPTION VALUE=15>15<OPTION VALUE=17>17<OPTION VALUE=19>19<OPTION VALUE=21>21<OPTION VALUE=23>23<OPTION VALUE=25>25<OPTION VALUE=-1>Cubeless Money<OPTION VALUE=-2>Money</SELECT>
+with this comment:<br><INPUT TYPE=text NAME=comment MAXLENGTH=80 SIZE=50>
+<br>named: <INPUT TYPE=text NAME=name VALUE="" MAXLENGTH=40 SIZE=40>
+<br>Time Control: <SELECT NAME=time_control>
+<OPTION VALUE=0 SELECTED>Never</OPTION>
+<OPTION VALUE=3>Twice a Day (100/+2/15)</OPTION>
+<OPTION VALUE=7>Once a Day (200/+4/24)</OPTION>
+<OPTION VALUE=11>Weekday (250/+0/72)</OPTION>
+<OPTION VALUE=12>Marathon (250/+1/24)</OPTION>
+<OPTION VALUE=13>Once in 2 days (250/+4/48)</OPTION>
+<OPTION VALUE=15>Once a Week (250/+0/168)</OPTION>
+<OPTION VALUE=16>Once a Month (0/+0/750)</OPTION>
+</SELECT>
+<br><INPUT TYPE=checkbox NAME=private VALUE=private> Private Match
+<INPUT type=submit value=Invite></FORM>
+<TD align=right valign=top>
+<FORM action=/bg/sendmsg/21666 METHOD=POST>
+Quick message to toinenpelaaja:<br><INPUT type=text name=text size=40 maxlength=80> <br><INPUT type=submit value=Send></FORM>
+</TR></TABLE><p>
+<FORM ACTION=/bg/ignore METHOD=GET><INPUT TYPE=HIDDEN NAME=changeto VALUE=1><INPUT TYPE=HIDDEN NAME=user VALUE=21666><INPUT TYPE=SUBMIT VALUE="Ignore toinenpelaaja"></FORM>
+<TABLE border=0 cellpadding=0 cellspacing=0 BGCOLOR=#006600><TR><TD VALIGN=top>&nbsp;<IMG SRC=/images/die.gif ALT=DG WIDTH=16 HEIGHT=16 BORDER=0 ALIGN=middle>&nbsp;
+<TD align=center>&nbsp;<A HREF=/bg/top><B><FONT COLOR=#FFFFFF SIZE=-1>Top Page</FONT></B></A>
+<TD width=20 align=center><FONT COLOR=#99FF99>|</FONT><TD align=center><A HREF=/bg/lounge><B><FONT COLOR=#FFFFFF SIZE=-1>Game Lounge</FONT></B></A>
+<TD width=20 align=center><FONT COLOR=#99FF99>|</FONT><TD align=center><A HREF=/help><B><FONT COLOR=#FFFFFF SIZE=-1>Help</FONT></B></A>&nbsp;&nbsp;
+</TD></TR></TABLE>
+</BODY></HTML>
