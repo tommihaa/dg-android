@@ -108,6 +108,21 @@ class HelpConsistencyTest {
     }
 
     @Test
+    fun valiotsikkoAloittaaKappaleensa() {
+        // 3.10.2026: pitkien vastausten väliotsikot ovat <i>-merkinnällä, omalla rivillään
+        // kappaleen alussa. Keskellä virkettä oleva <i> piirtyisi otsikkokirjaimella, ja
+        // otsikko ilman tekstiä perässään ei otsikoisi mitään.
+        for ((key, text) in strings.filterKeys { it.startsWith("help_a_") }) {
+            for (p in text.split("\n\n")) {
+                if ("<i>" in p || "</i>" in p) {
+                    assertTrue("$key: väliotsikko ei aloita kappaletta omalla rivillään: $p", Regex("(?s)<i>[^<\n]+</i>\n[^\n].*").matches(p))
+                    assertTrue("$key: kaksi väliotsikkoa samassa kappaleessa: $p", p.indexOf("<i>", 1) < 0)
+                }
+            }
+        }
+    }
+
+    @Test
     fun lihavoidutNimetOvatRuudulla() {
         // Tommin kysymys 29.9.2026: portti huomasi puuttuvan maininnan mutta ei poistettua
         // toimintoa, ja samana päivänä vastaus lupasi jo poistetut Copy settings ja Paste
@@ -186,6 +201,17 @@ class HelpConsistencyTest {
         assertMentions(listOf("take"), listOf(strings.getValue("messages_queue_fetch")))
         assertMentions(listOf("archive"), listOf(strings.getValue("messages_export_action"), strings.getValue("backup_set_up"), strings.getValue("backup_now")))
         assertMentions(listOf("d_archive"), listOf(strings.getValue("messages_export_action"), strings.getValue("backup_set_up")))
+        // Roskakori 6.10.2026: poiston, perumisen ja palautuksen napit nimeltä.
+        assertMentions(
+            listOf("archive"),
+            listOf(
+                strings.getValue("messages_delete_action"),
+                strings.getValue("messages_delete_message"),
+                strings.getValue("messages_copy_text"),
+                strings.getValue("messages_undo"),
+                strings.getValue("messages_restore"),
+            ),
+        )
         // Tilikohtainen arkisto (16.9.2026): väitteen on nimettävä ne teot joita rajaus koskee.
         assertMentions(listOf("d_accounts"), listOf(strings.getValue("messages_export_action"), strings.getValue("backup_set_up"), strings.getValue("action_sign_out")))
     }

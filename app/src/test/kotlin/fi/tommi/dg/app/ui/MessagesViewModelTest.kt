@@ -5,6 +5,8 @@ import fi.tommi.dg.app.PageFetcher
 import fi.tommi.dg.app.session.MessageFilterStore
 import fi.tommi.dg.app.session.PhraseBook
 import fi.tommi.dg.app.session.PhraseStore
+import fi.tommi.dg.data.DELETED_KEPT_MILLIS
+import fi.tommi.dg.data.DeletedMessage
 import fi.tommi.dg.data.ReminderBook
 import fi.tommi.dg.domain.FormMethod
 import fi.tommi.dg.domain.Message
@@ -15,6 +17,7 @@ import fi.tommi.dg.net.DgResponse
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -1145,6 +1148,100 @@ class MessagesViewModelTest {
 
         assertTrue(malli.queue.value is QueueUiState.Invitation)
         assertTrue(malli.invitationAction.value is InvitationActionUiState.Failed)
+    }
+
+    // --- Roskakori (Tommin päätökset 6.10.2026) ---
+
+    @Test
+    fun `keskustelun poisto siirtaa roskakoriin ja undo palauttaa`() {
+        val malli = malli(RecordingFetcher { DgResponse.Ok(PIKAVIESTI) })
+        val muu = ARKISTON_VIESTI.copy(opponent = "kolmas", sender = "kolmas", body = "hi")
+
+        runTest(dispatcher) {
+            dao.archive(listOf(ARKISTON_VIESTI, muu), OMA_NIMI)
+            malli.filterChanged("vastapelaaja")
+
+            assertEquals(1, malli.deleteConversation("vastapelaaja"))
+
+            // Avattu keskustelu sulkeutuu, ja poisto odottaa perumista.
+            assertEquals(null, malli.filter.value)
+            assertEquals(Deletion(listOf(ARKISTON_VIESTI.id), "vastapelaaja"), malli.undo.value)
+            assertEquals(listOf(muu), dao.observeAll(OMA_NIMI).first())
+            assertEquals(mapOf(ARKISTON_VIESTI.id to HETKI), dao.deletedAt.value)
+
+            malli.undoDeletion()
+
+            assertEquals(null, malli.undo.value)
+            assertEquals(2, dao.observeAll(OMA_NIMI).first().size)
+        }
+    }
+
+    @Test
+    fun `viestin poisto ei kysy ja restore tuo sen takaisin`() {
+        val malli = malli(RecordingFetcher { DgResponse.Ok(PIKAVIESTI) })
+
+        runTest(dispatcher) {
+            dao.archive(listOf(ARKISTON_VIESTI), OMA_NIMI)
+
+            malli.deleteMessage(ARKISTON_VIESTI)
+
+            assertEquals(Deletion(listOf(ARKISTON_VIESTI.id), null), malli.undo.value)
+            assertEquals(emptyList<Message>(), dao.observeAll(OMA_NIMI).first())
+
+            // Palkki sulkeutui ilman Undota: poisto jää roskakoriin.
+            malli.undoDismissed()
+            assertEquals(null, malli.undo.value)
+
+            malli.restore(listOf(ARKISTON_VIESTI.id))
+            assertEquals(listOf(ARKISTON_VIESTI), dao.observeAll(OMA_NIMI).first())
+        }
+    }
+
+    @Test
+    fun `poistettu ei mene vientiin`() {
+        val malli = malli(RecordingFetcher { DgResponse.Ok(PIKAVIESTI) })
+
+        runTest(dispatcher) {
+            dao.archive(listOf(ARKISTON_VIESTI), OMA_NIMI)
+            malli.deleteMessage(ARKISTON_VIESTI)
+
+            assertTrue(!malli.exportJson(HETKI).contains("Great match!"))
+        }
+    }
+
+    @Test
+    fun `inboxin avaus siivoaa yli 30 paivaa sitten poistetut`() {
+        runTest(dispatcher) {
+            val vanha = ARKISTON_VIESTI.copy(body = "vanha")
+            val tuore = ARKISTON_VIESTI.copy(body = "tuore")
+            dao.archive(listOf(vanha, tuore), OMA_NIMI)
+            dao.delete(listOf(vanha.id), OMA_NIMI, at = HETKI - DELETED_KEPT_MILLIS - 1)
+            dao.delete(listOf(tuore.id), OMA_NIMI, at = HETKI - DELETED_KEPT_MILLIS + 1)
+
+            malli(RecordingFetcher { DgResponse.Ok(PIKAVIESTI) })
+            advanceUntilIdle()
+
+            assertEquals(listOf(tuore.id), dao.rows.value.map { it.id })
+        }
+    }
+
+    @Test
+    fun `roskakori ryhmittyy poistokerroittain`() {
+        val a = ARKISTON_VIESTI
+        val b = ARKISTON_VIESTI.copy(body = "toinen")
+        val c = ARKISTON_VIESTI.copy(opponent = "kolmas", sender = "kolmas", body = "yksin")
+        val ryhmat = trashGroups(
+            listOf(
+                DeletedMessage(c, 9_000),
+                DeletedMessage(a, 5_000),
+                DeletedMessage(b, 5_000),
+            ),
+        )
+
+        assertEquals(2, ryhmat.size)
+        // Yksittäinen viesti on oma rivinsä ilman keskustelun nimeä.
+        assertEquals(TrashGroup(9_000, null, listOf(c)), ryhmat[0])
+        assertEquals(TrashGroup(5_000, "vastapelaaja", listOf(a, b)), ryhmat[1])
     }
 
     private companion object {

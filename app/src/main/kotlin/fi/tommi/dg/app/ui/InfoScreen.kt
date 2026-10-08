@@ -231,6 +231,13 @@ private fun InfoSearchResults(query: String, siteHelp: SiteHelpSearchState, onRe
             }
         }
     }
+    // Merkinnät säilyttävä vastaus App Helpin tunnuksella, jotta osuma piirtyy samoin kuin
+    // manuaalissa (3.10.2026). Haku itse lukee pelkän tekstin [appEntries]istä.
+    val appStyled = remember(resources) {
+        HELP_GROUPS.flatMapIndexed { g, group ->
+            group.items.mapIndexed { i, item -> "${'A' + g}.${i + 1}" to resources.getText(item.answer) }
+        }.toMap()
+    }
     val site = (siteHelp as? SiteHelpSearchState.Loaded)?.page
     val hits = remember(query, appEntries, site) { searchInfo(query, appEntries, site) }
     val words = remember(query) { queryWords(query) }
@@ -253,6 +260,7 @@ private fun InfoSearchResults(query: String, siteHelp: SiteHelpSearchState, onRe
     hits.forEach { hit ->
         InfoHitRow(
             hit = hit,
+            styledAnswer = if (hit.source == InfoHitSource.APP) appStyled[hit.number] else null,
             words = words,
             open = open == hit,
             onToggle = { open = if (open == hit) null else hit },
@@ -280,10 +288,18 @@ private fun InfoSearchNote(text: String, onClick: (() -> Unit)? = null) {
  * manuaalista tai sivuston ohjeesta.
  */
 @Composable
-private fun InfoHitRow(hit: InfoHit, words: List<String>, open: Boolean, onToggle: () -> Unit) {
+private fun InfoHitRow(
+    hit: InfoHit,
+    styledAnswer: CharSequence?,
+    words: List<String>,
+    open: Boolean,
+    onToggle: () -> Unit,
+) {
     val highlight = SpanStyle(
         background = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
     )
+    val bold = helpBoldStyle()
+    val heading = helpHeadingStyle()
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -301,11 +317,15 @@ private fun InfoHitRow(hit: InfoHit, words: List<String>, open: Boolean, onToggl
             color = MaterialTheme.colorScheme.primary,
         )
         Text(
-            text = highlighted(hit.question, words, highlight),
+            text = highlighted(AnnotatedString(hit.question), words, highlight),
             style = MaterialTheme.typography.titleMedium,
         )
         Text(
-            text = highlighted(hit.answer, words, highlight),
+            text = highlighted(
+                styledAnswer?.helpStyled(bold, heading) ?: AnnotatedString(hit.answer),
+                words,
+                highlight,
+            ),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = if (open) Int.MAX_VALUE else 2,
@@ -314,10 +334,11 @@ private fun InfoHitRow(hit: InfoHit, words: List<String>, open: Boolean, onToggl
     }
 }
 
-/** Hakusanojen esiintymät korostettuina, kirjainkoosta välittämättä. */
-private fun highlighted(text: String, words: List<String>, style: SpanStyle): AnnotatedString =
+/** Hakusanojen esiintymät korostettuina, kirjainkoosta välittämättä; [base]n tyylit säilyvät. */
+private fun highlighted(base: AnnotatedString, words: List<String>, style: SpanStyle): AnnotatedString =
     buildAnnotatedString {
-        append(text)
+        append(base)
+        val text = base.text
         words.forEach { word ->
             var from = text.indexOf(word, ignoreCase = true)
             while (from >= 0) {

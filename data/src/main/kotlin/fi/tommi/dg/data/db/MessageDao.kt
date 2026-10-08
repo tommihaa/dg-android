@@ -33,10 +33,10 @@ interface MessageDao {
      * näkee siis tyhjän arkiston eikä kaikkien tilien yhteistä listaa. Omistajattomat
      * rivit (ennen 16.9.2026 tallennetut) tulevat näkyviin vasta [claimUnowned]in jälkeen.
      */
-    @Query("SELECT * FROM messages WHERE account = :account ORDER BY storedAtEpochMillis DESC, id ASC")
+    @Query("SELECT * FROM messages WHERE account = :account AND deletedAtEpochMillis IS NULL ORDER BY storedAtEpochMillis DESC, id ASC")
     fun observeAll(account: String?): Flow<List<MessageEntity>>
 
-    @Query("SELECT * FROM messages WHERE matchId = :matchId ORDER BY storedAtEpochMillis ASC, id ASC")
+    @Query("SELECT * FROM messages WHERE matchId = :matchId AND deletedAtEpochMillis IS NULL ORDER BY storedAtEpochMillis ASC, id ASC")
     fun observeByMatch(matchId: String): Flow<List<MessageEntity>>
 
     /**
@@ -54,7 +54,7 @@ interface MessageDao {
      * tulee sivuston omasta linkistä eikä käyttäjän kirjoittamana, joten kaksi eri
      * kirjoitusasua tarkoittaisi kahta eri asiaa eikä samaa nimeä väärin kirjoitettuna.
      */
-    @Query("SELECT * FROM messages WHERE account = :account AND opponent = :opponent ORDER BY storedAtEpochMillis ASC, id ASC")
+    @Query("SELECT * FROM messages WHERE account = :account AND opponent = :opponent AND deletedAtEpochMillis IS NULL ORDER BY storedAtEpochMillis ASC, id ASC")
     fun observeByOpponent(opponent: String, account: String?): Flow<List<MessageEntity>>
 
     /**
@@ -67,7 +67,7 @@ interface MessageDao {
     @Query(
         """
         SELECT opponent FROM messages
-        WHERE account = :account AND opponent IS NOT NULL
+        WHERE account = :account AND opponent IS NOT NULL AND deletedAtEpochMillis IS NULL
         GROUP BY opponent
         ORDER BY MAX(storedAtEpochMillis) DESC
         """
@@ -91,7 +91,7 @@ interface MessageDao {
      * Tyhjä kanta antaa `null`in eikä nollaa: `MAX` tyhjästä on SQL:ssä NULL, ja se on
      * oikea vastaus. Nolla olisi vuoden 1970 päivämäärä, eli väärä tieto oikean muotoisena.
      */
-    @Query("SELECT MAX(storedAtEpochMillis) FROM messages WHERE account = :account")
+    @Query("SELECT MAX(storedAtEpochMillis) FROM messages WHERE account = :account AND deletedAtEpochMillis IS NULL")
     fun observeNewestStoredAt(account: String?): Flow<Long?>
 
     /**
@@ -108,7 +108,56 @@ interface MessageDao {
     @Query("UPDATE messages SET account = :account WHERE account IS NULL")
     suspend fun claimUnowned(account: String): Int
 
-    // Poistoa ei ole tarkoituksella. Viesti on muuttumaton tapahtuma, ja tämä kanta on
-    // ainoa paikka jossa se on olemassa. Jos siivous joskus tarvitaan, se on tietoinen
-    // ominaisuus eikä DAO:n oletusvalikoimaa.
+    /**
+     * Merkitsee annetut viestit poistetuiksi tämän tilin arkistossa (Tommin päätös 6.10.2026,
+     * `docs/AVOIMET.md` › *Roskakori ja yksittäisen viestin poisto*).
+     *
+     * Rivi jää kantaan, ja jokainen ruudun kysely ohittaa sen. Jo poistettu ei saa uutta
+     * aikaa, jotta roskakorin ryhmä ja 30 päivän laskuri pysyvät ensimmäisen poiston mukaisina.
+     * Tili rajaa poiston kuten luvut: toisen tilin rivi ei poistu, vaikka tunniste osuisi.
+     *
+     * @return poistetuiksi merkittyjen rivien määrä.
+     */
+    @Query(
+        """
+        UPDATE messages SET deletedAtEpochMillis = :at
+        WHERE account = :account AND id IN (:ids) AND deletedAtEpochMillis IS NULL
+        """
+    )
+    suspend fun markDeleted(ids: List<String>, account: String?, at: Long): Int
+
+    /**
+     * Palauttaa poistetut viestit arkistoon (*Restore* ja *Undo*). Viesti palaa sellaisenaan,
+     * joten se asettuu listalle alkuperäiselle paikalleen tallennusajan mukaan.
+     *
+     * @return palautettujen rivien määrä.
+     */
+    @Query(
+        """
+        UPDATE messages SET deletedAtEpochMillis = NULL
+        WHERE account = :account AND id IN (:ids) AND deletedAtEpochMillis IS NOT NULL
+        """
+    )
+    suspend fun restore(ids: List<String>, account: String?): Int
+
+    /** Tilin poistetut viestit, uusin poisto ensin. Roskakorin sisältö. */
+    @Query(
+        """
+        SELECT * FROM messages
+        WHERE account = :account AND deletedAtEpochMillis IS NOT NULL
+        ORDER BY deletedAtEpochMillis DESC, storedAtEpochMillis ASC, id ASC
+        """
+    )
+    fun observeDeleted(account: String?): Flow<List<MessageEntity>>
+
+    /**
+     * Poistaa lopullisesti ennen [cutoff]ia poistetuiksi merkityt (30 päivän siivous). Ainoa
+     * kova poisto jonka DAO tarjoaa: se koskee vain rivejä jotka käyttäjä on jo poistanut,
+     * joten mikään arkistossa näkyvä ei voi kadota tätä kautta. Kaikki tilit kerralla, koska
+     * aika on laitteen eikä tilin.
+     *
+     * @return lopullisesti poistettujen rivien määrä.
+     */
+    @Query("DELETE FROM messages WHERE deletedAtEpochMillis IS NOT NULL AND deletedAtEpochMillis < :cutoff")
+    suspend fun purgeDeletedBefore(cutoff: Long): Int
 }

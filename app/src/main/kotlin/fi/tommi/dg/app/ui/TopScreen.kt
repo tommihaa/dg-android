@@ -295,7 +295,7 @@ internal fun ProfileAction(self: PlayerRef?, onOpenPage: (String) -> Unit) {
 /**
  * Kaksi rinnakkaista listaa, molemmat näkyvissä yhden napautuksen päässä.
  *
- * `Your move` (27.9.2026 asti `Your turn`, 28.9.2026 asti `Playable`) kantaa odottavien määrän sulkeissa kun se on yli
+ * `Your turn` (27.9.2026 asti `Your turn`, 28.9.2026 asti `Playable`, 3.10.2026 asti `Your move`) kantaa odottavien määrän sulkeissa kun se on yli
  * nollan (Tommin tilaus 27.9.2026). Määrä oli 2.9.–27.9.2026 oma rivinsä listan yläpuolella (`It is your turn in N
  * matches`), mutta segmentin nimi sanoi jo saman asian, joten rivi poistui.
  */

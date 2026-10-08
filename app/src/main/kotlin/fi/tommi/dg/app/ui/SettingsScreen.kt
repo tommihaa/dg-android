@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
@@ -50,6 +51,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import fi.tommi.dg.app.R
 import fi.tommi.dg.app.session.AppTheme
+import fi.tommi.dg.app.session.enter
 import fi.tommi.dg.app.session.BoardStyle
 import fi.tommi.dg.app.session.BusyStyle
 import fi.tommi.dg.app.session.DeviceSettingsGroup
@@ -125,6 +127,9 @@ fun SettingsScreen(
     /** Sovelluksen teema (Tommi 22.9.2026), kirjoittaa laudan ja ilmaisimen kerralla. */
     appTheme: AppTheme,
     onAppThemeChange: (AppTheme) -> Unit,
+    /** Wood-teeman kolahdus, oma kytkin (Tommi 4.10.2026). Soi vain Wood-teemassa. */
+    woodSound: Boolean,
+    onWoodSoundChange: (Boolean) -> Unit,
     /** Odotuksen ilmaisin nappien paikalla, oma kytkin (Tommi 18.9.2026). Ks. [DeviceSection]. */
     busyStyle: BusyStyle,
     onBusyStyleChange: (BusyStyle) -> Unit,
@@ -143,6 +148,9 @@ fun SettingsScreen(
     /** Vastustajan edellisen siirron nuolet (Tommi 29.9.2026 illalla), oletus pois. */
     opponentArrows: Boolean,
     onOpponentArrowsChange: (Boolean) -> Unit,
+    /** Painetun pisteen numero laudan reunassa (Tommi 4.10.2026), oletus pois. Ks. `PointPressStore`. */
+    pointPress: Boolean,
+    onPointPressChange: (Boolean) -> Unit,
     /** `Confirm Beaver` voimassa olevana arvona (Tommi 27.9.2026). Ks. `BeaverConfirmStore`. */
     confirmBeaver: Boolean,
     onConfirmBeaverChange: (Boolean) -> Unit,
@@ -162,12 +170,6 @@ fun SettingsScreen(
     /** Kätisyys (Tommin päätös 9.9.2026), oletus oikea. Ks. [DeviceSection]. */
     leftHanded: Boolean,
     onLeftHandedChange: (Boolean) -> Unit,
-    /** Taustakuvion sumi-e-tila (Tommin päätös 6.9.2026), oletus pois. Ks. [DeviceSection]. */
-    sumiE: Boolean,
-    onSumiEChange: (Boolean) -> Unit,
-    /** Taustakuvio päällä vai pois, molemmat teemat (Tommin päätös 6.9.2026), oletus pois. Ks. [DeviceSection]. */
-    pattern: Boolean,
-    onPatternChange: (Boolean) -> Unit,
     /**
      * Taustakuvien kansio (Tommin päätökset 15.9.2026), null kun kuvia ei näytetä. Kansio on
      * itse kytkin, ks. `WallpaperStore`. Ks. [DeviceSection].
@@ -341,6 +343,8 @@ fun SettingsScreen(
                                 siteBoard = siteBoard,
                                 appTheme = appTheme,
                                 onAppThemeChange = onAppThemeChange,
+                                woodSound = woodSound,
+                                onWoodSoundChange = onWoodSoundChange,
                                 boardStyle = boardStyle,
                                 onBoardStyleChange = onBoardStyleChange,
                                 boardShuffle = boardShuffle,
@@ -363,6 +367,8 @@ fun SettingsScreen(
                                 onMoveArrowsChange = onMoveArrowsChange,
                                 opponentArrows = opponentArrows,
                                 onOpponentArrowsChange = onOpponentArrowsChange,
+                                pointPress = pointPress,
+                                onPointPressChange = onPointPressChange,
                                 confirmBeaver = confirmBeaver,
                                 onConfirmBeaverChange = onConfirmBeaverChange,
                                 diceSubmitTap = diceSubmitTap,
@@ -377,10 +383,6 @@ fun SettingsScreen(
                                 onBoardRotatesChange = onBoardRotatesChange,
                                 leftHanded = leftHanded,
                                 onLeftHandedChange = onLeftHandedChange,
-                                sumiE = sumiE,
-                                onSumiEChange = onSumiEChange,
-                                pattern = pattern,
-                                onPatternChange = onPatternChange,
                                 wallpaperFolder = wallpaperFolder,
                                 onChooseWallpaperFolder = onChooseWallpaperFolder,
                                 onClearWallpaperFolder = onClearWallpaperFolder,
@@ -461,6 +463,8 @@ private fun DeviceSection(
     siteBoard: SiteBoardSettings,
     appTheme: AppTheme,
     onAppThemeChange: (AppTheme) -> Unit,
+    woodSound: Boolean,
+    onWoodSoundChange: (Boolean) -> Unit,
     boardStyle: BoardStyle,
     onBoardStyleChange: (BoardStyle) -> Unit,
     boardShuffle: Boolean,
@@ -483,6 +487,8 @@ private fun DeviceSection(
     onMoveArrowsChange: (Boolean) -> Unit,
     opponentArrows: Boolean,
     onOpponentArrowsChange: (Boolean) -> Unit,
+    pointPress: Boolean,
+    onPointPressChange: (Boolean) -> Unit,
     confirmBeaver: Boolean,
     onConfirmBeaverChange: (Boolean) -> Unit,
     diceSubmitTap: Boolean,
@@ -497,10 +503,6 @@ private fun DeviceSection(
     onBoardRotatesChange: (Boolean) -> Unit,
     leftHanded: Boolean,
     onLeftHandedChange: (Boolean) -> Unit,
-    sumiE: Boolean,
-    onSumiEChange: (Boolean) -> Unit,
-    pattern: Boolean,
-    onPatternChange: (Boolean) -> Unit,
     wallpaperFolder: String?,
     onChooseWallpaperFolder: () -> Unit,
     onClearWallpaperFolder: () -> Unit,
@@ -530,10 +532,6 @@ private fun DeviceSection(
         val situation = rememberPreviewSituation()
         val board = situation?.board(siteDice = diceStyle == DiceStyle.SITE)
         val look = BoardLook.of(boardStyle, siteBoard, pageScheme = null, decoLight = decoLightBoard())
-        // Suurennettu kortti, null kun mitään ei ole auki. Kaksi muuttujaa eikä yksi, koska
-        // teemakortti piirtää laudan teeman pinnalla ja lautakortti ilman.
-        var zoomTheme by remember { mutableStateOf<AppTheme?>(null) }
-        var zoomBoard by remember { mutableStateOf<BoardStyle?>(null) }
         // Kytkin päällä kortti on arvontajoukon jäsen eikä valinta: napautus lisää tai poistaa,
         // eikä viimeistä voi poistaa, koska tyhjästä joukosta ei arvota mitään. Valittu lauta
         // jää talteen koskematta ja palaa kun kytkin sammuu (Tommin valinta 27.9.2026).
@@ -546,9 +544,6 @@ private fun DeviceSection(
                 onShufflePoolChange(shufflePool - style)
             }
         }
-        // Kätisyyden kortti suurennettuna (Tommin tilaus 24.9.2026: *"handedness kuvat
-        // tarvitsevat suurennuslasi-toiminnon"*). Arvo on vasenkätisyys, null kun kiinni.
-        var zoomHand by remember { mutableStateOf<Boolean?>(null) }
         // Kätisyyden kortit ovat toistensa peilikuvat eivätkä seuraa tilin laudan suuntaa
         // (Tommin valinta 27.9.2026): Left hand näyttää kotikentän vasemmalla, eli sen
         // siirtokäden puolella, ja selite kertoo mistä kentästä suunnan saa.
@@ -556,55 +551,21 @@ private fun DeviceSection(
         val handLook: (Boolean) -> BoardLook = { left ->
             BoardLook.of(boardStyle, siteBoard.copy(homeBoardsLeft = left), pageScheme = null, decoLight = decoLight)
         }
-        if (board != null) {
-            zoomTheme?.let { theme ->
-                val themeStyle = themeBoardStyle(theme, boardStyle)
-                BoardZoomDialog(
-                    label = stringResource(if (theme == AppTheme.DECO) decoThemeLabel() else R.string.settings_theme_plain),
-                    onUse = { onAppThemeChange(theme); zoomTheme = null },
-                    onClose = { zoomTheme = null },
-                ) { height -> ThemePreview(theme, themeStyle, board, siteBoard, height, scaleUp = 1f) }
-            }
-            zoomBoard?.let { style ->
-                BoardZoomDialog(
-                    label = stringResource(boardStyleLabel(style)),
-                    onUse = { pickBoard(style); zoomBoard = null },
-                    onClose = { zoomBoard = null },
-                ) { height ->
-                    PreviewBoard(board, BoardLook.of(style, siteBoard, pageScheme = null, decoLight = decoLightBoard()), CubeLook.of(style), height, scaleUp = 1f)
-                }
-            }
-            zoomHand?.let { left ->
-                BoardZoomDialog(
-                    label = stringResource(if (left) R.string.settings_left_hand else R.string.settings_right_hand),
-                    onUse = { onLeftHandedChange(left); zoomHand = null },
-                    onClose = { zoomHand = null },
-                ) { height ->
-                    PreviewBoardWithPanel(
-                        board,
-                        handLook(left),
-                        CubeLook.of(boardStyle),
-                        panelLookFor(boardStyle),
-                        height = height,
-                        panelOnRight = left,
-                        scaleUp = 1f,
-                    )
-                }
-            }
-        }
+        // Iso kuva on kortin oma (`OptionCard`, 6.10.2026): kuvan napautus avaa sen, ja sama
+        // piirto kuin kortissa tehdään isossa koossa. Kätisyyden iso kuva on Tommin tilaus
+        // 24.9.2026 (*"handedness kuvat tarvitsevat suurennuslasi-toiminnon"*).
         DeviceGroup(title = stringResource(R.string.settings_theme), striped = true) {
             OptionCards {
-                listOf(
-                    AppTheme.PLAIN to R.string.settings_theme_plain,
-                    AppTheme.DECO to decoThemeLabel(),
-                ).forEach { (theme, label) ->
+                AppTheme.entries.map { it to themeLabel(it) }.forEach { (theme, label) ->
                     val themeStyle = themeBoardStyle(theme, boardStyle)
                     OptionCard(
                         label = stringResource(label),
                         selected = appTheme == theme,
                         onSelect = { onAppThemeChange(theme) },
                         width = WIDE_CARD,
-                        onZoom = { zoomTheme = theme },
+                        large = board?.let { b ->
+                            { height -> ThemePreview(theme, themeStyle, b, siteBoard, height, scaleUp = 1f) }
+                        },
                     ) {
                         if (board != null) {
                             ThemePreview(theme, themeStyle, board, siteBoard, BOARD_PREVIEW_HEIGHT - 16.dp)
@@ -612,6 +573,14 @@ private fun DeviceSection(
                     }
                 }
             }
+            // Pelin äänet omana kytkimenään (kaanoni 4.10.2026, `docs/AVOIMET.md`). Käytössä
+            // kaikissa teemoissa 6.10.2026 alkaen, kun äänet irtosivat Woodista.
+            DeviceToggle(
+                label = stringResource(R.string.settings_wood_sound_toggle),
+                explain = stringResource(R.string.settings_wood_sound_explain),
+                checked = woodSound,
+                onChange = onWoodSoundChange,
+            )
         }
 
         // Neljä taittuvaa ryhmää Themen alla (Tommin valinta 27.9.2026): laudan ulkoasu,
@@ -627,7 +596,11 @@ private fun DeviceSection(
                             selected = if (boardShuffle) style in shufflePool else boardStyle == style,
                             onSelect = { pickBoard(style) },
                             width = WIDE_CARD,
-                            onZoom = { zoomBoard = style },
+                            large = board?.let { b ->
+                                { height ->
+                                    PreviewBoard(b, BoardLook.of(style, siteBoard, pageScheme = null, decoLight = decoLight), CubeLook.of(style), height, scaleUp = 1f)
+                                }
+                            },
                             checkbox = boardShuffle,
                         ) {
                             if (board != null) {
@@ -665,6 +638,9 @@ private fun DeviceSection(
                             selected = diceStyle == style,
                             onSelect = { onDiceStyleChange(style) },
                             width = NARROW_CARD,
+                            large = situation?.board(siteDice = style == DiceStyle.SITE)?.let { b ->
+                                { height -> ZoomedPicture(height) { PreviewDice(b, look, size = 32.dp) } }
+                            },
                         ) {
                             situation?.board(siteDice = style == DiceStyle.SITE)?.let {
                                 PreviewDice(it, look, size = 32.dp)
@@ -684,6 +660,13 @@ private fun DeviceSection(
                             selected = scoreStyle == style,
                             onSelect = { onScoreStyleChange(style) },
                             width = NARROW_CARD,
+                            large = board?.let { b ->
+                                { height ->
+                                    ZoomedPicture(height) {
+                                        PreviewScore(b, look, panelLookFor(boardStyle), awayShown = style == ScoreStyle.AWAY)
+                                    }
+                                }
+                            },
                         ) {
                             if (board != null) {
                                 PreviewScore(board, look, panelLookFor(boardStyle), awayShown = style == ScoreStyle.AWAY)
@@ -706,7 +689,19 @@ private fun DeviceSection(
                             selected = leftHanded == left,
                             onSelect = { onLeftHandedChange(left) },
                             width = WIDE_CARD,
-                            onZoom = { zoomHand = left },
+                            large = board?.let { b ->
+                                { height ->
+                                    PreviewBoardWithPanel(
+                                        b,
+                                        handLook(left),
+                                        CubeLook.of(boardStyle),
+                                        panelLookFor(boardStyle),
+                                        height = height,
+                                        panelOnRight = left,
+                                        scaleUp = 1f,
+                                    )
+                                }
+                            },
                         ) {
                             if (board != null) {
                                 PreviewBoardWithPanel(
@@ -774,6 +769,17 @@ private fun DeviceSection(
                     onChange = onOpponentArrowsChange,
                 )
             }
+            // **Painettu piste** (Tommin tavoite ja valinta 4.10.2026, `PointPressStore`). Oma
+            // otsikkonsa nuolten jälkeen, koska tämäkin vain näyttää eikä tee mitään pelaajan
+            // puolesta. Oletus pois eikä ruudun koon mukaan: pelaaja päättää itse.
+            DeviceGroup(title = stringResource(R.string.settings_point_press), striped = true) {
+                DeviceToggle(
+                    label = stringResource(R.string.settings_point_press_toggle),
+                    explain = stringResource(R.string.settings_point_press_explain),
+                    checked = pointPress,
+                    onChange = onPointPressChange,
+                )
+            }
             // **Noppien painallus tekona** (Tommin tilaus 4.9.2026). Oma otsikkonsa eikä
             // pakkosiirtojen jatkoa, koska nämä eivät kokoa siirtoa pelaajan puolesta vaan
             // muuttavat sen mitä laudalla oleva painallus tarkoittaa. Kaksi riviä eikä yksi,
@@ -781,7 +787,7 @@ private fun DeviceSection(
             // päättää vuoron. Selitteet sanovat ehdon noppien värinä, koska se on se mitä
             // pelaaja näkee, ja lähetyksen selite nimeää sen tapauksen jossa väri ja ehto
             // eroavat (vain toinen noppa pelattavissa).
-            DeviceGroup(title = stringResource(R.string.settings_dice_tap), striped = true) {
+            DeviceGroup(title = stringResource(R.string.settings_dice_tap), striped = false) {
                 DeviceToggle(
                     label = stringResource(R.string.settings_dice_submit_toggle),
                     explain = stringResource(R.string.settings_dice_submit_explain),
@@ -799,7 +805,7 @@ private fun DeviceSection(
             // Acceptin ja Declinen vahvistukset hoitaa sivun oma asetus (Tommin karsinta samana
             // aamuna), ja beaverille sivulla ei ole asetusta. Selite nimeää sivun asetuksen josta
             // oletus tulee, koska muuten kytkin näyttäisi päällä olevalta ilman valintaa.
-            DeviceGroup(title = stringResource(R.string.settings_money_game), striped = false) {
+            DeviceGroup(title = stringResource(R.string.settings_money_game), striped = true) {
                 DeviceToggle(
                     label = stringResource(R.string.settings_confirm_beaver_toggle),
                     explain = stringResource(R.string.settings_confirm_beaver_explain),
@@ -810,30 +816,13 @@ private fun DeviceSection(
         }
 
         DeviceFold(DeviceSettingsGroup.LISTS, R.string.settings_fold_lists, folds, onToggleFold) {
-            // Taustakuvio on kytkin oletuksena pois molemmissa teemoissa (Tommin päätös 6.9.2026
-            // illalla), ja sumi-e on sen alakytkin vaalealle teemalle (saman päivän aiempi päätös:
-            // yksi värillinen kandidaatti asetukseksi, oletus pois). Vaikutus näkyy heti tämän
-            // ruudun taustassa, joten selitteet kertovat vain sen mitä ei näe tästä: jokainen
-            // ruutu arpoo oman taivaansa, ja tummassa myös paletin ja hahmon.
-            DeviceGroup(title = stringResource(R.string.settings_background), striped = true) {
-                DeviceToggle(
-                    label = stringResource(R.string.settings_pattern_toggle),
-                    explain = stringResource(R.string.settings_pattern_explain),
-                    checked = pattern,
-                    onChange = onPatternChange,
-                )
-                DeviceToggle(
-                    label = stringResource(R.string.settings_sumi_e_toggle),
-                    explain = stringResource(R.string.settings_sumi_e_explain),
-                    checked = sumiE,
-                    onChange = onSumiEChange,
-                )
-            }
-            // Taustakuvat tyhjään tilaan (Tommin päätökset 15.9.2026, `DgWallpaper.kt`). Kansio
+            // Taustakuvat tyhjään tilaan (Tommin päätökset 15.9.2026, `DgWallpaper.kt`), ryhmän
+            // ensimmäisenä 6.10.2026 alkaen, kun taustakuvio ja sumi-e poistettiin (Tommin
+            // karsinta: kuvat ovat ainoa taustaa koskeva valinta). Kansio
             // on itse kytkin: valittu kansio näyttää kuvat, `Stop showing` unohtaa sen. Samaa
             // muotoa kuin varmuuskopion rivi viestiruudussa: tilarivi ja napit, ei checkboxia,
             // koska valinta vaatii järjestelmän kansiovalitsimen eikä ole päällä/pois.
-            DeviceGroup(title = stringResource(R.string.settings_wallpaper), striped = false) {
+            DeviceGroup(title = stringResource(R.string.settings_wallpaper), striped = true) {
                 Text(
                     text = if (wallpaperFolder == null) {
                         stringResource(R.string.settings_wallpaper_off)
@@ -870,7 +859,7 @@ private fun DeviceSection(
             }
             // Rarity-värit on kytkin eikä valinta vaihtoehtojen välillä, joten rivi on
             // valintaruutu (Tommin tilaus 26.9.2026, oletus päällä, ks. `RarityStore`).
-            DeviceGroup(title = stringResource(R.string.settings_rarity), striped = true) {
+            DeviceGroup(title = stringResource(R.string.settings_rarity), striped = false) {
                 DeviceToggle(
                     label = stringResource(R.string.settings_rarity_toggle),
                     explain = stringResource(R.string.settings_rarity_explain),
@@ -878,10 +867,11 @@ private fun DeviceSection(
                     onChange = onRarityChange,
                 )
             }
-            // Odotuksen ilmaisin (Tommin tilaus 18.9.2026). Viisi muotoa ja kaikki laudan väreissä;
+            // Odotuksen ilmaisin (Tommin tilaus 18.9.2026). Viisi muotoa laudan väreissä ja kaksi
+            // kultaista seppelettä omissa väreissään (4.10.2026);
             // vaihtoehtojen sanat kuvaavat kuvaa eivätkä koodin nimeä. Esikatselu pyörii
             // keskikaistan huovalla, koska ilmaisin korvaa siellä napit.
-            DeviceGroup(title = stringResource(R.string.settings_busy_style), striped = false) {
+            DeviceGroup(title = stringResource(R.string.settings_busy_style), striped = true) {
                 OptionCards {
                     listOf(
                         BusyStyle.ARC to R.string.settings_busy_style_arc,
@@ -889,6 +879,8 @@ private fun DeviceSection(
                         BusyStyle.CUBE to R.string.settings_busy_style_cube,
                         BusyStyle.INFINITY to R.string.settings_busy_style_infinity,
                         BusyStyle.HOURGLASS to R.string.settings_busy_style_hourglass,
+                        BusyStyle.LAUREL_GROW to R.string.settings_busy_style_laurel_grow,
+                        BusyStyle.LAUREL_SHIMMER to R.string.settings_busy_style_laurel_shimmer,
                         BusyStyle.RANDOM to R.string.settings_busy_style_random,
                     ).forEach { (style, label) ->
                         OptionCard(
@@ -896,12 +888,21 @@ private fun DeviceSection(
                             selected = busyStyle == style,
                             onSelect = { onBusyStyleChange(style) },
                             width = NARROW_CARD,
+                            // Kortin levyisenä, koska kaista täyttää leveyden eikä isossa kuvassa
+                            // ole muuta leveyttä kuin ruutu.
+                            large = board?.let { b ->
+                                { height ->
+                                    ZoomedPicture(height) {
+                                        Box(modifier = Modifier.width(NARROW_CARD)) { PreviewBusyOnBand(style, b, look) }
+                                    }
+                                }
+                            },
                         ) {
                             if (board != null) PreviewBusyOnBand(style, board, look)
                         }
                     }
                 }
-                // Viimeistely on kytkin eikä kuudes muoto: se koskee kaikkia viittä (Tommin kuittaus
+                // Viimeistely on kytkin eikä kuudes muoto: se koskee viittä laudan väristä muotoa (Tommin kuittaus
                 // 22.9.2026). Kuudes rivi on satunnainen, joka arpoo muodon eikä ole itse muoto.
                 DeviceToggle(
                     label = stringResource(R.string.settings_busy_deco_toggle),
@@ -916,7 +917,7 @@ private fun DeviceSection(
             // Pystylukko on esitys eikä teko, mutta se on kytkin eikä valinta vaihtoehtojen
             // välillä, joten rivi on valintaruutu. Laudan suunta on toinen rivi samassa
             // ryhmässä (Tommin päätös 23.9.2026), koska lukko ei koske lautaa.
-            DeviceGroup(title = stringResource(R.string.settings_orientation), striped = true) {
+            DeviceGroup(title = stringResource(R.string.settings_orientation), striped = false) {
                 DeviceToggle(
                     label = stringResource(R.string.settings_portrait_lock_toggle),
                     explain = stringResource(R.string.settings_portrait_lock_explain),
@@ -932,7 +933,7 @@ private fun DeviceSection(
             }
             // Koko näyttö on oma ryhmänsä eikä suunnan kolmas rivi, koska se ei käännä mitään
             // (Tommin tilaus 30.9.2026, oletus pois, ks. `FullScreenStore`).
-            DeviceGroup(title = stringResource(R.string.settings_full_screen), striped = false) {
+            DeviceGroup(title = stringResource(R.string.settings_full_screen), striped = true) {
                 DeviceToggle(
                     label = stringResource(R.string.settings_full_screen_toggle),
                     explain = stringResource(R.string.settings_full_screen_explain),
@@ -943,7 +944,7 @@ private fun DeviceSection(
             // Sovelluslukko on kytkin (Tommin tilaus 27.9.2026, oletus pois, ks. `AppLockStore`).
             // Ilman laitteen omaa suojausta lukkoa ei voisi avata, joten kytkin on harmaa ja
             // selite sanoo miksi eikä vain että.
-            DeviceGroup(title = stringResource(R.string.settings_app_lock), striped = true) {
+            DeviceGroup(title = stringResource(R.string.settings_app_lock), striped = false) {
                 DeviceToggle(
                     label = stringResource(R.string.settings_app_lock_toggle),
                     explain = stringResource(
@@ -1038,8 +1039,17 @@ private fun DeviceToggle(
  */
 private fun themeBoardStyle(theme: AppTheme, boardStyle: BoardStyle): BoardStyle = when {
     theme == AppTheme.DECO -> BoardStyle.DECO
+    theme == AppTheme.WOOD -> enter(AppTheme.WOOD, boardStyle, busyDeco = false).first
     boardStyle == BoardStyle.DECO -> BoardStyle.X22
     else -> boardStyle
+}
+
+/** Teemakortin nimi. */
+@Composable
+private fun themeLabel(theme: AppTheme): Int = when (theme) {
+    AppTheme.PLAIN -> R.string.settings_theme_plain
+    AppTheme.DECO -> decoThemeLabel()
+    AppTheme.WOOD -> if (dgDark()) R.string.settings_theme_wood else R.string.settings_theme_wood_light
 }
 
 /** Decon kortin nimi laitteen tilan mukaan, koska kortin kuva näyttää sen tilan Decon (26.9.2026). */
@@ -1394,13 +1404,12 @@ private fun SiteChoiceCards(
     striped: Boolean,
     selected: String?,
     onSelect: (String) -> Unit,
-    /** Saako kortti suurennuslasin: Mini ei piirrä lautaa, ja tekstin suurennus on turha. */
+    /** Saako kortti ison kuvan: Mini ei piirrä lautaa, joten siinä ei ole kuvaa. */
     zoomable: (ChoiceOption) -> Boolean,
     /** Voiko vaihtoehdon valita: Miniä ei voi, koska sovellus ei näytä sitä (25.9.2026). */
     enabled: (ChoiceOption) -> Boolean = { true },
     preview: @Composable (option: ChoiceOption, height: Dp, scaleUp: Float) -> Unit,
 ) {
-    var zoom by remember { mutableStateOf<ChoiceOption?>(null) }
     Column(modifier = Modifier.fillMaxWidth().dgStripe(striped).padding(vertical = 8.dp)) {
         Text(
             text = choice.label ?: choice.name,
@@ -1414,20 +1423,13 @@ private fun SiteChoiceCards(
                     selected = option.value == selected,
                     onSelect = { onSelect(option.value) },
                     width = WIDE_CARD,
-                    onZoom = if (zoomable(option)) ({ zoom = option }) else null,
+                    large = if (zoomable(option)) ({ height -> preview(option, height, 1f) }) else null,
                     enabled = enabled(option),
                 ) {
                     preview(option, BOARD_PREVIEW_HEIGHT, 2f)
                 }
             }
         }
-    }
-    zoom?.let { option ->
-        BoardZoomDialog(
-            label = option.label,
-            onUse = { onSelect(option.value); zoom = null },
-            onClose = { zoom = null },
-        ) { height -> preview(option, height, 1f) }
     }
 }
 

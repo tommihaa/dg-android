@@ -104,7 +104,12 @@ fun DgTabRow(
                     // Jokainen nimi omalla sävyllään, myös valitsemattomat (Tommin päätös
                     // 29.8.2026). Palkki on siis viisivärinen koko ajan, ja väri kertoo
                     // mikä välilehti on kyseessä eikä sitä missä ollaan.
-                    color = tabLabelColor(tab, dgDark(), LocalAppTheme.current == fi.tommi.dg.app.session.AppTheme.DECO),
+                    color = tabLabelColor(
+                        tab,
+                        dgDark(),
+                        deco = LocalAppTheme.current == fi.tommi.dg.app.session.AppTheme.DECO,
+                        wood = LocalAppTheme.current == fi.tommi.dg.app.session.AppTheme.WOOD,
+                    ),
                     // Valinta ei saa jäädä pelkän värin varaan, koska värejä on nyt viisi
                     // eikä yksikään niistä ole "valittu". Valitun erottaa lihavointi ja
                     // palkin oma korostusviiva, joka on nykyisen välilehden sävyä.

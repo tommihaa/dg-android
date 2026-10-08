@@ -73,7 +73,8 @@ import fi.tommi.dg.app.R
  * **Lyhyet kappaleet ja lihavoidut nimet 29.9.2026** (Tommi: vastaukset olivat edelleen
  * *"wall-of-text-like, koska pitkiä kappaleita eikä korostuksia"*, valinta b). Kappaleessa on
  * yksi asia, ja napit, kytkimet, välilehdet ja kentät on lihavoitu samalla nimellä kuin
- * ruudulla, `strings.xml`:n `<b>`-merkinnällä. Merkintä luetaan [withBold]illa.
+ * ruudulla, `strings.xml`:n `<b>`-merkinnällä. Merkintä luetaan [helpStyled]illa, joka lukee
+ * myös pitkien vastausten `<i>`-väliotsikot (3.10.2026).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -174,7 +175,15 @@ internal val HELP_GROUPS = listOf(
             HelpItem(R.string.help_q_d_unconfirmed, R.string.help_a_d_unconfirmed),
         ),
     ),
-    HelpGroup(R.string.help_group_tabs, listOf(HelpItem(R.string.help_q_tabs, R.string.help_a_tabs))),
+    HelpGroup(
+        R.string.help_group_tabs,
+        listOf(
+            HelpItem(R.string.help_q_tabs, R.string.help_a_tabs),
+            // Värit omana kohtanaan 6.10.2026 (Tommin tilaus): ne koskevat jokaista välilehteä,
+            // ja aiemmin säännöt olivat laudan paneelin vastauksessa.
+            HelpItem(R.string.help_q_colours, R.string.help_a_colours),
+        ),
+    ),
     HelpGroup(
         R.string.help_group_matches,
         listOf(
@@ -250,21 +259,42 @@ private fun HelpGroupView(
  * `HelpConsistencyTest`in luettavana.
  */
 /**
- * Vastauksen `<b>`-merkinnät [bold]-tyyliksi. `stringResource` palauttaa pelkän merkkijonon ja
- * pudottaa merkinnät, joten vastaus luetaan `getText`illä, joka säilyttää ne `StyleSpan`eina.
- * Haku (`InfoScreen`) lukee samat merkkijonot `getString`illä ja saa ne ilman merkintöjä.
+ * Vastauksen `<b>`-merkinnät [bold]-tyyliksi ja `<i>`-merkinnät [heading]-tyyliksi.
+ * `stringResource` palauttaa pelkän merkkijonon ja pudottaa merkinnät, joten vastaus luetaan
+ * `getText`illä, joka säilyttää ne `StyleSpan`eina.
+ *
+ * **Väliotsikot 3.10.2026** (Tommi: B.10 oli *"liian wall-of-text"*, valinta: pitkät vastaukset
+ * ja haku samalla muotoilulla). `<i>` on väliotsikko, koska `<b>` on jo ruudun nimien merkki;
+ * otsikko aloittaa kappaleensa omalla rivillään ilman tyhjää riviä väliin, jotta se kuuluu
+ * alla olevaan tekstiin eikä leiju kappaleiden välissä (ensimmäinen laiteajo 3.10.2026), minkä
+ * `HelpConsistencyTest` vartioi. Haku (`InfoScreen`) käyttää
+ * tätä samaa funktiota, jotta osuma näyttää samalta kuin manuaalissa.
  */
-private fun CharSequence.withBold(bold: SpanStyle): AnnotatedString {
+internal fun CharSequence.helpStyled(bold: SpanStyle, heading: SpanStyle): AnnotatedString {
     val source = this
     return buildAnnotatedString {
         append(source.toString())
         if (source is Spanned) {
             for (span in source.getSpans(0, source.length, StyleSpan::class.java)) {
-                if (span.style == Typeface.BOLD) addStyle(bold, source.getSpanStart(span), source.getSpanEnd(span))
+                val style = when (span.style) {
+                    Typeface.BOLD -> bold
+                    Typeface.ITALIC -> heading
+                    else -> continue
+                }
+                addStyle(style, source.getSpanStart(span), source.getSpanEnd(span))
             }
         }
     }
 }
+
+/** Vastauksen kaksi tyyliä teemasta: nimet korostusvärillä, väliotsikot otsikkokirjaimella. */
+@Composable
+internal fun helpBoldStyle(): SpanStyle =
+    SpanStyle(color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
+
+@Composable
+internal fun helpHeadingStyle(): SpanStyle =
+    MaterialTheme.typography.titleMedium.toSpanStyle().copy(color = MaterialTheme.colorScheme.onSurface)
 
 @Composable
 private fun HelpItemView(number: String, item: HelpItem, open: Boolean, onToggle: () -> Unit) {
@@ -283,9 +313,10 @@ private fun HelpItemView(number: String, item: HelpItem, open: Boolean, onToggle
         )
         if (open) {
             val context = LocalContext.current
-            val bold = SpanStyle(color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
+            val bold = helpBoldStyle()
+            val heading = helpHeadingStyle()
             Text(
-                text = context.resources.getText(item.answer).withBold(bold),
+                text = context.resources.getText(item.answer).helpStyled(bold, heading),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(start = 24.dp),

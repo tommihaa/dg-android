@@ -8,6 +8,8 @@ import fi.tommi.dg.app.PageFetcher
 import fi.tommi.dg.app.session.MessageFilterStore
 import fi.tommi.dg.app.session.PhraseBook
 import fi.tommi.dg.app.session.PhraseStore
+import fi.tommi.dg.data.DELETED_KEPT_MILLIS
+import fi.tommi.dg.data.DeletedMessage
 import fi.tommi.dg.data.MessageArchive
 import fi.tommi.dg.data.ReminderBook
 import fi.tommi.dg.domain.ArchiveImport
@@ -28,12 +30,12 @@ import fi.tommi.dg.scrape.toMessage
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -227,6 +229,40 @@ enum class NotAMessageKind {
  *    tila on [QueueUiState.Announcement] eikä `Saved`. Ero on tilan nimessä eikä pelkässä
  *    tekstissä, jottei tallentamaton kohde voi näyttää tallennetulta.
  */
+/**
+ * Peruttavissa oleva poisto (*Undo*, 6.10.2026). [conversation] on keskustelun avain kun
+ * poistettiin keskustelu, ja null kun yksittäinen viesti; ruutu sanoo sen mukaan mitä poistui.
+ */
+data class Deletion(val ids: List<String>, val conversation: String?)
+
+/**
+ * Roskakorin rivi: yksi poistokerta (Tommin päätös 6.10.2026). Keskustelun poisto on yksi
+ * rivi, yksittäinen viesti omansa. [conversation] on null kun kerta oli yksittäinen viesti.
+ */
+data class TrashGroup(
+    val deletedAtEpochMillis: Long,
+    val conversation: String?,
+    val messages: List<Message>,
+) {
+    val ids: List<String> get() = messages.map { it.id }
+}
+
+/**
+ * Ryhmittelee roskakorin poistokerroittain. Saman kerran viestit saivat saman poistoajan
+ * (`MessageArchive.delete`), joten ryhmän avain on aika ja keskustelu. Yhden viestin
+ * ryhmä on yksittäinen viesti silloinkin kun se oli keskustelun ainoa: kummassakin
+ * palautuu sama viesti, ja rivi näyttää sen tekstin, joka tunnistaa paremmin kuin määrä.
+ */
+internal fun trashGroups(deleted: List<DeletedMessage>): List<TrashGroup> =
+    deleted.groupBy { it.deletedAtEpochMillis to it.message.conversationKey() }
+        .map { (key, rows) ->
+            TrashGroup(
+                deletedAtEpochMillis = key.first,
+                conversation = key.second.takeIf { rows.size > 1 },
+                messages = rows.map { it.message },
+            )
+        }
+
 /**
  * Mitä tuonnista seurasi (16.9.2026). Luvut ovat ruudulle, koska tuonti joka ei kirjoita
  * mitään näyttäisi muuten samalta kuin tuonti joka kirjoitti kaiken.
@@ -560,6 +596,64 @@ class MessagesViewModel(
 
     fun importDismissed() {
         _import.value = ImportUiState.Idle
+    }
+
+    /**
+     * Tilin roskakori, uusin poisto ensin (Tommin päätös 6.10.2026). Ruutu ryhmittelee sen
+     * poistokerroittain, ks. [trashGroups].
+     */
+    val deleted: StateFlow<List<DeletedMessage>> = byAccount { archive.observeDeleted(it) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    private val _undo = MutableStateFlow<Deletion?>(null)
+
+    /** Viimeisin poisto, jonka voi perua hetken ajan (*Undo*), tai null. */
+    val undo: StateFlow<Deletion?> = _undo.asStateFlow()
+
+    init {
+        // 30 päivän siivous kerran näkymämallia kohti, eli kun Inbox avataan. Siivous koskee
+        // vain jo poistettuja, joten sen ajankohta ei voi viedä mitään näkyvää.
+        viewModelScope.launch(io) { archive.purgeDeletedBefore(now() - DELETED_KEPT_MILLIS) }
+    }
+
+    /**
+     * Siirtää keskustelun ([conversationKey]) roskakoriin ja palaa pelaajalistaan (Tommin
+     * päätökset 6.10.2026). Vahvistus on ruudun asia, tämä vain poistaa. Viestit katoavat
+     * myös seuraavasta varmuuskopiosta, ja ne palaavat roskakorista tai [undoDeletion]illa.
+     */
+    suspend fun deleteConversation(key: String): Int {
+        val account = self()
+        val ids = withContext(io) {
+            archive.observeAll(account).first().filter { it.conversationKey() == key }.map { it.id }
+        }
+        val deleted = withContext(io) { archive.delete(ids, account, now()) }
+        if (_filter.value == key) filterChanged(null)
+        if (deleted > 0) _undo.value = Deletion(ids, conversation = key)
+        return deleted
+    }
+
+    /** Siirtää yhden viestin roskakoriin kuplan valikosta, kysymättä (6.10.2026). */
+    suspend fun deleteMessage(message: Message) {
+        val deleted = withContext(io) { archive.delete(listOf(message.id), self(), now()) }
+        if (_replyTarget.value?.id == message.id) _replyTarget.value = null
+        if (deleted > 0) _undo.value = Deletion(listOf(message.id), conversation = null)
+    }
+
+    /** Palauttaa roskakorin rivin viestit arkistoon (*Restore*). */
+    suspend fun restore(ids: List<String>) {
+        withContext(io) { archive.restore(ids, self()) }
+    }
+
+    /** Peruu viimeisimmän poiston (*Undo*). */
+    suspend fun undoDeletion() {
+        val undo = _undo.value ?: return
+        _undo.value = null
+        restore(undo.ids)
+    }
+
+    /** *Undo*-palkki sulkeutui ilman perumista. */
+    fun undoDismissed() {
+        _undo.value = null
     }
 
     /**

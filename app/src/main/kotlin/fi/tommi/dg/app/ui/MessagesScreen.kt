@@ -21,16 +21,24 @@ import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -39,6 +47,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -147,6 +160,20 @@ fun MessagesScreen(
     backup: BackupUiState = BackupUiState.Off,
     onSetUpBackup: () -> Unit = {},
     onBackupNow: () -> Unit = {},
+    /**
+     * Siirtää avatun keskustelun roskakoriin (Tommin päätökset 6.10.2026). Ruutu kysyy
+     * vahvistuksen ennen kutsua: Delete ja Cancel.
+     */
+    onDeleteConversation: (String) -> Unit = {},
+    /** Siirtää yhden viestin roskakoriin kuplan ⋮-valikosta, kysymättä (6.10.2026). */
+    onDeleteMessage: (Message) -> Unit = {},
+    /** Roskakori poistokerroittain, ks. [trashGroups]. Näkyy pelaajalistan lopussa. */
+    trash: List<TrashGroup> = emptyList(),
+    onRestore: (List<String>) -> Unit = {},
+    /** Viimeisin poisto, jonka *Undo* peruu, tai null. */
+    undo: Deletion? = null,
+    onUndo: () -> Unit = {},
+    onUndoDismissed: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     Scaffold(
@@ -154,6 +181,7 @@ fun MessagesScreen(
         // Läpinäkyvä, jotta ruudun tausta ja sen kuvio näkyvät läpi: ne
         // maalataan kerran `MainActivity`ssä (`Modifier.dgScreenBackground`).
         containerColor = Color.Transparent,
+        snackbarHost = { UndoSnackbar(undo, onUndo, onUndoDismissed) },
         topBar = {
             TopAppBar(
                 colors = dgTopAppBarColors(),
@@ -257,12 +285,18 @@ fun MessagesScreen(
                             )
                         },
                     )
+                    trashSection(trash, onRestore)
                     return@DgLazyColumn
                 }
 
                 item {
                     Column {
-                        ConversationHeader(name = filter, onBack = { onFilterChange(null) })
+                        ConversationHeader(
+                            name = filter,
+                            count = visible.size,
+                            onBack = { onFilterChange(null) },
+                            onDelete = { onDeleteConversation(filter) },
+                        )
                         HorizontalDivider()
                     }
                 }
@@ -308,6 +342,7 @@ fun MessagesScreen(
                                 onClick = { onMessageClick(message) },
                                 onOpenMatchLink = message.matchId?.value
                                     ?.let { id -> { onOpenMatch(id) } },
+                                onDelete = { onDeleteMessage(message) },
                             )
 
                             // **Vastauskenttä sen viestin alla johon se vastaa** (Tommin päätös
@@ -582,6 +617,7 @@ private fun LazyListScope.conversationList(
     // niitä ei ole, ylin rivi. Muut rivit tavallisella painolla, jotta korostus kertoo jotain.
     val anyFresh = conversations.keys.any { it in fresh }
     val newestKey = conversations.keys.first()
+    val countTier = inboxRankTiers(conversations.values.map { it.size })
     item(key = "conversation-header", contentType = "conversation-header") {
         ConversationListHeader()
     }
@@ -603,6 +639,7 @@ private fun LazyListScope.conversationList(
                     key = key,
                     newest = conversation.first(),
                     count = conversation.size,
+                    countTier = countTier(conversation.size),
                     fresh = isFresh,
                     bold = if (anyFresh) isFresh else key == newestKey,
                     replyOpen = target != null && target.id == replyTargetId,
@@ -627,6 +664,8 @@ private fun ConversationRow(
     key: String,
     newest: Message,
     count: Int,
+    /** Määrän väriporras, ks. [inboxRankTiers]. */
+    countTier: Int,
     fresh: Boolean,
     /**
      * Korostettu rivi: nimi ja viesti lihavoituina, viesti lisäksi aksenttivärillä, ks.
@@ -684,7 +723,7 @@ private fun ConversationRow(
             Text(
                 text = count.toString(),
                 style = MaterialTheme.typography.labelSmall,
-                color = if (LocalRarityOn.current) inboxCountColor(count, dark) else MaterialTheme.colorScheme.onSurfaceVariant,
+                color = if (LocalRarityOn.current) Rarity.color(countTier, dark) else MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.width(LIST_COUNT_WIDTH),
             )
             Text(
@@ -769,6 +808,9 @@ private val LIST_COUNT_WIDTH = 40.dp
  * *"dnd-väreillä ilmaistuna"*): 0 common, 1 uncommon, 2 rare, 3 very rare ja 4 legendary.
  * Rajat 1, 2–4, 5–9, 10–19 ja 20+ ovat Clauden ehdotus, ja luku pysyy paikallaan. Pinkki 50+
  * (27.9.2026) poistui 29.9.2026 rarity-portaiden mukana, joten 50+ on oranssi.
+ *
+ * 6.10.2026 alkaen vain alle [INBOX_RANK_MIN_CONVERSATIONS] keskustelun arkistolle, muuten
+ * porras tulee sijasta ([inboxRankTiers]).
  */
 internal fun inboxCountTier(count: Int): Int = when {
     count >= 20 -> 4
@@ -778,15 +820,48 @@ internal fun inboxCountTier(count: Int): Int = when {
     else -> 0
 }
 
-/** Portaan väri, ks. [Rarity]. */
-private fun inboxCountColor(count: Int, dark: Boolean): Color = Rarity.color(inboxCountTier(count), dark)
+/**
+ * Sijaporrastuksen kumulatiiviset rajat prosentteina keskusteluista, oranssista vihreään:
+ * top 5, 15, 30 ja 55 % (osuudet 5/10/15/25/45 %, ehdotus ja Tommin valinta 6.10.2026,
+ * `docs/AVOIMET.md` › *Inboxin viestimäärän väri sijaluvusta*).
+ */
+private val INBOX_RANK_PERCENTS = listOf(5, 15, 30, 55)
+
+/** Tätä pienempi arkisto käyttää kiinteitä rajoja ([inboxCountTier]). */
+internal const val INBOX_RANK_MIN_CONVERSATIONS = 20
+
+/**
+ * Viestimäärän porras keskustelun sijasta muiden joukossa (6.10.2026): väri kertoo kenen
+ * kanssa viestit kulkevat eniten. Sija on yksi plus niiden keskustelujen määrä joissa on
+ * enemmän viestejä, joten tasaluvut saavat saman eli ylemmän portaan. Yksi viesti on aina
+ * harmaa, ja alle [INBOX_RANK_MIN_CONVERSATIONS] keskustelun arkisto käyttää kiinteitä rajoja,
+ * jotta uuden käyttäjän ensimmäiset keskustelut eivät ole heti oransseja.
+ *
+ * Palauttaa portaan viestimäärän mukaan, koska sama määrä saa aina saman portaan.
+ */
+internal fun inboxRankTiers(counts: Collection<Int>): (Int) -> Int {
+    if (counts.size < INBOX_RANK_MIN_CONVERSATIONS) return ::inboxCountTier
+    val n = counts.size
+    val tiers = counts.toSet().associateWith { count ->
+        val rank = 1 + counts.count { it > count }
+        // Ensimmäinen raja jonka sisään sija mahtuu: 0 on oranssin raja, 3 vihreän.
+        val step = INBOX_RANK_PERCENTS.indexOfFirst { rank * 100 <= n * it }
+        if (count <= 1 || step < 0) 0 else 4 - step
+    }
+    return { count -> tiers[count] ?: inboxCountTier(count) }
+}
 
 /** Pelaajarivin päiväyssarake, pisimmän muodon (`24 Sep 2025`) levyinen. */
 private val LIST_DATE_WIDTH = 76.dp
 
-/** Avatun keskustelun otsikko: tie takaisin listaan ja kenen keskustelu tämä on. */
+/**
+ * Avatun keskustelun otsikko: tie takaisin listaan, kenen keskustelu tämä on ja sen poisto
+ * (6.10.2026). Poisto on tässä eikä listan pitkässä painalluksessa, jotta siihen ei osu
+ * listaa selatessa ja ruudunlukija löytää sen tavallisena nappina (Tommin valinta).
+ */
 @Composable
-private fun ConversationHeader(name: String, onBack: () -> Unit) {
+private fun ConversationHeader(name: String, count: Int, onBack: () -> Unit, onDelete: () -> Unit) {
+    var confirming by rememberSaveable { mutableStateOf(false) }
     Row(
         modifier = Modifier.inboxColumn().padding(horizontal = 8.dp, vertical = 4.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -799,7 +874,152 @@ private fun ConversationHeader(name: String, onBack: () -> Unit) {
             text = name.ifBlank { stringResource(R.string.messages_source_unknown) },
             style = MaterialTheme.typography.titleSmall,
             color = inboxNameColor(name, dgDark()) ?: Color.Unspecified,
+            modifier = Modifier.weight(1f),
         )
+        if (count > 0) {
+            TextButton(onClick = { confirming = true }) {
+                Text(stringResource(R.string.messages_delete_action))
+            }
+        }
+    }
+    if (confirming) {
+        DeleteConversationDialog(
+            name = name,
+            count = count,
+            onConfirm = {
+                confirming = false
+                onDelete()
+            },
+            onDismiss = { confirming = false },
+        )
+    }
+}
+
+/**
+ * Keskustelun poiston vahvistus: Delete ja Cancel (Tommin päätös 6.10.2026). Nimen
+ * kirjoittaminen jäi pois, kun poisto muuttui palautettavaksi: viestit menevät roskakoriin,
+ * ja *Undo* on heti tarjolla.
+ */
+@Composable
+private fun DeleteConversationDialog(name: String, count: Int, onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.messages_delete_title, name)) },
+        text = { Text(pluralStringResource(R.plurals.messages_delete_body, count, count)) },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text(stringResource(R.string.messages_delete_confirm))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.messages_delete_cancel))
+            }
+        },
+    )
+}
+
+/**
+ * Poiston jälkeinen *Undo* (6.10.2026). Palkki sanoo mitä poistui ja sulkeutuu itsestään;
+ * sulkeutuminen ilman painallusta kuittaa poiston, joka jää roskakoriin.
+ */
+@Composable
+private fun UndoSnackbar(undo: Deletion?, onUndo: () -> Unit, onDismissed: () -> Unit) {
+    val host = remember { SnackbarHostState() }
+    val text = undo?.let {
+        if (it.conversation != null) {
+            pluralStringResource(R.plurals.messages_deleted_conversation, it.ids.size, it.ids.size, it.conversation)
+        } else {
+            stringResource(R.string.messages_deleted_message)
+        }
+    }
+    val action = stringResource(R.string.messages_undo)
+    LaunchedEffect(undo) {
+        if (undo == null || text == null) return@LaunchedEffect
+        val result = host.showSnackbar(text, actionLabel = action, duration = SnackbarDuration.Long)
+        if (result == SnackbarResult.ActionPerformed) onUndo() else onDismissed()
+    }
+    SnackbarHost(host)
+}
+
+/**
+ * Roskakori pelaajalistan lopussa (Tommin päätös 6.10.2026): otsikko määrineen ja jokaisella
+ * poistokerralla oma *Restore*. Puuttuu kokonaan kun roskakori on tyhjä, kuten muutkin
+ * toiminnot joilla ei ole kohdetta.
+ */
+private fun LazyListScope.trashSection(trash: List<TrashGroup>, onRestore: (List<String>) -> Unit) {
+    if (trash.isEmpty()) return
+    item(key = "trash-header", contentType = "trash-header") {
+        Column(Modifier.inboxColumn()) {
+            HorizontalDivider(modifier = Modifier.padding(top = 16.dp))
+            Text(
+                text = stringResource(R.string.messages_trash_heading, trash.size),
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp),
+            )
+            Text(
+                text = stringResource(R.string.messages_trash_explain),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+            )
+        }
+    }
+    trash.forEach { group ->
+        item(key = "trash-${group.deletedAtEpochMillis}-${group.ids.first()}", contentType = "trash") {
+            TrashRow(group, onRestore = { onRestore(group.ids) })
+        }
+    }
+}
+
+@Composable
+private fun TrashRow(group: TrashGroup, onRestore: () -> Unit) {
+    val first = group.messages.first()
+    val name = first.conversationKey().ifBlank { stringResource(sourceLabel(first.source)) }
+    val title = if (group.conversation != null) {
+        pluralStringResource(R.plurals.messages_trash_conversation, group.messages.size, group.messages.size, name)
+    } else {
+        name
+    }
+    val day = inboxDay(group.deletedAtEpochMillis, ZoneId.systemDefault())
+    Row(
+        modifier = Modifier.inboxColumn().padding(start = 16.dp, end = 8.dp, top = 4.dp, bottom = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = inboxNameColor(first.conversationKey(), dgDark()) ?: Color.Unspecified,
+                    modifier = Modifier.weight(1f, fill = false),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = stringResource(R.string.messages_trash_deleted_on, inboxRowDate(day, LocalDate.now())),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                )
+            }
+            // Yksittäisen viestin rivi kertoo sen ensimmäisen rivin, koska nimi ei tunnista
+            // viestiä keskustelun joukosta.
+            if (group.conversation == null) {
+                Text(
+                    text = first.body.trimEnd().replace('\n', ' '),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+        TextButton(onClick = onRestore) {
+            Text(stringResource(R.string.messages_restore))
+        }
     }
 }
 
@@ -1232,6 +1452,8 @@ private fun MessageRow(
     onClick: () -> Unit = {},
     /** Avaa ottelun laudan, tai null kun luettelo ei tarjoa siihen linkkiä juuri nyt. */
     onOpenMatchLink: (() -> Unit)? = null,
+    /** Siirtää viestin roskakoriin kuplan ⋮-valikosta, tai null kun valikkoa ei ole. */
+    onDelete: (() -> Unit)? = null,
 ) {
     // Klikattava vain kun klikkaus tekee jotain: viesti ilman talletettua lomaketta ei voi
     // saada vastauskenttää, ja klikattavalta tuntuva rivi joka ei reagoi olisi huonompi kuin
@@ -1330,6 +1552,7 @@ private fun MessageRow(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+            if (onDelete != null) BubbleMenu(message, onDelete)
         }
 
         // **Yhteys luetaan ennen tekstiä, koska se on tekstin konteksti** (Tommin päätös
@@ -1377,6 +1600,47 @@ private fun MessageRow(
         }
     }
     }
+    }
+}
+
+/**
+ * Kuplan kulman ⋮-valikko (Tommin valinta 6.10.2026, mockupin vaihtoehto B): *Copy text* ja
+ * *Delete message*. Poisto ei kysy, koska viesti menee roskakoriin ja *Undo* on heti tarjolla.
+ * Merkki on teksti eikä kuvake, koska sovellus ei tuo kuvakekirjastoa yhden merkin takia;
+ * ruudunlukija lukee sen napin nimellä.
+ */
+@Composable
+private fun BubbleMenu(message: Message, onDelete: () -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    @Suppress("DEPRECATION")
+    val clipboard = LocalClipboardManager.current
+    val label = stringResource(R.string.messages_bubble_menu)
+    Box {
+        Text(
+            text = "\u22EE",
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier
+                .clickable(onClickLabel = label) { open = true }
+                .semantics { contentDescription = label }
+                .padding(horizontal = 8.dp),
+        )
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.messages_copy_text)) },
+                onClick = {
+                    open = false
+                    clipboard.setText(AnnotatedString(message.body.trimEnd()))
+                },
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.messages_delete_message)) },
+                onClick = {
+                    open = false
+                    onDelete()
+                },
+            )
+        }
     }
 }
 

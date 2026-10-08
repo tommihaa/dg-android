@@ -173,4 +173,91 @@ class MessageArchiveTest {
 
         assertEquals(1, arkisto.observeByMatch("5302842").first().size)
     }
+
+    @Test
+    fun `poisto piilottaa vain annetut viestit ja vain taman tilin`() = runTest {
+        // Keskustelun poisto 6.10.2026: tili rajaa poiston, vaikka tunniste osuisi toisen
+        // tilin riviin, ja muut keskustelut jäävät koskematta.
+        val oma = arkisto.archive(viesti("oma", opponent = "ackammon"), TILI)
+        val muu = arkisto.archive(viesti("muu", opponent = "kolmas"), TILI)
+        val toisen = arkisto.archive(viesti("toisen", opponent = "ackammon"), TOINEN_TILI)
+
+        val poistettu = arkisto.delete(listOf(oma.id, toisen.id), TILI, at = 5_000)
+
+        assertEquals(1, poistettu)
+        assertEquals(listOf(muu.id), arkisto.observeAll(TILI).first().map { it.id })
+        assertEquals(listOf(toisen.id), arkisto.observeAll(TOINEN_TILI).first().map { it.id })
+        // Pehmeä poisto: rivi on yhä kannassa ja roskakorissa poistoaikoineen.
+        assertEquals(3, arkisto.count())
+        assertEquals(
+            listOf(DeletedMessage(oma, 5_000)),
+            arkisto.observeDeleted(TILI).first(),
+        )
+    }
+
+    @Test
+    fun `poistettu ei nay missaan ruudun kyselyssa`() = runTest {
+        val poistettava = arkisto.archive(viesti("pois", opponent = "ackammon"), TILI)
+
+        arkisto.delete(listOf(poistettava.id), TILI, at = 5_000)
+
+        assertEquals(emptyList<Message>(), arkisto.observeByMatch("5302842").first())
+        assertEquals(emptyList<Message>(), arkisto.observeByOpponent("ackammon", TILI).first())
+        assertEquals(emptyList<String>(), arkisto.observeOpponents(TILI).first())
+        assertNull(arkisto.observeNewestStoredAt(TILI).first())
+    }
+
+    @Test
+    fun `palautus tuo viestin takaisin ja tyhjentaa roskakorin`() = runTest {
+        val viesti = arkisto.archive(viesti("takaisin"), TILI)
+        arkisto.delete(listOf(viesti.id), TILI, at = 5_000)
+
+        assertEquals(1, arkisto.restore(listOf(viesti.id), TILI))
+
+        assertEquals(listOf(viesti.id), arkisto.observeAll(TILI).first().map { it.id })
+        assertEquals(emptyList<DeletedMessage>(), arkisto.observeDeleted(TILI).first())
+    }
+
+    @Test
+    fun `toinen poisto ei siirra ensimmaisen poiston aikaa`() = runTest {
+        // Roskakorin ryhmä ja 30 päivän laskuri ovat ensimmäisen poiston mukaisia.
+        val viesti = arkisto.archive(viesti("kahdesti"), TILI)
+        arkisto.delete(listOf(viesti.id), TILI, at = 5_000)
+
+        assertEquals(0, arkisto.delete(listOf(viesti.id), TILI, at = 9_000))
+        assertEquals(5_000L, arkisto.observeDeleted(TILI).first().single().deletedAtEpochMillis)
+    }
+
+    @Test
+    fun `tuonti ei palauta poistettua`() = runTest {
+        // Tuonti ohittaa kannassa jo olevan rivin, ja poistettu on yhä kannassa. Palautus
+        // kulkee roskakorin kautta.
+        val viesti = arkisto.archive(viesti("tuotava"), TILI)
+        arkisto.delete(listOf(viesti.id), TILI, at = 5_000)
+
+        assertEquals(0, arkisto.addMissing(listOf(viesti), TILI))
+        assertEquals(emptyList<Message>(), arkisto.observeAll(TILI).first())
+    }
+
+    @Test
+    fun `siivous poistaa vain rajaa vanhemmat poistetut`() = runTest {
+        val vanha = arkisto.archive(viesti("vanha", receivedAt = 1_000), TILI)
+        val tuore = arkisto.archive(viesti("tuore", receivedAt = 2_000), TILI)
+        arkisto.archive(viesti("arkistossa", receivedAt = 3_000), TILI)
+        arkisto.delete(listOf(vanha.id), TILI, at = 5_000)
+        arkisto.delete(listOf(tuore.id), TILI, at = 9_000)
+
+        assertEquals(1, arkisto.purgeDeletedBefore(cutoff = 6_000))
+
+        assertEquals(2, arkisto.count())
+        assertEquals(listOf(tuore.id), arkisto.observeDeleted(TILI).first().map { it.message.id })
+    }
+
+    @Test
+    fun `tyhja poisto ei poista mitaan`() = runTest {
+        arkisto.archive(viesti("jää"), TILI)
+
+        assertEquals(0, arkisto.delete(emptyList(), TILI, at = 5_000))
+        assertEquals(1, arkisto.observeAll(TILI).first().size)
+    }
 }

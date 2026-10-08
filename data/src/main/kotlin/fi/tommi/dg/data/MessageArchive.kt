@@ -102,6 +102,26 @@ interface MessageArchive {
      * varmuuskopiosta vaarallisen. Reuna näkyvissä sama palautus on pelkkä vajaa arkisto.
      */
     fun observeNewestStoredAt(account: String?): Flow<Long?>
+
+    /**
+     * Merkitsee viestit poistetuiksi (6.10.2026): ne katoavat jokaisesta näkymästä, viennistä
+     * ja varmuuskopiosta mutta jäävät roskakoriin 30 päiväksi. Saman kutsun viestit ovat
+     * yksi poistokerta, koska ne saavat saman ajan [at]. Import ei palauta poistettua, koska
+     * tuonti ohittaa kannassa jo olevan rivin; palautus on [restore]. Ks.
+     * `MessageDao.markDeleted`.
+     *
+     * @return poistetuiksi merkittyjen viestien määrä.
+     */
+    suspend fun delete(ids: List<String>, account: String?, at: Long): Int
+
+    /** Palauttaa poistetut viestit arkistoon. @return palautettujen määrä. */
+    suspend fun restore(ids: List<String>, account: String?): Int
+
+    /** Tilin roskakori, uusin poisto ensin. */
+    fun observeDeleted(account: String?): Flow<List<DeletedMessage>>
+
+    /** Poistaa lopullisesti ennen [cutoff]ia poistetut. @return poistettujen määrä. */
+    suspend fun purgeDeletedBefore(cutoff: Long): Int
 }
 
 /*
@@ -142,4 +162,26 @@ class RoomMessageArchive(
     override suspend fun claimUnowned(account: String): Int = dao.claimUnowned(account)
 
     override fun observeNewestStoredAt(account: String?): Flow<Long?> = dao.observeNewestStoredAt(account)
+
+    override suspend fun delete(ids: List<String>, account: String?, at: Long): Int =
+        if (ids.isEmpty()) 0 else dao.markDeleted(ids, account, at)
+
+    override suspend fun restore(ids: List<String>, account: String?): Int =
+        if (ids.isEmpty()) 0 else dao.restore(ids, account)
+
+    override fun observeDeleted(account: String?): Flow<List<DeletedMessage>> =
+        dao.observeDeleted(account).map { rows ->
+            rows.map { DeletedMessage(it.toDomain(), checkNotNull(it.deletedAtEpochMillis)) }
+        }
+
+    override suspend fun purgeDeletedBefore(cutoff: Long): Int = dao.purgeDeletedBefore(cutoff)
 }
+
+/**
+ * Roskakorin rivi: viesti ja hetki jolloin se poistettiin. Poistoaika ei ole viestin tieto
+ * vaan tämän laitteen, samoin kuin tili, joten se kulkee viestin rinnalla eikä sen kenttänä.
+ */
+data class DeletedMessage(val message: Message, val deletedAtEpochMillis: Long)
+
+/** Kuinka kauan poistettu viesti on palautettavissa (Tommin päätös 6.10.2026). */
+const val DELETED_KEPT_MILLIS: Long = 30L * 24 * 60 * 60 * 1000

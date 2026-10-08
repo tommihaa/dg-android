@@ -186,8 +186,11 @@ internal fun dgTopAppBarColors() = TopAppBarDefaults.topAppBarColors(
  * on siinä kohtaa *nykyisen* välilehden sävy. Ilman tätä otteluluettelon nimi olisi ottanut
  * naapurinsa värin sen mukaan millä välilehdellä ollaan.
  */
-internal fun tabLabelColor(tab: DgTab, dark: Boolean, deco: Boolean = false): Color =
-    if (deco) (if (dark) DecoColorScheme else DecoLightColorScheme).primary else accentFor(tab, dark) ?: (if (dark) DgDarkColorScheme else DgColorScheme).primary
+internal fun tabLabelColor(tab: DgTab, dark: Boolean, deco: Boolean = false, wood: Boolean = false): Color = when {
+    deco -> (if (dark) DecoColorScheme else DecoLightColorScheme).primary
+    wood -> accentFor(tab, dark) ?: (if (dark) WoodDarkColorScheme else WoodLightColorScheme).primary
+    else -> accentFor(tab, dark) ?: (if (dark) DgDarkColorScheme else DgColorScheme).primary
+}
 
 /**
  * Kietoo sisällön välilehden omaan sävyyn korvaamalla `primary`n.
@@ -318,6 +321,94 @@ private fun TextStyle.deco() = copy(fontFamily = DecoFont, letterSpacing = 0.6.s
 
 private val PlainTypography = Typography()
 
+/**
+ * Wood-teeman värit (Tommin tilaus 4.10.2026). Vaalea on hunajaista vaahteraa ja pähkinää,
+ * tumma pähkinää ja vaahteraa, eli samat puut kuin laudoissa (`DgBoard.Wood`). Välilehtien
+ * sävyt pysyvät kuten Plainissa. Kontrastit taustaa / `surfaceVariant`ia vasten, AA-raja 4,5:1:
+ *
+ * | Rooli | Vaalea `#F3E7D3` / `#E6D3B3` | Tumma `#1E140D` / `#33241A` |
+ * |---|---|---|
+ * | onSurface | 13,4 / 11,2 | 14,1 / 11,7 |
+ * | onSurfaceVariant | 7,5 / 6,3 | 9,2 / 7,5 |
+ * | primary | 6,1 / 5,1 | 8,4 / 6,9 |
+ * | tertiary (`Grace`) | 6,6 / 5,5 | 10,3 / 8,5 |
+ * | error (`Time Pool`) | 6,1 / 5,1 | 10,6 / 8,7 |
+ *
+ * Vaalean tertiary ja error tummennettiin Material 3:n oletuksista, koska ne jäivät
+ * `surfaceVariant`illa 4,4:ään ja 4,5:een. `outline` on 3,8 / 3,1 ja sitä ei käytetä tekstiin.
+ * Tumman tertiary on oliivin vihreä, jotta se erottuu sekä meripihkan primarysta että errorista.
+ */
+internal val WoodLightColorScheme = lightColorScheme(
+    primary = Color(0xFF7A4A22),
+    onPrimary = Color(0xFFF3E7D3),
+    primaryContainer = Color(0xFFE6CFA8),
+    onPrimaryContainer = Color(0xFF2B1C14),
+    secondaryContainer = Color(0xFFE6D3B3),
+    onSecondaryContainer = Color(0xFF2B1C14),
+    tertiary = Color(0xFF6F4351),
+    error = Color(0xFFA3221B),
+    background = Color(0xFFF3E7D3),
+    onBackground = Color(0xFF2B1C14),
+    surface = Color(0xFFF3E7D3),
+    onSurface = Color(0xFF2B1C14),
+    surfaceVariant = Color(0xFFE6D3B3),
+    onSurfaceVariant = Color(0xFF5A4330),
+    surfaceDim = Color(0xFFE3D3B8),
+    surfaceBright = Color(0xFFF8EFE1),
+    surfaceContainerLowest = Color(0xFFFBF5EA),
+    surfaceContainerLow = Color(0xFFEFE1CA),
+    surfaceContainer = Color(0xFFEBDCC2),
+    surfaceContainerHigh = Color(0xFFE9D9BE),
+    surfaceContainerHighest = Color(0xFFE6D3B3),
+    outline = Color(0xFF8A7155),
+    outlineVariant = Color(0xFFD3BC98),
+)
+
+internal val WoodDarkColorScheme = darkColorScheme(
+    primary = Color(0xFFD9A86C),
+    onPrimary = Color(0xFF2A1A0E),
+    primaryContainer = Color(0xFF4A3220),
+    onPrimaryContainer = Color(0xFFF0E2C8),
+    secondaryContainer = Color(0xFF3A2A1E),
+    onSecondaryContainer = Color(0xFFF0E2C8),
+    tertiary = Color(0xFFA9CF8F),
+    background = Color(0xFF1E140D),
+    onBackground = Color(0xFFF0E2C8),
+    surface = Color(0xFF1E140D),
+    onSurface = Color(0xFFF0E2C8),
+    surfaceVariant = Color(0xFF33241A),
+    onSurfaceVariant = Color(0xFFCDB592),
+    surfaceDim = Color(0xFF170F09),
+    surfaceBright = Color(0xFF3A2A1E),
+    surfaceContainerLowest = Color(0xFF140D08),
+    surfaceContainerLow = Color(0xFF241810),
+    surfaceContainer = Color(0xFF291C13),
+    surfaceContainerHigh = Color(0xFF2F2117),
+    surfaceContainerHighest = Color(0xFF33241A),
+    outline = Color(0xFF8A6D4E),
+    outlineVariant = Color(0xFF4A3628),
+)
+
+/**
+ * Woodin otsikot laitteen omalla serif-kirjasimella, jotta teema ei tarvitse ladattavaa
+ * fonttia eikä lisenssiä. Leipäteksti pysyy oletuksena kuten Decossa.
+ */
+private fun TextStyle.wood() = copy(fontFamily = FontFamily.Serif)
+
+private val WoodTypography = Typography().let {
+    it.copy(
+        displayLarge = it.displayLarge.wood(),
+        displayMedium = it.displayMedium.wood(),
+        displaySmall = it.displaySmall.wood(),
+        headlineLarge = it.headlineLarge.wood(),
+        headlineMedium = it.headlineMedium.wood(),
+        headlineSmall = it.headlineSmall.wood(),
+        titleLarge = it.titleLarge.wood(),
+        titleMedium = it.titleMedium.wood(),
+        titleSmall = it.titleSmall.wood(),
+    )
+}
+
 private val DecoTypography = Typography().let {
     it.copy(
         displayLarge = it.displayLarge.deco(),
@@ -336,16 +427,19 @@ private val DecoTypography = Typography().let {
 internal fun DgTheme(theme: AppTheme = AppTheme.PLAIN, content: @Composable () -> Unit) {
     // Yksi kutsu eikä haara: kaksi eri `MaterialTheme`-kutsua haaroissa rakensi koko puun
     // uudelleen teeman vaihtuessa, ja navigointi palasi Top Pagelle (laitteella 22.9.2026).
-    val deco = theme == AppTheme.DECO
+    val dark = isSystemInDarkTheme()
     CompositionLocalProvider(LocalAppTheme provides theme) {
         MaterialTheme(
-            colorScheme = when {
-                deco && isSystemInDarkTheme() -> DecoColorScheme
-                deco -> DecoLightColorScheme
-                isSystemInDarkTheme() -> DgDarkColorScheme
-                else -> DgColorScheme
+            colorScheme = when (theme) {
+                AppTheme.DECO -> if (dark) DecoColorScheme else DecoLightColorScheme
+                AppTheme.WOOD -> if (dark) WoodDarkColorScheme else WoodLightColorScheme
+                AppTheme.PLAIN -> if (dark) DgDarkColorScheme else DgColorScheme
             },
-            typography = if (deco) DecoTypography else PlainTypography,
+            typography = when (theme) {
+                AppTheme.DECO -> DecoTypography
+                AppTheme.WOOD -> WoodTypography
+                AppTheme.PLAIN -> PlainTypography
+            },
             content = content,
         )
     }

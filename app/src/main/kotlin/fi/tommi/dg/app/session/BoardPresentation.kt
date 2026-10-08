@@ -46,7 +46,8 @@ enum class ScoreStyle {
 /**
  * Odotuksen ilmaisin nappien paikalla (Tommin tilaus 18.9.2026: *"haluaisin busy-style
  * asetuksen sovellukseen"*). Viisi muotoa `BoardScreen.kt`:ssä: `BusyArc`, `BusyOuroboros`,
- * `BusyCube`, `BusyInfinity` (neljäs 21.9.2026) ja `BusyHourglass` (viides 22.9.2026). Sama laji kuin [DiceStyle]: laitteen oma maku, ei lähde koskaan verkkoon.
+ * `BusyCube`, `BusyInfinity` (neljäs 21.9.2026) ja `BusyHourglass` (viides 22.9.2026), ja
+ * kaksi seppelettä `BusyLaurel.kt`:ssä (4.10.2026). Sama laji kuin [DiceStyle]: laitteen oma maku, ei lähde koskaan verkkoon.
  * Oletus on kaari, koska se on nykyinen käytös eikä valintaa ole vielä tehty.
  */
 enum class BusyStyle {
@@ -65,8 +66,14 @@ enum class BusyStyle {
     /** Pyöreä tiimalasi, hiekka jyvinä ja kekona, kääntyy (Tommin valinta H 22.9.2026). */
     HOURGLASS,
 
+    /** Kultainen laakeriseppele kasvaa lehti lehdeltä (`BusyLaurel.kt`, 4.10.2026). */
+    LAUREL_GROW,
+
+    /** Sama seppele paikallaan, kiilto kulkee tyvestä latvaan (4.10.2026). */
+    LAUREL_SHIMMER,
+
     /**
-     * Arpa viidestä joka odotuksella, ei samaa kahdesti peräkkäin; muoto pysyy saman odotuksen
+     * Arpa muodoista joka odotuksella, ei samaa kahdesti peräkkäin; muoto pysyy saman odotuksen
      * ajan (Tommin tilaus ja valinta 22.9.2026). Ei ole muoto vaan tapa valita muoto, joten
      * [shapes] jättää sen pois.
      */

@@ -3,15 +3,12 @@ package fi.tommi.dg.app.ui
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.TextButton
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import fi.tommi.dg.app.R
@@ -107,13 +104,15 @@ internal fun OptionCards(content: @Composable () -> Unit) {
 }
 
 /**
- * Yksi vaihtoehto: esikatselu ylhäällä, radio ja nimi alla. Koko kortti on valinta, joten
- * kuvan napautus valitsee samoin kuin nimen.
+ * Yksi vaihtoehto: esikatselu ylhäällä, radio ja nimi alla.
  *
- * [onZoom] lisää kuvan kulmaan suurennuslasin (Tommin valinta 23.9.2026 kolmesta: erillinen
- * ikoni eikä kuvan napautus tai pitkä painallus). Kortin muu pinta valitsee kuten ennen,
- * joten suurennus ei muuta valinnan elettä. Vain lautakortit saavat sen; nopat, pisteet ja
- * ilmaisimet näkyvät jo luettavan kokoisina.
+ * **Kuvan napautus avaa ison kuvan** (Tommin tilaus 6.10.2026: *"poista suurennuslasi, sen
+ * sijaan klikkaamalla kuvaa saa sen ison kuvan"*, ja valinta kaikista kuvista eikä vain
+ * laudoista). Siihen asti kuvan kulmassa oli suurennuslasi (valinta 23.9.2026) ja koko kortti
+ * valitsi. Nyt kuva on suurennuksen pinta, ja kuvan alla oleva rivi radioineen valitsee.
+ * Ison kuvan `Use this` valitsee kuten ennen. [large] piirtää ison kuvan annetussa
+ * korkeudessa; null tarkoittaa ettei kuvaa ole mitä suurentaa (Mini), jolloin koko kortti
+ * valitsee kuten ennen.
  *
  * [enabled] pois tarkoittaa vaihtoehtoa jota sovellus ei osaa näyttää (Mini, Tommin päätös
  * 25.9.2026). Kortti näkyy himmeänä ja selittää syyn, mutta sitä ei voi valita. Jos se on jo
@@ -128,12 +127,14 @@ internal fun OptionCard(
     selected: Boolean,
     onSelect: () -> Unit,
     width: Dp,
-    onZoom: (() -> Unit)? = null,
+    large: (@Composable (height: Dp) -> Unit)? = null,
     enabled: Boolean = true,
     checkbox: Boolean = false,
     preview: @Composable () -> Unit,
 ) {
     val shape = RoundedCornerShape(8.dp)
+    var zoomed by remember { mutableStateOf(false) }
+    val zoomLabel = stringResource(R.string.settings_preview_zoom)
     Column(
         modifier = Modifier
             .width(width)
@@ -152,11 +153,16 @@ internal fun OptionCard(
             .alpha(if (enabled) 1f else DISABLED_ALPHA)
             .padding(8.dp),
     ) {
-        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+        Box(
+            modifier = if (large != null) {
+                // Sisempi napautettava voittaa kortin valinnan, joten kuva ei valitse.
+                Modifier.fillMaxWidth().clickable(onClickLabel = zoomLabel, role = Role.Button) { zoomed = true }
+            } else {
+                Modifier.fillMaxWidth()
+            },
+            contentAlignment = Alignment.Center,
+        ) {
             preview()
-            if (onZoom != null) {
-                ZoomButton(onZoom, Modifier.align(Alignment.TopEnd).padding(4.dp))
-            }
         }
         Row(
             modifier = Modifier.padding(top = 6.dp),
@@ -174,12 +180,26 @@ internal fun OptionCard(
             )
         }
     }
+    if (zoomed && large != null) {
+        BoardZoomDialog(
+            label = label,
+            onUse = { onSelect(); zoomed = false },
+            onClose = { zoomed = false },
+            board = large,
+        )
+    }
 }
 
 /** Material 3:n oma himmennys pois käytöstä olevalle sisällölle. */
 private const val DISABLED_ALPHA = 0.38f
 
-/** Pistekenttä kummallekin pelaajalle paneelin pohjalla, vastustaja ylempänä kuten laudalla. */
+/**
+ * Pistekenttä kummallekin pelaajalle paneelin pohjalla, vastustaja ylempänä kuten laudalla.
+ *
+ * **Nimi ja pari kuten pelaajakortissa** (Tommin tilaus 6.10.2026: *"pelaajakortissa on kaksi
+ * away-tietoa samalla rivillä"*). Siihen asti kuva näytti kummallekin vain oman luvun, vaikka
+ * kortti näyttää 4.10.2026 alkaen parin oma ensin, `4-away 2-away` tai `1-3/5`.
+ */
 @Composable
 internal fun PreviewScore(board: BoardState, look: BoardLook, panel: PanelLook, awayShown: Boolean) {
     Column(
@@ -208,12 +228,18 @@ internal fun PreviewScore(board: BoardState, look: BoardLook, panel: PanelLook, 
                         drawCircle(inlay, r - hair - w - hair / 2f, style = Stroke(hair))
                     }
                 }
-                Text(
-                    text = previewScoreText(player, if (awayShown) board.awayOf(player) else null).orEmpty(),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = panel.text,
-                    modifier = Modifier.padding(start = 8.dp),
-                )
+                Column(modifier = Modifier.padding(start = 8.dp)) {
+                    Text(
+                        text = player.player.name.orEmpty(),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = panel.text,
+                    )
+                    Text(
+                        text = previewCardScoreText(board, player, awayShown).orEmpty(),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = panel.text,
+                    )
+                }
             }
         }
     }
@@ -250,43 +276,9 @@ internal fun PreviewBusyOnBand(style: BusyStyle, board: BoardState, look: BoardL
 }
 
 /**
- * Suurennuslasi piirrettynä, koska sovelluksessa ei ole ikonikirjastoa eikä yhden ikonin
- * takia kannata ottaa sitä. Kosketusala on 40 dp ja pohja himmeä, jotta lasi erottuu
- * sekä vaalealta että tummalta laudalta.
- */
-@Composable
-private fun ZoomButton(onClick: () -> Unit, modifier: Modifier) {
-    val description = stringResource(R.string.settings_preview_zoom)
-    val ink = MaterialTheme.colorScheme.onSurface
-    Box(
-        modifier = modifier
-            .size(40.dp)
-            .clip(CircleShape)
-            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.8f))
-            .clickable(onClick = onClick, role = Role.Button)
-            .semantics { contentDescription = description },
-        contentAlignment = Alignment.Center,
-    ) {
-        Canvas(modifier = Modifier.size(22.dp)) {
-            val stroke = 2.2.dp.toPx()
-            val r = size.minDimension * 0.30f
-            val c = Offset(size.width * 0.42f, size.height * 0.42f)
-            drawCircle(ink, radius = r, center = c, style = Stroke(stroke))
-            val k = 0.7071f
-            drawLine(
-                ink,
-                start = Offset(c.x + r * k, c.y + r * k),
-                end = Offset(size.width * 0.92f, size.height * 0.92f),
-                strokeWidth = stroke * 1.3f,
-                cap = StrokeCap.Round,
-            )
-        }
-    }
-}
-
-/**
- * Lauta koko ruudun kokoisena. Sama [PreviewBoard] kuin kortissa, joten iso kuva ei voi
- * erota pienestä. `Use this` valitsee ja sulkee, `Close` vain sulkee.
+ * Kortin kuva lähes koko ruudun kokoisena. Lauta piirtyy samalla [PreviewBoard]illa kuin
+ * kortissa, joten iso kuva ei voi erota pienestä; nopat, pisteet ja odotus suurennetaan
+ * [ZoomedPicture]lla. `Use this` valitsee ja sulkee, `Close` vain sulkee.
  */
 @Composable
 internal fun BoardZoomDialog(
@@ -328,3 +320,32 @@ internal fun BoardZoomDialog(
         }
     }
 }
+
+/**
+ * Pieni kuva skaalattuna ison kuvan tilaan (6.10.2026, kaikki kuvat isoksi). Nopat, pisteet ja
+ * odotus piirtyvät luonnollisessa koossaan ja suurenevat kokonaisina, enintään [ZOOM_MAX]
+ * kertaiseksi ja niin että mahtuvat: tekstien koko tulee fontista, joten piirtäminen
+ * suurempana rivittäisi ne eikä suurentaisi.
+ */
+@Composable
+internal fun ZoomedPicture(height: Dp, content: @Composable () -> Unit) {
+    Layout(content = content, modifier = Modifier.fillMaxWidth().height(height)) { measurables, constraints ->
+        val picture = measurables.first().measure(Constraints())
+        val scale = minOf(
+            ZOOM_MAX,
+            constraints.maxWidth / picture.width.coerceAtLeast(1).toFloat(),
+            constraints.maxHeight / picture.height.coerceAtLeast(1).toFloat(),
+        )
+        layout(constraints.maxWidth, constraints.maxHeight) {
+            picture.placeWithLayer(
+                (constraints.maxWidth - picture.width) / 2,
+                (constraints.maxHeight - picture.height) / 2,
+            ) {
+                scaleX = scale
+                scaleY = scale
+            }
+        }
+    }
+}
+
+private const val ZOOM_MAX = 4f

@@ -2,6 +2,7 @@ package fi.tommi.dg.app.ui
 
 import fi.tommi.dg.app.session.SiteSettingsStore
 import fi.tommi.dg.data.ActionQueue
+import fi.tommi.dg.data.DeletedMessage
 import fi.tommi.dg.data.DropLog
 import fi.tommi.dg.data.MessageArchive
 import fi.tommi.dg.data.MarkBook
@@ -17,6 +18,7 @@ import fi.tommi.dg.domain.Reminder
 import fi.tommi.dg.domain.SiteBoardSettings
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 
 /*
@@ -59,20 +61,51 @@ class FakeArchive : MessageArchive {
         return fresh.size
     }
 
-    override fun observeAll(account: String?): Flow<List<Message>> = rows
+    /** Poistetut tunnisteet poistoaikoineen. Poistettu on yhä [rows]issa kuten kannassa. */
+    val deletedAt = MutableStateFlow<Map<String, Long>>(emptyMap())
 
-    override fun observeByMatch(matchId: String): Flow<List<Message>> = rows
+    private val visible: Flow<List<Message>> =
+        combine(rows, deletedAt) { list, deleted -> list.filter { it.id !in deleted } }
 
-    override fun observeByOpponent(opponent: String, account: String?): Flow<List<Message>> = rows
+    override fun observeAll(account: String?): Flow<List<Message>> = visible
+
+    override fun observeByMatch(matchId: String): Flow<List<Message>> = visible
+
+    override fun observeByOpponent(opponent: String, account: String?): Flow<List<Message>> = visible
 
     override fun observeOpponents(account: String?): Flow<List<String>> =
-        rows.map { list -> list.mapNotNull { it.opponent }.distinct() }
+        visible.map { list -> list.mapNotNull { it.opponent }.distinct() }
 
     override suspend fun count(): Int = rows.value.size
 
     override suspend fun claimUnowned(account: String): Int = 0
 
     override fun observeNewestStoredAt(account: String?): Flow<Long?> = MutableStateFlow(null)
+
+    override suspend fun delete(ids: List<String>, account: String?, at: Long): Int {
+        val fresh = rows.value.map { it.id }.filter { it in ids && it !in deletedAt.value }
+        deletedAt.value = deletedAt.value + fresh.associateWith { at }
+        return fresh.size
+    }
+
+    override suspend fun restore(ids: List<String>, account: String?): Int {
+        val back = ids.filter { it in deletedAt.value }
+        deletedAt.value = deletedAt.value - back.toSet()
+        return back.size
+    }
+
+    override fun observeDeleted(account: String?): Flow<List<DeletedMessage>> =
+        combine(rows, deletedAt) { list, deleted ->
+            list.mapNotNull { m -> deleted[m.id]?.let { DeletedMessage(m, it) } }
+                .sortedByDescending { it.deletedAtEpochMillis }
+        }
+
+    override suspend fun purgeDeletedBefore(cutoff: Long): Int {
+        val gone = deletedAt.value.filterValues { it < cutoff }.keys
+        rows.value = rows.value.filter { it.id !in gone }
+        deletedAt.value = deletedAt.value - gone
+        return gone.size
+    }
 }
 
 /** Lähtevien tekojen jono muistissa, ottelukohtainen korvaussääntö mukaan lukien. */

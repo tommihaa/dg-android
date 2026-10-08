@@ -11,10 +11,12 @@ Hakemisto ja pyytämättä laukeavat portit ovat yhä `CLAUDE.md`:ssä.
 **Sovelluksen oma käyttöliittymätermi valitaan lyhyeksi, yksimerkityksiseksi ja
 käännettäväksi. Sivuston sanat pidetään sivuston muodossa.**
 
-Esimerkki oikeasta suunnasta on `Your move` otteluluettelon segmenttinä (28.9.2026, alla ›
-Odottavien määrä; 27.9. se oli `Playable`, joka nimesi listan mutta vieraammalla sanalla). Se
-on lyhyt pelaajan sana ja kääntyy suoraan (*Sinun siirtosi*, *Du bist am Zug*). Sivuston sanoja ovat esimerkiksi `Grace`, `Roll Dice`, `Submit Move` ja rivien
-`Your turn`. Niitä ei käännetä käännöksessäkään, koska käyttäjä vertaa sovellusta sivuun
+Otteluluettelon segmentti oli tämän periaatteen esimerkki 28.9.–3.10.2026 nimellä `Your move`
+(27.9. se oli `Playable`). **3.10.2026 Tommi yhtenäisti segmentin ja rivien merkinnän sivuston
+sanaan `Your turn`** (*"Välilehden Your move-nimi ja Your turn-toiminto molemmat -> Your
+turn"*): sama asia sanotaan ruudulla yhdellä sanalla, ja se on sivuston oma. Segmentti on siis
+nyt sivuston sana eikä oma termi. Sivuston sanoja ovat esimerkiksi `Grace`, `Roll Dice`,
+`Submit Move` ja `Your turn`. Niitä ei käännetä käännöksessäkään, koska käyttäjä vertaa sovellusta sivuun
 rinnakkain (`docs/AVOIMET.md` › kielivalikoima 5.8.2026).
 
 Peruste on käännöspolku. Käyttöliittymä on nyt pelkkää englantia, mutta kaikki teksti on
@@ -1973,6 +1975,17 @@ menetelmällä kuin lukko itse: `mOrientation=UNSPECIFIED` luettelossa lukon oll
 laitteen pakotettu vaakakierto (`user_rotation=1`) antoi luettelolle mitan `cur=2800x1752`.
 Kuva ei kelpaa todisteeksi, koska sama kuva syntyy laitteen asennosta.
 
+**Rajaus: Android 16 -tabletilla suuntaa ei pakoteta (Tommin päätös 4.10.2026).** Android 16
+ohittaa isolla näytöllä (pienempi mitta vähintään 600 dp, eli tabletit ja auki taitetut
+taittopuhelimet) manifestin `screenOrientation`in ja koodin `requestedOrientation`in, kun
+kohde-SDK on 36. Pystylukko, aina vaakana pysyvä lauta ja kirjoittamisen pystyasento eivät
+silloin vaikuta, ja jokainen ruutu kääntyy laitteen mukana. Play Console nosti tämän
+suosituksena julkaisusta `1 (1.0)`. Valinta kahdesta: ennalleen ja rajaus kirjataan (valittu)
+tai pakotus rajataan itse puhelimiin, mikä olisi muuttanut Tommin Android 13 -tabletin
+käytöksen. Puhelimella kaikki toimii ennallaan, ja Tommin tabletti on Android 13:ssa, joten
+siihen rajaus ei vielä osu. Käyttäjälle se sanotaan pystylukon selitteessä ja App Helpin
+asetusvastauksessa. Ei mitattu laitteella, koska Android 16 -tablettia ei ole.
+
 **Kirjautumisruutu ja puhelimella kirjoittaminen pystyyn (Tommin päätökset 1.10.2026).**
 Mittaus samana iltana Pixel 8a:lla vaakana: kirjautumisruudun näppäimistö peitti molemmat
 kentät ja Log In -napin, ja foorumin uuden ketjun lomakkeesta näkyi noin 130 dp eli vain
@@ -1998,6 +2011,33 @@ Thread nousi vaakana näppäimistön yläpuolelle. Inboxin vastauskenttää ei m
 näkyy vain sivustolta otetun viestin kohdalla ja haku kuluttaa jonon; sillä on sama ryhmä
 ja sama ehto kuin muilla. Pixel nollaa pakotetun kierron (`user_rotation`) kun sovellus
 kääntää ruudun, joten paluu vaakaan luettiin `requestedOrientation`ista eikä kuvasta.
+
+**Ottelun päättymisruutu jäi päätöksen ulkopuolelle** (Tommin havainto pelisessiossa
+3.10.2026, Pixel 8a, `sessio-3-10-ilta`). Ehto rajasi laudan reitin pois (`!onBoard`), koska
+lauta kääntyy omasta kirjoitustilastaan, mutta päättymisruutu on samalla reitillä. Vaakana
+näppäimistö auki fraasirivi näkyi, ja lähetysnappiin pääsi vain vierittämällä. Tommi olisi
+halunnut kirjoittaa pystyssä toiminnot nähden. Korjaus: ehto koskee laudan reittiä myös
+(`writing = boardWriting || phoneTyping`), päättymisruutu sai oman `imePadding`in koska
+NavHostin väistö ei koske laudan reittiä, ja chat-kortin kenttä, fraasit ja napit ovat yksi
+`keepInViewWhileTyping`-ryhmä.
+
+Todennettu samana iltana kuorella Pixel 8a:lla (vastustaja A:n päättymissivu `0111`, *Reply to
+<vastustaja A>*): kenttään napautus käänsi ruudun pystyyn (`requestedOrientation=PORTRAIT`,
+`cur=1080x2400`), ja kenttä, fraasit, Save text as phrase ja Send olivat näppäimistön
+yläpuolella. Näppäimistön sulkeminen palautti vaakaan (`cur=2400x1080`). Kuvat:
+`raakasivut/sessio-3-10-ilta/kuori/`. Chat-kortin ryhmää ei ajettu, koska sivulla ei ollut
+chat-lomaketta.
+
+**Päättymisruudun viestikortti on pisterivien yläpuolella** (Tommin valinta 3.10.2026). Tommi
+tarkensi kuoritestin jälkeen, että Sendin alla ollut *Chat with <vastustaja A>* -kortti häiritsi:
+se näytti toiselta tekstikentältä. Neljä vaihtoehtoa kaapattiin kuorella Pixeliltä vaakana ja
+pystyssä (nykyinen, ylös, piiloon kentän ajaksi, lainauksena ilman laatikkoa; kuvat
+`viestikortti-*`), ja valinta oli **ylös**. Ruutu luetaan silloin järjestyksessä: mitä
+vastustaja sanoi, oma vastaus ja Send, sivun napit. Siirto koskee vain lomakkeetonta korttia.
+Lomakkeellinen kortti on kirjoituspinta, ja siinä ovat sivun napit, joten se jäi nappien
+paikalle. Sitä ei kokeiltu. Toinen kysymys samassa yhteydessä: kääntyykö päättymisruutu
+puhelimella pystyyn heti avautuessaan? Tommin vastaus: **vain kirjoittaessa**, kuten muutkin
+ruudut. Todennettu kuorella (`viestikortti-valittu-*`).
 
 ### Lauta pystyssä: kytkin, oletus vaaka (Tommin päätös 23.9.2026)
 
@@ -2279,6 +2319,16 @@ takia. Kolme muutosta ja yksi löydös.
    API 28+). Androidin oletus kieltää sen vaakatilassa, joten pelkkä paddingin poisto ei
    olisi riittänyt. Lukuruudut väistävät loven yhä `safeDrawingPadding`illa, joten lupa
    ei näy niissä.
+   **Korjattu 4.10.2026:** oma asetus poistettiin, koska Play varoitti siitä (`SHORT_EDGES` on
+   vanhentunut Android 15:ssä, lähde `MainActivity.onCreate`). Lupa ei kadonnut, koska
+   `enableEdgeToEdge` antaa sen jo: API 30:stä alkaen `ALWAYS` ja API 28–29:ssä `SHORT_EDGES`
+   (androidx.activity 1.9.3:n tavukoodi). Oma rivi ajettiin kirjaston jälkeen ja vaihtoi
+   `ALWAYS`n takaisin. Kirjattu perustelu *oletus kieltää sen vaakatilassa* piti paikkansa
+   ilman `enableEdgeToEdge`ä, mutta sen kanssa rivi oli tarpeeton. Laitteella 4.10.2026
+   (Pixel 8a, Android 17): `dumpsys window` näyttää sovelluksen ikkunalle
+   `layoutInDisplayCutoutMode=always` sekä ennen asennusta että sen jälkeen, koska Android 15+
+   pakottaa `always`n kohde-SDK:lle 35+. Ikkuna on siis sama, eikä lautaa avattu erikseen,
+   koska avaaminen kuluttaa.
 2. `BoardScreen` väistää vain palkit (`WindowInsets.systemBars`), ei lovea. Tämä kumoaa
    24.8. kirjatun kommentin *safeDrawing kattaa myös näyttölovan* tarkoituksella. Hinta:
    reikä osuu ottelukortin vasempaan reunaviivaan, ja vasenkätisellä laudan vasempaan
@@ -4259,6 +4309,21 @@ hyvä lisäys"*, ja suurennuksen ele valittiin kolmesta: erillinen ikoni.
   levyisenä, ja siinä on napit `Use this` ja `Close`. Kortin muu pinta valitsee heti kuten
   ennen. Nopat, pisteet ja ilmaisimet eivät saaneet suurennusta, koska ne näkyvät jo
   luettavan kokoisina.
+- **Suurennuslasi poistettiin 6.10.2026** (Tommin tilaus: *"poista suurennuslasi, sen sijaan
+  klikkaamalla kuvaa saa sen ison kuvan"*, ja monivalinnasta *kaikki kuvat isoksi*). Kuvan
+  napautus avaa ison kuvan kaikissa korteissa, myös Dice-, Score- ja Waiting-korteissa, ja
+  kuvan alla oleva rivi radioineen valitsee. Iso kuva on kortin oma (`OptionCard`, `large`),
+  joten ruudulla ei ole enää erillisiä suurennusmuuttujia. Nopat, pisteet ja ilmaisin
+  suurenevat kokonaisina (`ZoomedPicture`), koska tekstin koko tulee fontista. Samana päivänä
+  pelkän laudan kuvat saivat omistamattoman robottikuution lokerosarakkeen keskelle
+  (*"tuplattu tuplauskuutio ei pitäisi olla näkyvissä vaan sivupaneelissa ja tuplaamaton
+  androidin pää keskikaistan sivulokerossa"*, `previewUnownedCube`), Handedness-kuvat tuplatun
+  kuution omistajan pelaajakorttiin ja tilanteen pelaajat Brayn nimet *Fanning Finn* ja
+  *Dowager Duchess* kuten kauppakuvissa (`docs/KAUPPA.md`). Score-kuvat näyttävät nimen ja pelaajakortin
+  parin oma ensin (`19-away 20-away`, `1-2/21`), koska kortti näyttää 4.10.2026 alkaen parin
+  eikä vain omaa lukua (Tommi: *"pelaajakortissa on kaksi away-tietoa samalla rivillä"*,
+  `previewCardScoreText`); turnaus *The Marathon #1234* entisen *Testitapahtuma #1234*:n tilalle,
+  Tommin valinta neljästä.
 - Ilmaisimet pyörivät keskikaistan huovalla ja noudattavat Art deco -kytkintä. Satunnaisen
   kortti kiertää viittä muotoa, koska sillä ei ole omaa muotoa.
 - **Sivuston puolella samat kortit Background Color- ja Board Scheme -ryhmille** (Tommin
@@ -4415,6 +4480,10 @@ ilmaisulta kontekstiin"*). Tommi ehdotti sivuston omaa *matches where you can mo
 on liian pitkä segmentiksi `Tournaments`in rinnalle puhelimessa. Neljästä lyhyestä muodosta
 (`Can move`, `To move`, `Your move`, pitkä muoto) Tommi valitsi `Your move`. Todennettu
 SM-T970:llä klo 18.45: `Your move (11)`.
+
+**Nimi palasi 3.10.2026 muotoon `Your turn`** (Tommin tilaus: segmentti ja rivien merkintä
+samalla sanalla). Sivuston oma lause on *It is your turn in N matches*, joten segmentti ja rivi
+sanovat nyt saman asian sivuston sanalla: `Your turn (18)`.
 
 **Rivi `N waiting for your move` on `Signed in as` -rivin alla, ja se näytetään myös nollana.**
 Luku on `TopPage.yourTurnCount`, eli luettelosta johdettu eikä oma kenttä, joten se ei voi olla
@@ -5351,6 +5420,9 @@ kokonaisuus), ja taustakuva on oma kysymyksensä `docs/AVOIMET.md`:ssä. Paletti
 sitä kumpaankaan suuntaan, koska kuva tarvitsee alleen värin joka tapauksessa.
 
 ### Taustakuvio tekstiruuduissa (6.9.2026)
+
+**Poistettu 6.10.2026**, ks. *Taustakuvio poistettiin* tiedoston lopussa. Tämä luku ja sitä
+seuraavat kuviota koskevat luvut ovat historiaa.
 
 **Tämä kumoaa osan 29.8.2026 tehdystä päätöksestä, ja kumoaminen on Tommin.** Silloin
 kuviollinen tausta hylättiin selkeyden nimissä, ja peruste oli se että tumma tila oli juuri
@@ -7771,8 +7843,9 @@ nollakohta (pikselivertailu vanhaan: ero vain 16:n kohdalla). Animaatio on 15 ku
 (`drawable-nodpi/splash_cube_*.webp`, 1 Mt, `drawable/splash_cube.xml`), kesto 150 + 13 × 50
 + 200 = 1000 ms, Googlen suosituksen yläraja. Teema `values-v31` ja `values-night-v31`,
 kuvakkeen tausta kotinäytön musta emali. `MainActivity.keepSplashUntilCubeTurned` pitää
-ruudun auki kierron loppuun ja häivyttää sen 150 ms:ssa, koska järjestelmä poistaisi sen
-heti ensimmäisestä ruudusta.
+ruudun auki kierron loppuun, koska järjestelmä poistaisi sen heti ensimmäisestä ruudusta.
+3.10.2026 alkaen se tehdään pidättämällä sovelluksen ensimmäistä ruutua, ja järjestelmä
+poistaa ruutunsa itse (ks. alla Luovutushetken välähdys).
 
 **Dokumentaatio ei ollut yksiselitteinen**: muotovaatimus sanoo vektorianimaatio, mutta
 toinen kohta mainitsee kuvasarjan (`AnimationDrawable`). Kuvasarja todennettiin laitteella:
@@ -7780,6 +7853,67 @@ nauhat `splash-pixel2.mp4` (Pixel 8a, Android 16) ja `splash-tabletti.mp4` (SM-T
 Android 13) session scratchpadissa, kehykset 8–10/s. Molemmissa kuutio kääntyy päästä 2:een.
 Tabletilla ruutu pysyy 2 päällä noin 1,4 s pidempään, koska sovelluksen ensimmäinen ruutu
 valmistuu hitaammin; se on järjestelmän käytös eikä vika.
+
+**Liike vaihtui 3.10.2026 heitoksi** (Tommin tilaus: *"tuplauskuutio -> 2 sijaan tuplauskuutio
+pyörivän ja asemaan androidin pää"*). Neljästä luonnoksesta (takaisinkierto 2:sta päähän, täysi
+kierros etu-taka-akselin ympäri, hyrrä pystyakselin ympäri, heitto) Tommi valitsi heiton: kuutio
+pyörii x- ja z-akselin ympäri, jäljellä alussa 1,3 ja 1,5 puolikierrosta, ja asettuu pienen
+yliheiton kautta kuvakkeen lepoasentoon, pää ylhäällä. `kuvake.py` kiertää nyt mielivaltaisen
+akselisarjan (`splash_turn`), kuvake on yhä nollakohta, ja kesto on sama 1000 ms. App Helpin
+*Board look* sanoo sen yhdellä lauseella. Todennettu SM-T970:llä kolmella nauhalla: kuutio lähtee
+asennosta, jossa 4 ja 32 näkyvät, ja asettuu pää ylhäällä.
+
+**Luovutushetken välähdys on vanha vika** (havaittu 3.10.2026). Juuri ennen häivytystä kuution
+paikalla näkyy toisinaan 1–4 kehystä pelkkä kuvakkeen tausta. Uusi heitto välähti kolmesta
+ajosta kahdesti, ja 1.10.2026 kierto, joka asennettiin vertailuun samalle laitteelle, välähti
+neljästä ajosta kerran. Se osuu järjestelmän luovutukseen (`keepSplashUntilCubeTurned`) eikä
+kuvasarjaan. **Korjattu 3.10.2026**, mittaus alla.
+
+**Syy on luovutuksen pinta.** Kun sovellus asettaa `setOnExitAnimationListener`in, järjestelmä
+siirtää käynnistysruudun sovelluksen ikkunaan. Animoitu kuvake on siirrossa `SurfaceView`
+(luettu lokista: `iconView` on `android.view.SurfaceView`, 340 × 340 px), jonka sisällön
+piirtää järjestelmän prosessi ja jonka taustana on kuvakkeen musta pohja bittikarttana.
+Siirron ensimmäisessä kehyksessä pinta on toisinaan vielä tyhjä, jolloin näkyy pelkkä pohja.
+Erillinen pinta ei myöskään tottele näkymän alphaa, joten 150 ms:n häivytys haalisti vain
+taustan ja kuutio katosi lopussa kerralla. Pixel 8a:lla (Android 17) näin kävi 6/6 ajossa.
+
+**Kuuntelijassa tehty korjaus ei riitä.** Ensimmäinen kokeilu piilotti pinnan kuuntelijassa
+ja piirsi tilalle oman `ImageView`n samasta kuvasarjasta. Häivytys korjaantui, mutta tyhjä
+kehys jäi (2/5 ajoa), koska järjestelmä piirtää siirretyn ruudun kerran ja kutsuu
+kuuntelijaa vasta sen jälkeen. Kuuntelija ei siis ehdi väliin.
+
+**Korjaus on pidätys ilman luovutusta.** Kuuntelijaa ei aseteta, vaan `OnPreDrawListener`
+estää sovelluksen ensimmäisen ruudun kunnes kierto on ohi (Androidin dokumentoima tapa pitää
+käynnistysruutua pidempään). Kierron alkua ei ilman kuuntelijaa voi lukea, joten raja
+lasketaan prosessin alusta: kolmessa kylmäkäynnistyksessä kierto alkoi −40…+66 ms
+prosessin alusta (SM-T970, loki), ja raja on prosessin alku + 100 ms marginaali + 1000 ms
+kierto. Prosessin myöhempi aktiviteetti laskee omasta luonnistaan, ja uudelleenluonti
+(`savedInstanceState`) ei pidätä, koska käynnistysruutua ei silloin näytetä. Juuriaktiviteetin
+Back ei Android 12+:ssa tuhoa aktiviteettia, joten tavallinen paluu on kuuma käynnistys ilman
+käynnistysruutua.
+
+**Mittaus 3.10.2026**, kylmäkäynnistykset nauhalta, keskeltä rajattu 120 × 120 px kirkkaus
+(nauhat ja `nauha.py` session scratchpadissa):
+
+| Laite | Versio | Ajoja | Tyhjä kehys ennen häivytystä | Häivytys |
+|---|---|---|---|---|
+| SM-T970, Android 13 | ennen | 3 | 1 (yksi kehys) | tausta haalistuu, kuutio katkeaa |
+| SM-T970 | kuuntelija + oma kuva | 5 | 2 | kuutio haalistuu mukana |
+| SM-T970 | pidätys (lopullinen) | 6 | 0 | järjestelmän oma, noin 50 ms |
+| Pixel 8a, Android 17 | ennen | 6 | 0 | tausta haalistuu, kuutio katkeaa 6/6 |
+| Pixel 8a | pidätys (lopullinen) | 6 | 0 | järjestelmän oma, noin 150 ms |
+
+Lopullisessa versiossa kuutio oli kaikissa 12 ajossa lepoasennossa pää ylhäällä ennen
+poistumista, myös Pixelillä, jolla sovellus valmistuu ennen kierron loppua ja pidätys siis
+ratkaisee. **Jäljelle jää järjestelmän oma poisto:** SM-T970:llä 5/6 ajossa yksi kehys
+häivytyksen keskellä näyttää kuvakepohjan noin kolmanneksen peittävyydellä, ja Pixelillä
+häivytyksen viimeiset kaksi kehystä ovat lähes mustaa tyhjää ympyrää. Ne ovat järjestelmän
+poistoanimaatiota, johon sovellus ei pääse käsiksi ilman luovutusta.
+
+**Pixelin jäätynyt kuutio on erillinen järjestelmän ilmiö.** Pixel 8a:lla kuutio jäi
+kerran kuudesta alkukuvaansa (4 ja 32) eikä pyörinyt, sekä vanhalla että uudella versiolla
+(`splash_pixelennen_4`, `splash_pixel_1`). Tabletin 19 nauhoitetussa ajossa sitä ei näkynyt. Syytä ei ole
+selvitetty.
 
 **Kallistus pysyy isometrisenä** (Tommin päätös 1.10.2026). Kuusi kallistusta luonnosteltiin
 (kierto ja kallistus 45/35, 30/35, 60/35, 45/20, 45/50 ja 25/22 astetta), ja nykyinen 45/35
@@ -7946,3 +8080,146 @@ vaakalauta, ei odotusta eikä vahvistusruutuja. Vahvistusruudun ryhmä on yksi l
 mahdu puoleen leveyteen, joten silloin pino pysyy pystyssä. Todennettu laitteella vain
 pystypinon puoli (`Roll Dice`, `Double` + `Verify Double`, mahtui). Rinnakkainen muoto odottaa
 seuraavaa lautaa, jolla on `Next Game` ja `To Top`.
+
+### Pelaajakortin koko tilanne ja ahtaan paneelin rastirivit (Tommin ehdotus ja valinnat 4.10.2026)
+
+Ehdotus pelisession aikana: *"ottelutilanteen lukeminen vaatii pelaajakorttien tietojen
+yhdistelyä"*. Kumpikin kortti näyttää nyt koko tilanteen oman pelaajansa näkökulmasta, oma
+luku ensin (`cardScoreText`). Muoto seuraa `Score`-asetusta eikä tuonut uutta valintaa.
+Away-asetuksella kortti sanoo `5-away 3-away`, sivun pisteillä `2-4/7`, koska silloin pituutta
+ei voi lukea luvuista (*"pituus on tärkeä tieto, jos ei ole away-luvut käytössä"*). Mockup
+chatissa ensin, kolme versiota (nyt, A away-pari, B pisteet ja pituus), ja Tommi kuittasi
+tulkinnan. Lokerosarake näyttää yhä vain oman luvun (`scoreText`), koska kapeaan sarakkeeseen
+pari ei mahdu. Rahapelissä ja puuttuvalla paneelilla kortti putoaa vanhaan muotoon.
+
+Samalla: *"nyt pixelillä ahdas tilanne, ehdotan että checkboxit siirtyvät Accept ja
+Decline-nappulariveille"*, tarkennus *"rastit vain ahtaassa tilassa toiminnon kanssa samalla
+rivillä"*. Kaappaus kesken session (klo 19.27, Slower Sevens #4585, vastustaja B tuplasi)
+näytti `Skip Game`n ja `Mark position`in vastustajan kortin alareunan päällä, koska `Accept`,
+`Decline` ja kaksi ruuturiviä veivät neljä riviä. Ahtaassa paneelissa kukin ruutu on nyt oman
+nappinsa oikealla puolella selitteellä `Verify` (`board_verify_short`), koska napin nimi on
+jo rivillä. Väljä paneeli ja pystylauta ovat ennallaan. TalkBackin puu lukee ruudun yhä
+koko nimellä (`Verify Accept`, `Verify Decline`).
+
+**Todennettu 4.10.2026 klo 19.46–19.48 kuorella Pixel 8a:lla** (top
+`sessio-30-9-aamu/0002`, lauta `sessio-4-10-ilta/0125`, airlock 503 PC:ltä, koska Pixelissä ei
+ole curlia). Away-asetuksella kortit `<vastustaja B> 4-away 5-away` ja `tommih 5-away 4-away`,
+rastit nappiriveillä, `Skip Game` irti kortista (`raakasivut/sessio-4-10-ilta/kuori/k2-vaaka-tarjous.png`).
+Sivun pisteillä `3-2/7` ja `2-3/7` (`k3-vaaka-site.png`). Pystylaudalla kortti mahtui
+nimen riville (`tb-lauta-tarjous.png`). Asetus palautettiin away-muotoon kaappauksen jälkeen.
+Tabletilla ei kaapattu.
+
+### Pipit muurille kolmelle riville, tilanne kortin omalle riville (Tommin päätös 5.10.2026)
+
+Tommi katsoi vanhoja kauppakuvia: *"pelaajakortin ottelutieto ei sovi nimen kanssa aina, joten
+siirrä se omalle riville ja pips-tieto keskipaneeliin kolmelle riville seuraavaan malliin
+(pilkut rivien erottomina) Pips, 126, (+10)"*. Kuvissa pitkä nimi katkesi pisteisiin
+(*Tempestuous ...*), koska ahtaassa paneelissa tilanne oli 16.9.2026 alkaen nimen rivillä.
+Keskipaneeli tulkittiin monivalinnalla laudan muuriksi: vastustajan pipit ylhäällä, omat
+alhaalla. Tommi kuittasi tulkinnan ennen toteutusta.
+
+**Kortti on nyt aina nimi ja tilanne kahdella rivillä** kaikissa asetteluissa. `compact`- ja
+`portrait`-parametrit poistuivat [PlayerPanelView]ista, koska niiden ainoa tehtävä oli tilanteen
+paikka ja pippien yläpuolinen väli.
+
+**Pipit ovat muurin ulkopäissä (`BarPips`)** kun sivupaneeli on ruudulla (`fits`). Ilman
+paneelia ne pysyvät lokerosarakkeessa, koska muurin pää kuuluu silloin omistetulle kuutiolle.
+Paneelin kanssa kuutio on kortissa tai kaistalla, joten pää on vapaa. Muuri kantoi pipit kerran
+ennenkin numerorivin muurin välissä 15.8.–14.9.2026, ja silloin `Pips 131 (+5)` ei mahtunut
+yhdelle riville tabletillakaan. Kolme riviä ratkaisee juuri sen, koska leveintä riviä on viisi
+merkkiä. Kapealla muurilla koko pienenee leveimmän rivin mukaan, joten luku ei leikkaudu.
+Muurille lyöty nappula piirtyy pippien päälle, ja pino ulottuu pippeihin vasta neljästä
+nappulasta.
+
+**Ensimmäisen kaappauksen jälkeen kaksi korjausta Tommin havainnoista:** *"tabletin
+keskipalkin pipseihin voi käyttää isompaa fonttia"*, joten lähtökoko on `bodyLarge` eikä
+pistenumeroiden `labelSmall`. Toinen havainto oli *"nappilokeron napit ovat liian kiinni ylä- ja
+alareunoissa (osa kuvasta jää reunan alle)"*, ja kaappauksessa ulos kannettujen uloin viiva
+piirtyi lokeron reunaviivan alle ja kiekko oli kiinni sisäreunassa. Lokero sai 4 dp:n
+pystysuuntaisen sisävaran (`OFF_TRAY_INSET`). Väri vaihtui Pixelin kaappauksen jälkeen
+oranssista pistenumeroiden väriin, koska oranssi katosi vaalean puulaudan kehykseen.
+
+**Todennettu 5.10.2026 klo 18.35–18.37 kuorella** (`sessio-21-9-kuori2`, airlock 503, ottelu
+The Marathon #4303): tabletti vaakana Deco-laudalla, Pixel 8a pystyssä ja vaakana puulaudalla.
+Kortit `<vastustaja C>` / `16-away 7-away` ja `tommih` / `7-away 16-away`, muurilla `Pips 36 (+1)`
+ylhäällä ja `Pips 35 (-1)` alhaalla. Pixelin pystylaudalla koko pienenee ja mahtuu. Kaappaukset
+ovat kansiossa `raakasivut/sessio-5-10-wood-talkback/` (`p6`, `p7` ja `p8`). Repoon niitä ei
+viety, koska vastustajan nimi on oikea. Muurille lyötyä nappulaa ei ollut kuoren laudalla,
+eikä lokerosarakkeen asettelua ilman paneelia ajettu.
+
+### Painetun pisteen numero laudan reunassa (Tommin tavoite ja valinnat 4.10.2026)
+
+**Tavoite:** *"pixelillä nappuloihin osumista halusin helpottaa"*. Ohilyönti on osumaton napautus,
+koska *"sormi peittää sarakkeen"* (`docs/TOINEN-ASIAKAS.md` › JustGammonin nappulan valinta).
+Kosketusalue oli jo koko sarake, joten puuttui vastaus sormen ulkopuolella.
+
+**Valinta:** neljästä mockupista (ei muutosta, numero syttyy reunassa, kupla sormen yllä,
+kaksivaiheinen valinta ilman haamua) Tommi valitsi numeron. Haamunappula JustGammonin tapaan
+olisi vaatinut kohteen tietämistä, ja sen ratkaisee sivusto eikä lauta (`PointWedge`).
+
+**Kytkin:** `Show which point I'm pressing` asetusten Playing-ryhmässä, siirtonuolten jälkeen.
+Oletus on pois kaikilla laitteilla eikä ruudun koon mukaan. Tommi valitsi ensin oletuksen puhelimen
+mukaan, ja tarkensi heti: *"pelaaja itse päättää, pieni näyttö on lähes sokealle todella
+tulkinnanvarainen"*. Kuudes arvo pätee siis ilman poikkeusta.
+
+**Toiminta:** painettu numero kasvaa 1,6-kertaiseksi ja lihavoituu. Se on oranssi (`Palette.Accent`)
+kun pisteeltä voi siirtää, ja yliviivattu kun ei voi. Numero viipyy 700 ms irrotuksen jälkeen,
+koska nopea napautus on juuri se joka jää epävarmaksi. Sormen liukuminen sarakkeen ulkopuolelle
+peruu merkin heti.
+
+**Kaksi vikaa jotka vain laite näytti** (Pixel 8a pystyssä, kuori 4.10.2026: 30.9. top ja
+4.10. siirtovuoron sivu ottelutunnus vaihdettuna):
+
+1. Fonttikoon kasvu kasvatti numerorivin korkeutta, ja koko lauta hyppäsi painalluksen ajaksi
+   noin 12 px. Kasvu tehdään nyt piirrossa (`graphicsLayer`), joten asettelu ei muutu.
+2. Siirrettävän pisteen numero katosi heti irrotuksessa. `clickable` kuluttaa irrotuksen, ja
+   `waitForUpOrCancellation` lukee kulutetun irrotuksen peruutukseksi. Linkittömällä pisteellä
+   viipymä toimi, koska kuluttajaa ei ollut. Tarkkailija odottaa nyt itse, että sormet nousevat.
+
+Todennettu korjausten jälkeen: pohjassa siirrettävä 8 ja ylärivin 20 oransseina, linkitön 9
+yliviivattuna, 8 viipyy siirron jälkeen ja on poissa 1,5 s kuluttua, ja numerorivi pysyy
+paikallaan. Tabletin kaappaus puuttuu.
+
+**Ohi-ääni (Tommin tilaus 6.10.2026):** *"ohi painamisesta sopiva äänimerkki"*. Tulkinta
+kuitattiin monivalinnassa: ääni soi kun sormi nousee sarakkeen sisällä pisteeltä jolla ei ole
+siirtolinkkiä, eli juuri siltä jolle numero piirtyy yliviivattuna. Raahaus pois sarakkeesta ei
+soi, eikä vastustajan vuoro, koska silloin jokainen napautus olisi ohi. Ehtoina ovat tämä kytkin
+ja `Game sounds`, ei teema (kaanonin laajennus, `docs/AVOIMET.md` › Äänet). Kutsu kulkee
+`BoardTouch.onMiss`illa ja `observePress`in irrotuksella; ääni `WoodSound.MISS`,
+`docs/ASETUKSET.md` › Wood-teema. Ääni valittiin kolmesta tabletin kaiuttimesta kuunneltuna:
+kaksi laskevaa naputusta. Asetusruutu kaapattu tabletilla 6.10.2026 klo 19.46
+(`docs/kuvat/game-sounds-asetukset.png`): kytkin käytössä Deco-teemassa ja pois, Wood-kortti
+lyhyellä nimellä.
+
+**Laudalla todennettu tabletilla 6.10.2026 klo 19.49 kuoriproxyn kautta** (Top Page
+`sessio-5-10-ilta/0144`, lauta `sessio-6-10-iltapaiva/0058` ottelutunnus sovitettuna, airlock
+503, `Game sounds` ja painalluskytkin päällä, Deco-teema). Ääni luettiin `dumpsys audio`n
+soitintapahtumista: napautus tyhjään pisteeseen 10 klo 19:49:28,44 käynnisti sovelluksen
+soittimen 28,58 ja piirsi yliviivatun 10:n tummalle laatalle (`docs/kuvat/ohi-napautus-tabletti.png`).
+Raahaus pisteeltä 10 sivuun (52,16) ei käynnistänyt mitään. Siirrettävän pisteen 9 napautus
+(54,53) kokosi askeleen 9→7 ja soitti 54,72, eli nappulan äänen; ohi-ääni ei voi soida siinä,
+koska linkillinen piste antaa `miss`-kutsulle nullin. Siirto peruttiin `Undo Move`lla. Loki näytti
+lisäksi kaksi käynnistystä 42,19 ja 46,82, jolloin Claude ei napauttanut mitään. Tommi kertoi
+koskettaneensa tablettia kerran, joten toisen käynnistyksen syy on todentamatta. Tommin korvat eivät olleet todennuksessa mukana.
+
+### Taustakuvio poistettiin (Tommin karsinta 6.10.2026)
+
+**Tommin sana:** *"on aika kitkeä, Settings/Lists and screens ensimmäiset kaksi kytkintä ovat
+liikaa, jätetään vain pictures below the lists."* Kytkimet olivat *Pattern behind the lists*
+ja *Vermilion birds and a moon (light theme)*, molemmat oletuksena pois.
+
+**Ominaisuus poistui kokonaan eikä vain kytkin** (Tommin valinta kahdesta). Pelkän kytkimen
+poisto olisi jättänyt noin 800 riviä koodia, jota kukaan ei näe. Lähtivät `DgPattern.kt`,
+`SkyThemeStore`, `DgSkyLayoutTest`, viisi merkkijonoa ja `dg_sky_theme` asetustiedoston
+siirrosta. Ruutujen perusväri maalataan yhä yhdessä paikassa (`DgScreenBackground.kt`),
+koska ruutujen `Scaffold`it ovat läpinäkyviä. Taustakuvien satunnaissiemen oli lainattu
+taivaalta, ja se jäi nimellä `pictureSeed`: kuvat arvotaan yhä joka ruudun avauksessa.
+
+**Kuvien paikka** (Tommin valinta kahdesta, 6.10.2026): *Pictures below the lists* pysyy
+*Lists and screens* -ryhmässä ensimmäisenä, ennen rarity-värejä ja odotusilmaisinta. Toinen
+vaihtoehto oli oma ryhmä Themen alla aina näkyvissä. Paikka syntyi poistosta, koska
+*Background*-ryhmä oli kuvien edellä.
+
+Lukupinta (`DgReadingSurface.kt`) jäi, vaikka sen alkuperäinen syy oli kuvio tekstin alla.
+Sen poisto on eri päätös, jota ei kysytty.
+

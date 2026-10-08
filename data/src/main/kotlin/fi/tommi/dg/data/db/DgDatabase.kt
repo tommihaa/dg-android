@@ -25,7 +25,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         MarkedPositionEntity::class,
         ConnectionDropEntity::class,
     ],
-    version = 12,
+    version = 13,
     exportSchema = true,
 )
 abstract class DgDatabase : RoomDatabase() {
@@ -339,6 +339,22 @@ abstract class DgDatabase : RoomDatabase() {
         }
 
         /**
+         * `messages.deletedAtEpochMillis`, eli pehmeä poisto (Tommin päätös 6.10.2026, ks.
+         * [MessageEntity.deletedAtEpochMillis]).
+         *
+         * Rivit säilyttävä lisäys kuten jokainen `messages`-tauluun koskeva migraatio. Vanhat
+         * rivit jäävät `null`iksi, mikä on totta: yhtään viestiä ei ole merkitty poistetuksi
+         * ennen saraketta. Ennen tätä poistetut on poistettu kovalla poistolla, eikä niitä
+         * voi palauttaa kuin varmuuskopiosta. Ei indeksiä: sarakkeella rajataan, mutta
+         * merkittyjä on vähän ja taulu luetaan tilin indeksillä.
+         */
+        val MIGRATION_12_13 = object : Migration(12, 13) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE messages ADD COLUMN deletedAtEpochMillis INTEGER")
+            }
+        }
+
+        /**
          * Kanta on **yksi olio prosessia kohti**, ja se on oikeellisuutta eikä säästö.
          *
          * Roomin muutostenseuranta elää olion sisällä: kaksi `RoomDatabase`-oliota samaan
@@ -372,6 +388,7 @@ abstract class DgDatabase : RoomDatabase() {
                         MIGRATION_9_10,
                         MIGRATION_10_11,
                         MIGRATION_11_12,
+                        MIGRATION_12_13,
                     )
                     .build()
                     .also { instance = it }

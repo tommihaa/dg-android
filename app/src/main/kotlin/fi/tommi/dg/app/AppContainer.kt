@@ -16,6 +16,8 @@ import fi.tommi.dg.app.session.QueueExplainStore
 import fi.tommi.dg.app.session.SharedPrefsQueueExplain
 import fi.tommi.dg.app.session.DiceSubmitStore
 import fi.tommi.dg.app.session.MoveArrowsStore
+import fi.tommi.dg.app.session.PointPressStore
+import fi.tommi.dg.app.session.SharedPrefsPointPress
 import fi.tommi.dg.app.session.SharedPrefsMoveArrows
 import fi.tommi.dg.app.session.DiceSwapStore
 import fi.tommi.dg.app.session.SharedPrefsDiceSubmit
@@ -40,8 +42,6 @@ import fi.tommi.dg.app.session.SharedPrefsAppLock
 import fi.tommi.dg.app.session.SharedPrefsPortraitLock
 import fi.tommi.dg.app.session.RarityStore
 import fi.tommi.dg.app.session.SharedPrefsRarity
-import fi.tommi.dg.app.session.SharedPrefsSkyTheme
-import fi.tommi.dg.app.session.SkyThemeStore
 import fi.tommi.dg.app.session.WallpaperStore
 import fi.tommi.dg.app.session.SharedPrefsWallpaper
 import fi.tommi.dg.app.session.MatchOrderStore
@@ -196,6 +196,9 @@ class AppContainer(context: Context) {
     /** Siirtonuolet kootusta siirrosta, oletus pois. Ks. [MoveArrowsStore]. */
     val moveArrows: MoveArrowsStore by lazy { SharedPrefsMoveArrows(appContext) }
 
+    /** Painetun pisteen numero laudan reunassa, oletus pois. Ks. [PointPressStore]. */
+    val pointPress: PointPressStore by lazy { SharedPrefsPointPress(appContext) }
+
     /** Rarity-värit nimissä ja Inboxin määrässä, oletus päällä. Ks. [RarityStore]. */
     val rarity: RarityStore by lazy { SharedPrefsRarity(appContext) }
 
@@ -214,9 +217,6 @@ class AppContainer(context: Context) {
 
     /** Kätisyys, oletus oikea. Sivupaneeli menee vastakkaiselle puolelle, ks. [HandednessStore]. */
     val handedness: HandednessStore by lazy { SharedPrefsHandedness(appContext) }
-
-    /** Taustakuvion sumi-e-tila, oletus pois. Ks. [SkyThemeStore]. */
-    val skyTheme: SkyThemeStore by lazy { SharedPrefsSkyTheme(appContext) }
 
     /** Taustakuvien kansio tyhjään tilaan, oletus ei mitään. Ks. [WallpaperStore]. */
     val wallpaper: WallpaperStore by lazy { SharedPrefsWallpaper(appContext) }

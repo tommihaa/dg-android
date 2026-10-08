@@ -517,6 +517,29 @@ class DgDatabaseMigrationTest {
         }
     }
 
+    @Test
+    fun `kahdestoista migraatio lisaa poistoajan ja jattaa vanhat viestit arkistoon`() {
+        val db = avaaVersio1()
+        db.execSQL(
+            """
+            INSERT INTO messages
+                (id, matchId, sender, timestampText, body, source, storedAtEpochMillis)
+            VALUES ('tiiviste', '5302842', 'vastustaja', 'Jul 29 2026 20:14',
+                    'Good roll', 'GAME_MESSAGE', 1000)
+            """.trimIndent(),
+        )
+
+        DgDatabase.MIGRATION_12_13.migrate(db)
+
+        // Vanha rivi ei ole poistettu: null tarkoittaa arkistossa olevaa.
+        db.query("SELECT body, deletedAtEpochMillis FROM messages WHERE id = 'tiiviste'").use { rivi ->
+            assertEquals(1, rivi.count)
+            rivi.moveToFirst()
+            assertEquals("Good roll", rivi.getString(0))
+            assertTrue(rivi.isNull(1))
+        }
+    }
+
     private fun avaaVersio1(): SupportSQLiteDatabase {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val avaaja = FrameworkSQLiteOpenHelperFactory().create(

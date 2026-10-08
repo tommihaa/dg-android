@@ -34,14 +34,15 @@ import androidx.compose.ui.unit.dp
  * Täytekuva: kuva joka asettuu tyhjään tilaan sisällön alle.
  *
  * **Tausta ja täytekuva ovat eri lajia, ja tila ratkaisee kumpi näkyy** (Tommin päätökset
- * 7.9.2026, `docs/AVOIMET.md` › *Taustageneraattori ja teemakirjasto*). Tausta on koko ruudun
- * tessellaatio (`DgPattern.kt`), jonka päällä teksti lukee lukupinnan läpi. Täytekuva
+ * 7.9.2026, `docs/AVOIMET.md` › *Taustageneraattori ja teemakirjasto*). Tausta oli koko ruudun
+ * tessellaatio (`DgPattern.kt`, poistettu 6.10.2026), ja nyt se on pelkkä perusväri
+ * (`DgScreenBackground.kt`). Täytekuva
  * piirretään vain kun sisällön alle jää vähintään [DgFillMinHeight] vapaata; muuten ruudulla
  * on pelkkä tausta. Kynnys on Tommin (*"180 dp"*) luonnoksesta jossa riitti 156 dp:ssä oli
  * pieni ja tungettu (`tyokalut/tayteluonnos.py`).
  *
  * **Täytekuva on laitteen kansion taustakuvat** (`DgWallpaper.kt`, Tommin päätökset
- * 15.9.2026). Kansio on oma kytkimensä, ja kuvat näkyvät vaikka tessellaatio olisi pois.
+ * 15.9.2026). Kansio on oma kytkimensä.
  * Kun kansiota ei ole tai kuvat ovat vielä purkamatta, tila saa pelkän taustan. Luolan seinä
  * (`DgCave.kt`, 7.9.–17.9.2026) oli ensimmäinen täytekuva samaan paikkaan ja taustakuvien
  * varakuva; se poistettiin Tommin sanalla 17.9.2026 (*"luolamaalauskuvia ei enää tarvita

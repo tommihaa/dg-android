@@ -6,8 +6,10 @@ import android.content.res.Configuration
 import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
-import java.time.Duration
-import java.time.Instant
+import android.os.Process
+import android.os.SystemClock
+import android.view.View
+import android.view.ViewTreeObserver
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import android.content.pm.ActivityInfo
@@ -81,6 +83,8 @@ import fi.tommi.dg.app.ui.DgTabAccent
 import fi.tommi.dg.app.ui.DgTabRow
 import fi.tommi.dg.app.ui.DgTheme
 import fi.tommi.dg.app.session.AppTheme
+import fi.tommi.dg.app.session.enter
+import fi.tommi.dg.app.session.leave
 import fi.tommi.dg.app.session.BoardStyle
 import fi.tommi.dg.app.ui.LocalBusyDeco
 import fi.tommi.dg.app.ui.LocalBusyStyle
@@ -116,6 +120,7 @@ import fi.tommi.dg.app.ui.MESSAGES_ROUTE
 import fi.tommi.dg.app.ui.MARKS_ROUTE
 import fi.tommi.dg.app.ui.MarksScreen
 import fi.tommi.dg.app.ui.MessagesScreen
+import fi.tommi.dg.app.ui.trashGroups
 import fi.tommi.dg.app.ui.InvitationActionUiState
 import fi.tommi.dg.app.ui.MessagesViewModel
 import fi.tommi.dg.app.ui.QueueUiState
@@ -142,23 +147,39 @@ class MainActivity : FragmentActivity() {
     /**
      * **Käynnistysruudun kuutio kääntyy loppuun (Tommin tilaus 1.10.2026).** Järjestelmä
      * poistaa käynnistysruudun heti kun ensimmäinen ruutu on piirretty, ja nopea käynnistys
-     * katkaisisi tuplauksen kierron kesken. Kuuntelija pitää ruudun auki animaation loppuun ja
-     * häivyttää sen sitten. Animaatio ja kesto ovat teemassa (`values-v31/themes.xml`).
+     * katkaisisi tuplauksen kierron kesken. Ensimmäistä ruutua pidätetään siksi kierron
+     * loppuun, ja järjestelmä poistaa ruutunsa sen jälkeen itse. Animaatio ja kesto ovat
+     * teemassa (`values-v31/themes.xml`).
+     *
+     * **Pidätys eikä `setOnExitAnimationListener` (3.10.2026).** Kuuntelija siirtää ruudun
+     * sovellukselle, ja siirrossa kuvake on `SurfaceView`, jonka sisältö tulee järjestelmän
+     * prosessista ja jonka taustana on kuvakkeen musta pohja. Siirron ensimmäisessä
+     * kehyksessä pinta oli toisinaan tyhjä, jolloin kuution paikalla näkyi pelkkä pohja,
+     * ja se tapahtui ennen kuin kuuntelija ehti tehdä mitään. Pidätyksessä siirtoa ei ole.
+     * Mittaus: `docs/UI.md` › Oikea tahko 16 ja käynnistysruudun kierto.
+     *
+     * Kierron alku ei ole luettavissa ilman kuuntelijaa. Kylmässä käynnistyksessä se osui
+     * −40…+66 ms prosessin alusta (SM-T970, kolme ajoa), joten raja lasketaan prosessin
+     * alusta marginaalin kanssa. Prosessin myöhempi aktiviteetti laskee omasta luonnistaan,
+     * ja uudelleenluonti (`savedInstanceState`, esim. kierto) ei näytä ruutua eikä pidätä.
      */
-    private fun keepSplashUntilCubeTurned() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return
-        splashScreen.setOnExitAnimationListener { view ->
-            val start = view.iconAnimationStart
-            val duration = view.iconAnimationDuration
-            val left = if (start != null && duration != null) {
-                Duration.between(Instant.now(), start.plus(duration)).toMillis().coerceAtLeast(0)
-            } else {
-                0L
-            }
-            view.postDelayed({
-                view.animate().alpha(0f).setDuration(SPLASH_FADE_MS).withEndAction { view.remove() }
-            }, left)
+    private fun keepSplashUntilCubeTurned(savedInstanceState: Bundle?) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S || savedInstanceState != null) return
+        val anchor = if (splashAnchoredToProcess) {
+            SystemClock.uptimeMillis()
+        } else {
+            splashAnchoredToProcess = true
+            Process.getStartUptimeMillis() + SPLASH_START_MARGIN_MS
         }
+        val turned = anchor + SPLASH_TURN_MS
+        val content = findViewById<View>(android.R.id.content)
+        content.viewTreeObserver.addOnPreDrawListener(object : ViewTreeObserver.OnPreDrawListener {
+            override fun onPreDraw(): Boolean {
+                if (SystemClock.uptimeMillis() < turned) return false
+                content.viewTreeObserver.removeOnPreDrawListener(this)
+                return true
+            }
+        })
     }
 
     @OptIn(ExperimentalLayoutApi::class)
@@ -186,20 +207,15 @@ class MainActivity : FragmentActivity() {
         }
         enableEdgeToEdge(statusBarStyle = barStyle, navigationBarStyle = barStyle)
         super.onCreate(savedInstanceState)
-        keepSplashUntilCubeTurned()
+        keepSplashUntilCubeTurned(savedInstanceState)
 
-        // **Näyttöloven alle saa piirtää (Tommin päätös 16.9.2026).** Androidin oletus
-        // (`DEFAULT`) kieltää sen vaakatilassa, ja Pixel 8a:lla kielto vei laudan
-        // sivupaneelista 121 px eli viidenneksen sen leveydestä, vaikka itse reikä on
-        // 67 px:n ympyrä keskellä paneelin reunaviivaa. Tämä on lupa eikä asettelu:
-        // lukuruudut väistävät loven yhä `safeDrawingPadding`illa, ja vain lautaruutu
-        // väistää pelkät palkit (`BoardScreen`, `docs/UI.md` › Lovi ja sivupalkki).
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
-            window.attributes = window.attributes.apply {
-                layoutInDisplayCutoutMode =
-                    android.view.WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
-            }
-        }
+        // **Näyttöloven alle saa piirtää (Tommin päätös 16.9.2026), ja luvan antaa
+        // `enableEdgeToEdge` yllä.** Se asettaa API 30:stä alkaen `ALWAYS` ja API 28–29:ssä
+        // `SHORT_EDGES` (luettu androidx.activity 1.9.3:n tavukoodista 4.10.2026). Tässä
+        // ollut oma `SHORT_EDGES`-asetus ajettiin sen jälkeen ja vaihtoi `ALWAYS`n takaisin
+        // Android 15:ssä vanhentuneeseen arvoon, josta Play varoitti. Tämä on lupa eikä
+        // asettelu: lukuruudut väistävät loven yhä `safeDrawingPadding`illa, ja vain
+        // lautaruutu väistää pelkät palkit (`BoardScreen`, `docs/UI.md` › Lovi ja sivupalkki).
 
         val container = (application as DgApplication).container
 
@@ -310,11 +326,7 @@ class MainActivity : FragmentActivity() {
                     // oletus vaaka). Tilana samasta syystä kuin pystylukko.
                     var boardRotates by remember { mutableStateOf(container.boardRotation.get()) }
                     var leftHanded by remember { mutableStateOf(container.handedness.get()) }
-                    // Taustakuvion väritila tilana samasta syystä kuin pystylukko: vaihto
-                    // asetusruudussa näkyy heti sen omassa taustassa.
-                    var sumiE by remember { mutableStateOf(container.skyTheme.get()) }
-                    var pattern by remember { mutableStateOf(container.skyTheme.pattern()) }
-                    // Taustakuvien kansio tilana samasta syystä: valinta asetusruudussa
+                    // Taustakuvien kansio tilana samasta syystä kuin pystylukko: valinta asetusruudussa
                     // näkyy heti sen omassa tyhjässä tilassa. Ks. `DgWallpaper.kt`.
                     var wallpaperFolder by remember { mutableStateOf(container.wallpaper.folder()) }
 
@@ -370,7 +382,10 @@ class MainActivity : FragmentActivity() {
                     val phone = LocalConfiguration.current.smallestScreenWidthDp < 600
                     var phoneTyping by remember { mutableStateOf(false) }
                     LaunchedEffect(phone, onBoard, fieldFocused, dialogFieldFocused, imeVisible) {
-                        val typing = phone && !onBoard && (fieldFocused || dialogFieldFocused)
+                        // Laudan reitti kuuluu joukkoon 3.10.2026 alkaen: ottelun päättymisruutu
+                        // on samalla reitillä, ja sen viestikenttä jäi vaakaan (pelisessio
+                        // 3.10.2026, Pixel 8a). Lauta itse kääntyy jo omasta kirjoitustilastaan.
+                        val typing = phone && (fieldFocused || dialogFieldFocused)
                         when {
                             typing && imeVisible -> phoneTyping = true
                             !typing -> phoneTyping = false
@@ -385,7 +400,7 @@ class MainActivity : FragmentActivity() {
                         this@MainActivity.requestedOrientation = orientationFor(
                             onBoard = onBoard,
                             portraitLock = portraitLock,
-                            writing = boardWriting,
+                            writing = boardWriting || phoneTyping,
                             boardRotates = boardRotates,
                             signingIn = signingIn || phoneTyping,
                         )
@@ -429,26 +444,20 @@ class MainActivity : FragmentActivity() {
                     // saavat nullin `tabFor`ista, eli ne jäävät perusteemaan.
                     DgTabAccent(tab = tabFor(entry?.destination?.route)) {
                     // Ruudun tausta maalataan tässä yhdessä paikassa, ja ruutujen
-                    // `Scaffold`it ovat läpinäkyviä. Kuvio on vaalean teeman oma
-                    // (`DgPattern.kt`), ja lautanäkymä on sen ulkopuolella samalla
-                    // rajauksella kuin muutkin lautaa koskevat poikkeukset tässä
-                    // tiedostossa.
+                    // `Scaffold`it ovat läpinäkyviä (`DgScreenBackground.kt`).
                     //
-                    // Taivas arvotaan joka ruudun avauksessa (Tommin valinta 6.9.2026
-                    // kolmesta: käynnistys, ruudun avaus, päivä). Siemen sidotaan
-                    // reittiin, joten välilehden vaihto arpoo uuden ja saman ruudun
-                    // uudelleenpiirto pitää entisen. Tilaa ei tallenneta.
+                    // Taustakuvat (sisällön alle jäävä tila, `DgFill.kt`) arvotaan joka
+                    // ruudun avauksessa (Tommin valinta 6.9.2026 kolmesta: käynnistys,
+                    // ruudun avaus, päivä). Siemen sidotaan reittiin, joten välilehden
+                    // vaihto arpoo uudet ja saman ruudun uudelleenpiirto pitää entiset.
+                    // Tilaa ei tallenneta. Lauta on ulkona. Tila ratkaisee näkyykö kuva,
+                    // ei arpa (Tommin päätös 7.9.2026). Kadonnut oikeus unohtaa kansion,
+                    // jotta asetusruutu pyytää valitsemaan uudestaan eikä vaikene.
                     val route = entry?.destination?.route
-                    val skySeed = remember(route) { Random.nextInt() }
-                    // Täytekuva (taustakuvat sisällön alle jäävässä tilassa, `DgFill.kt`)
-                    // saa saman siemenen kuin taivas, ja lauta on ulkona kuten kuviostakin.
-                    // Tila ratkaisee näkyykö se, ei arpa (Tommin päätös 7.9.2026). Kansio on
-                    // oma kytkimensä eikä riipu kuviosta (Tommin päätökset 15.9.2026).
-                    // Kadonnut oikeus unohtaa kansion, jotta asetusruutu pyytää valitsemaan
-                    // uudestaan eikä vaikene.
+                    val pictureSeed = remember(route) { Random.nextInt() }
                     val wallpaper = rememberDgWallpaper(
                         folder = if (onBoard) null else wallpaperFolder,
-                        seed = skySeed,
+                        seed = pictureSeed,
                         onLost = {
                             container.wallpaper.forget()
                             wallpaperFolder = null
@@ -459,7 +468,7 @@ class MainActivity : FragmentActivity() {
                         LocalReportTyping provides reportTyping,
                     ) {
                     Column(
-                        modifier = Modifier.fillMaxSize().dgScreenBackground(!onBoard, skySeed, sumiE, pattern),
+                        modifier = Modifier.fillMaxSize().dgScreenBackground(),
                     ) {
                         if (!onBoard && !onPage && !onSettings && !onMarks) {
                             DgTabRow(
@@ -692,6 +701,9 @@ class MainActivity : FragmentActivity() {
                             val importState by messagesModel.import.collectAsStateWithLifecycle()
                             val phrases by messagesModel.phrases.collectAsStateWithLifecycle()
                             val messages by messagesModel.messages.collectAsStateWithLifecycle()
+                            val deletedMessages by messagesModel.deleted.collectAsStateWithLifecycle()
+                            val trash = remember(deletedMessages) { trashGroups(deletedMessages) }
+                            val undo by messagesModel.undo.collectAsStateWithLifecycle()
                             val path by messagesModel.queuePath.collectAsStateWithLifecycle()
                             val draft by messagesModel.draft.collectAsStateWithLifecycle()
                             val reply by messagesModel.reply.collectAsStateWithLifecycle()
@@ -925,6 +937,17 @@ class MainActivity : FragmentActivity() {
                                 // vanhenisi heti ensimmäisessä ylikirjoituksessa.
                                 onSetUpBackup = { backupLauncher.launch("dg-archive.json") },
                                 onBackupNow = { backupTarget?.let(writeBackup) },
+                                onDeleteConversation = { key ->
+                                    exportScope.launch { messagesModel.deleteConversation(key) }
+                                },
+                                onDeleteMessage = { message ->
+                                    exportScope.launch { messagesModel.deleteMessage(message) }
+                                },
+                                trash = trash,
+                                onRestore = { ids -> exportScope.launch { messagesModel.restore(ids) } },
+                                undo = undo,
+                                onUndo = { exportScope.launch { messagesModel.undoDeletion() } },
+                                onUndoDismissed = messagesModel::undoDismissed,
                             )
                         }
 
@@ -1243,6 +1266,8 @@ class MainActivity : FragmentActivity() {
                             var diceSwapTap by remember { mutableStateOf(container.diceSwap.get()) }
                             var moveArrows by remember { mutableStateOf(container.moveArrows.get()) }
                             var opponentArrows by remember { mutableStateOf(container.moveArrows.opponent()) }
+                            var pointPress by remember { mutableStateOf(container.pointPress.get()) }
+                            var woodSound by remember { mutableStateOf(container.appTheme.woodSound()) }
 
                             // Kansiovalitsin taustakuville: sama mekanismi kuin varmuuskopion
                             // tiedostolla (pysyvä uri-oikeus), mutta kansio ja lukuoikeus.
@@ -1306,27 +1331,27 @@ class MainActivity : FragmentActivity() {
                                 },
                                 appTheme = appTheme,
                                 onAppThemeChange = { theme ->
-                                    // Teema kirjoittaa laudan ja ilmaisimen viimeistelyn. Paluu
-                                    // Plainiin palauttaa ne mitä oli ennen Decoa, paitsi jos
-                                    // pelaaja on sillä välin itse vaihtanut laudan pois Decosta.
+                                    // Teema kirjoittaa laudan ja ilmaisimen viimeistelyn. Ensin
+                                    // poistutaan vanhasta teemasta, jolloin palaa se mitä oli
+                                    // ennen sitä, ja vasta sitten tullaan uuteen. Deco ja Wood
+                                    // kulkevat siis aina Plainin kautta, eikä teemasta toiseen
+                                    // siirtyminen jätä edellisen teeman lautaa voimaan.
                                     if (theme != appTheme) {
-                                        if (theme == AppTheme.DECO) {
-                                            container.appTheme.saveBefore(boardStyle, busyDeco)
-                                            container.boardStyle.save(BoardStyle.DECO)
-                                            boardStyle = BoardStyle.DECO
-                                            container.busyStyle.saveDeco(true)
-                                            busyDeco = true
-                                        } else {
-                                            val (board, deco) = container.appTheme.before()
-                                            val restored = if (boardStyle == BoardStyle.DECO) board else boardStyle
-                                            container.boardStyle.save(restored)
-                                            boardStyle = restored
-                                            container.busyStyle.saveDeco(deco)
-                                            busyDeco = deco
-                                        }
+                                        val (leftBoard, leftDeco) = leave(appTheme, boardStyle, busyDeco, container.appTheme.before())
+                                        if (theme != AppTheme.PLAIN) container.appTheme.saveBefore(leftBoard, leftDeco)
+                                        val (board, deco) = enter(theme, leftBoard, leftDeco)
+                                        container.boardStyle.save(board)
+                                        boardStyle = board
+                                        container.busyStyle.saveDeco(deco)
+                                        busyDeco = deco
                                         container.appTheme.save(theme)
                                         appTheme = theme
                                     }
+                                },
+                                woodSound = woodSound,
+                                onWoodSoundChange = { on ->
+                                    container.appTheme.saveWoodSound(on)
+                                    woodSound = on
                                 },
                                 busyDeco = busyDeco,
                                 onBusyDecoChange = { on ->
@@ -1352,6 +1377,11 @@ class MainActivity : FragmentActivity() {
                                 onOpponentArrowsChange = { enabled ->
                                     container.moveArrows.saveOpponent(enabled)
                                     opponentArrows = enabled
+                                },
+                                pointPress = pointPress,
+                                onPointPressChange = { enabled ->
+                                    container.pointPress.save(enabled)
+                                    pointPress = enabled
                                 },
                                 confirmBeaver = confirmBeaver,
                                 onConfirmBeaverChange = { enabled ->
@@ -1387,16 +1417,6 @@ class MainActivity : FragmentActivity() {
                                 onLeftHandedChange = { enabled ->
                                     container.handedness.save(enabled)
                                     leftHanded = enabled
-                                },
-                                sumiE = sumiE,
-                                onSumiEChange = { enabled ->
-                                    container.skyTheme.save(enabled)
-                                    sumiE = enabled
-                                },
-                                pattern = pattern,
-                                onPatternChange = { enabled ->
-                                    container.skyTheme.savePattern(enabled)
-                                    pattern = enabled
                                 },
                                 wallpaperFolder = wallpaperFolder,
                                 onChooseWallpaperFolder = { wallpaperLauncher.launch(null) },
@@ -1726,6 +1746,9 @@ class MainActivity : FragmentActivity() {
                                 diceSubmitTap = container.diceSubmit.get(),
                                 diceSwapTap = container.diceSwap.get(),
                                 moveArrows = container.moveArrows.get(),
+                                pointPress = container.pointPress.get(),
+                                // Kolahdus vain Wood-teemassa, ja silloinkin oma kytkin päättää.
+                                woodSound = container.appTheme.woodSound(),
                                 // Sama lukuhetki. Oletus seuraa sivun tuplausvahvistusta
                                 // kunnes pelaaja koskee kytkimeen (27.9.2026).
                                 confirmBeaver = container.beaverConfirm.effective(container.siteSettings.get()),
@@ -1851,5 +1874,11 @@ private fun SignOutOnExpiry(
     }
 }
 
-/** Käynnistysruudun häivytys kierron jälkeen, ks. `keepSplashUntilCubeTurned`. */
-private const val SPLASH_FADE_MS = 150L
+/** Käynnistysruudun kierron kesto, sama kuin teeman `windowSplashScreenAnimationDuration`. */
+private const val SPLASH_TURN_MS = 1000L
+
+/** Kierron alun viive prosessin alusta, mitattu enintään 66 ms, ks. `keepSplashUntilCubeTurned`. */
+private const val SPLASH_START_MARGIN_MS = 100L
+
+/** Onko prosessin ensimmäinen käynnistysruutu jo laskettu prosessin alusta. */
+private var splashAnchoredToProcess = false

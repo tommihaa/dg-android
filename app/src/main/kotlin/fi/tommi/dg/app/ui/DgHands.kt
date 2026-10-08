@@ -48,7 +48,7 @@ import kotlin.random.Random
  *
  * **Asettelu on puhdasta laskentaa ja polut rakennetaan erikseen** ([dgHandsScene]), jotta
  * JVM-testi voi todeta sijainnit ilman `android.graphics.Path`ia, samoin kuin
- * `DgSkyLayoutTest` tekee taivaalle.
+ * poistettu `DgSkyLayoutTest` teki taivaalle.
  *
  * Luettavuus on mitattu lukupinnan alta kuten muut: maavärien kirkkain (kaoliini) pinnan alla
  * antaa Lounge-aksentille 7,83:1 tummassa, ja vaalean pigmenttien tummin 4,90:1. AA-raja on

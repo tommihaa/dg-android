@@ -109,4 +109,17 @@ data class MessageEntity(
      * tunniste on viestin sisällöstä, ja omistaja on tämän laitteen tieto.
      */
     val account: String? = null,
+    /**
+     * Milloin käyttäjä poisti viestin, tai `null` jos viesti on arkistossa (Tommin päätös
+     * 6.10.2026, `docs/AVOIMET.md` › *Roskakori ja yksittäisen viestin poisto*).
+     *
+     * **Poisto on merkintä eikä rivin poisto.** Viesti on muuttumaton tapahtuma ja tämä kanta
+     * sen ainoa kopio, joten poistettu jää kantaan 30 päiväksi ja palaa *Restore*lla.
+     * Jokainen ruudun, viennin ja varmuuskopion kysely ohittaa merkityn rivin, ja vasta
+     * siivous (`MessageDao.purgeDeletedBefore`) poistaa sen lopullisesti.
+     *
+     * Saman poistokerran rivit saavat saman ajan, joten roskakori ryhmittelee niillä:
+     * keskustelun poisto on yksi rivi, yksittäinen viesti omansa.
+     */
+    val deletedAtEpochMillis: Long? = null,
 )

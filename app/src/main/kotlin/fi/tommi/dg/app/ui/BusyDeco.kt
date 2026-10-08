@@ -96,11 +96,13 @@ fun BusyDeco(modifier: Modifier, style: BusyStyle) = when (style) {
     BusyStyle.CUBE -> DecoCube(modifier)
     BusyStyle.INFINITY -> DecoInfinity(modifier)
     BusyStyle.HOURGLASS -> DecoHourglass(modifier)
+    BusyStyle.LAUREL_GROW -> BusyLaurel(modifier, grow = true)
+    BusyStyle.LAUREL_SHIMMER -> BusyLaurel(modifier, grow = false)
     BusyStyle.RANDOM -> error("RANDOM ratkaistaan BusyIndicatorissa")
 }
 
 @Composable
-private fun rememberPhase(label: String, periodMs: Int): State<Float> =
+internal fun rememberPhase(label: String, periodMs: Int): State<Float> =
     rememberInfiniteTransition(label = label).animateFloat(
         initialValue = 0f,
         targetValue = 1f,

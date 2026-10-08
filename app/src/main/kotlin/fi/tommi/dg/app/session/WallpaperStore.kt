@@ -18,7 +18,7 @@ import android.content.SharedPreferences
  * tiedosto, koska kuvia on satoja ja niistä arvotaan. Manifestiin ei tule uutta oikeutta.
  *
  * **Kansio on itse kytkin.** Erillistä päällä/pois-avainta ei ole: kun kansio on valittu,
- * kuvat näkyvät, ja `Stop showing` unohtaa kansion. Sama laji kuin [SkyThemeStore]: ei lähde
+ * kuvat näkyvät, ja `Stop showing` unohtaa kansion. Sama laji kuin [PortraitLockStore]: ei lähde
  * koskaan verkkoon.
  */
 interface WallpaperStore {

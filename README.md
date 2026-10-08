@@ -11,12 +11,14 @@ Its privacy policy is at <https://tommihaa.github.io/dg-android-privacy/>.
 
 ## Screenshots
 
-Match list and board on a Samsung tablet (SM-T970), dark theme. The opponents' names are
-masked. The author's own account is shown as it is.
+A board on a Samsung tablet (SM-T970) with the Walnut look, and the match list and the Inbox on a
+Pixel 8a, from version 1.1. The pictures follow your light or dark mode. Player names and
+messages are made up for these pictures.
 
-![Match list](docs/kuvat/matches.png)
+<picture><source media="(prefers-color-scheme: dark)" srcset="docs/kuvat/kauppa/tabletti-2-lauta-tumma.png"><img src="docs/kuvat/kauppa/tabletti-2-lauta-vaalea.png" alt="Board on a tablet" width="720"></picture>
 
-![Board](docs/kuvat/board.png)
+<picture><source media="(prefers-color-scheme: dark)" srcset="docs/kuvat/kauppa/puhelin-1-luettelo-tumma.png"><img src="docs/kuvat/kauppa/puhelin-1-luettelo-vaalea.png" alt="Match list on a phone" width="300"></picture>
+<picture><source media="(prefers-color-scheme: dark)" srcset="docs/kuvat/kauppa/puhelin-4-inbox-tumma.png"><img src="docs/kuvat/kauppa/puhelin-4-inbox-vaalea.png" alt="Inbox on a phone" width="300"></picture>
 
 ## Why it exists
 

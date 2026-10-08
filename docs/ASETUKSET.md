@@ -191,6 +191,13 @@ käytännön seuraus on että X-22-laudalla voi pitää sivuston noppaesityksen.
   satunnaista"*): se ei ole muoto vaan tapa valita muoto. Tommin valinta kolmesta oli
   arpa joka odotuksella ilman samaa kahdesti peräkkäin, ja muoto pysyy saman odotuksen
   ajan (`BusyIndicator`in `remember`). Deco-kytkin koskee arvottuakin muotoa.
+  Seitsemäs ja kahdeksas arvo `LAUREL_GROW` ja `LAUREL_SHIMMER` tulivat 4.10.2026 (Tommin
+  ajatus kuvakokoelman kultaisista seppeleistä: *"kultaisia mahdollisuuksia animaatioiksi"*).
+  Chatin neljästä liikkeestä Tommi otti kaksi tabletille vertailuun, ja molemmat jäivät:
+  avoin seppele kasvaa lehti lehdeltä, tai pysyy paikallaan ja kiilto kulkee tyvestä latvaan.
+  Seppeleet ovat omissa väreissään eivätkä seuraa lautaa, koska kulta on muodon syy; vaaleassa
+  teemassa ne ovat tummaa pronssia kuten deco-viimeistelyn paljaat muodot. Deco-kytkin ei
+  muuta niitä (`BusyLaurel.kt`).
 
 **Kolmas paikallinen kytkin 2.9.2026, ja se on eri lajia: teko eikä esitys.**
 `forced_steps` (`ForcedStepsStore`, oletus pois) poimii pakolliset askeleet valmiiksi kun
@@ -295,6 +302,14 @@ reitissä tekisi niistä eri mieliset. Suoja on kytkin joka on oletuksena pois.
 sivustouskollisesta oletuksesta: kumpikin kytkin syntyi havainnosta eikä viasta, ja
 oletuksen vaihtaminen olisi eri päätös jota ei ole kysytty. Jos se joskus kysytään,
 uuden käyttäjän tuttuusperuste puoltaisi `SITE`-arvoja.
+
+**Yhdeksäs ja kymmenes kytkin poistettiin 6.10.2026** (Tommin karsinta: *Lists and screens*
+-ryhmän kaksi ensimmäistä kytkintä olivat liikaa). Taustakuvio ja sumi-e lähtivät koodista
+kokonaan (`DgPattern.kt` ja `SkyThemeStore`), ja `dg_sky_theme` poistui asetustiedoston
+siirrosta. Vanha vientitiedosto tuodaan yhä, koska tuonti lukee vain siirrettävien tiedostojen
+listan. Laitteelle jäänyt `dg_sky_theme`-tiedosto on lukematon eikä vaikuta mihinkään.
+*Pictures below the lists* on nyt ryhmän ensimmäinen (`docs/UI.md` › *Taustakuvio
+poistettiin*). Alla olevat kaksi kappaletta ovat historiaa.
 
 **Yhdeksäs paikallinen kytkin 6.9.2026: taustakuvion sumi-e-tila.** `sumi_e`
 (`SkyThemeStore`, **oletus pois**) vaihtaa tekstiruutujen taustakuvion linnut vermilioniin ja
@@ -652,6 +667,90 @@ Järjestelmäpalkin ikonit olivat tummat. Kaappaukset `raakasivut/sessio-27-9-yo
 lautaruutu-vaalea-deco.png` ja `-plain.png`. Tabletin teema palautettiin Decoksi ja
 asetukset luettiin samoiksi kuin ennen. Vaakatilaa ja laitteen tummaa tilaa ei ajettu;
 tumma polku on koodissa ennallaan (`PanelLook.of(style)`).
+
+### Wood-teema (tilattu 4.10.2026, toteutettu 5.10.2026)
+
+Tommin tilaus: *"wood-paneleille oman teeman, missä äänet ovat mukana kun nopat kolahtaa
+puuhun"*. Neljä valintaa monivalinnasta 4.10.2026 illalla:
+
+1. **Kaanoni muuttuu.** Äänettömyyslinja 3.10.2026 saa poikkeuksen (`docs/AVOIMET.md` ›
+   Äänet), eikä teemaa tehty äänettömänä.
+2. **Teema kirjoittaa kaiken kuten Deco:** sovelluksen värit, otsikkokirjasimen, laudan ja
+   ilmaisimen viimeistelyn.
+3. **Toimii kaikilla neljällä puulaudalla.** Valittu puulauta säilyy, muu lauta vaihtuu
+   Walnutiksi. Ilmaisimen deco-viimeistely sammuu, koska kultaiset rattaat eivät kuulu puuhun,
+   ja ilmaisin piirtyy laudan väreissä.
+4. **Kolme ääntä:** nopan laskeutuminen, nappulan siirto ja kuution käsittely.
+
+**Värit.** Vaalea on hunajaista vaahteraa (`#F3E7D3`) pähkinäisellä aksentilla (`#7A4A22`),
+tumma pähkinää (`#1E140D`) meripihkan aksentilla (`#D9A86C`). Kontrastit ovat
+`WoodLightColorScheme`n kommentissa (`DgTheme.kt`), ja jokainen tekstirooli ylittää 4,5:1:n
+sekä taustalla että `surfaceVariant`illa. Välilehtien sävyt pysyvät kuten Plainissa. Vaalea
+lautaruutu saa teeman vaahteran (`PanelLook.WOOD_LIGHT`), tumma seuraa lautaa kuten ennen.
+Otsikot ovat laitteen serif-kirjasimella, joten ladattavaa fonttia ja lisenssiä ei ole.
+
+**Teemasta toiseen kuljetaan Plainin kautta** (`enter` ja `leave`, `AppTheme.kt`). Decosta
+suoraan Woodiin palauttaa ensin Decoa edeltäneen laudan ja vasta sitten soveltaa Woodin,
+joten Deco-lauta ei jää voimaan eikä tallennu Woodin "ennen"-arvoksi.
+
+**Äänet** (`WoodSounds.kt`, `tyokalut/puuaanet.py`). Syntetisoitu modaalisynteesillä, eli
+tiedostot ovat omaa työtä eikä lisenssiä tarvita. Kolme WAV-tiedostoa `res/raw`issa,
+yhteensä noin 80 kt.
+
+| Tapahtuma | Mistä luetaan | Ääni |
+|---|---|---|
+| Nopan laskeutuminen | uuden laudan nopat eroavat edellisestä (arvo ja omistaja, ei käytetty osa) | kaksi noppaa, kolme pomppua kumpikin, 0,42 s |
+| Nappulan siirto | paikallisesti koottu askel lisääntyy (`composition.steps`), tai pisteet, palkki tai ulos kannetut muuttuvat saman heiton aikana | yksi pehmeä isku, 0,16 s |
+| Kuution käsittely | painettu `Double`, `Accept`, `Beaver!` tai `Accept Beaver` | ontto kaksoisisku, 0,34 s |
+| Ohi-napautus (6.10.2026) | sormi nousee sarakkeen sisällä pisteeltä jolla ei ole siirtolinkkiä, kytkin `Show which point I'm pressing` päällä ja laudalla siirtoja (`BoardTouch.onMiss`) | kaksi laskevaa naputusta, 0,22 s (Tommin valinta kolmesta tabletilla) |
+
+Ottelun ensimmäinen lauta ja toisen ottelun lauta ovat hiljaisia, koska mikään ei liikkunut
+pelaajan silmien edessä. Uudet nopat voittavat nappulat, jos molemmat muuttuvat samalla
+sivulla. Sääntö on puhdas funktio `woodSoundFor`, testit `WoodSoundTest`.
+
+**Rajat seitsemännen arvon mukaan.** Kytkin `Game sounds` on teemakorttien alla; se kulkee
+asetusten siirrossa teeman tiedostossa (`dg_app_theme`, avain `wood_sound`). **6.10.2026
+alkaen** (Tommin valinnat, `docs/AVOIMET.md` › Äänet) kytkin on käytössä kaikissa teemoissa ja
+oletuksena pois, myös Woodissa. Ennen sitä nimi oli `Wood sounds`, oletus päällä ja käyttö vain
+Woodissa. Avain säilyi, joten itse kytketty valinta pysyy. Teemakorttien nimet lyhenivät
+samalla muotoon `Wood: dark walnut` ja `Wood: honey maple` (Tommin valinta), koska Woodin
+valinta ei enää tuo ääntä. Ääni soi vain soittoäänitilan ollessa normaali, koska
+pelin ääni kulkee mediavoimakkuudella jota äänetön tila ei vaimenna. TalkBackin ollessa päällä
+(`isTouchExplorationEnabled`) ääni vaikenee kokonaan, jotta se ei peitä puhetta.
+
+**Todennettu tabletilla 5.10.2026 klo 0.02** (Galaxy Tab S7 FE, asennettu debug-APK). Teema
+vaihdettiin Decosta Woodiin: asetusruutu ja otteluluettelo saivat tumman pähkinän ja
+serif-otsikot, ja kytkin `Wood sounds` muuttui käytettäväksi. Laitteen vaalea tila vaihtoi
+hunajaisen vaahteran ja kortin nimen `Wood: honey maple and dice that knock on wood`.
+Kaappaukset `docs/kuvat/wood-teema-asetukset-tumma.png`, `-asetukset-vaalea.png` ja
+`-luettelo-vaalea.png`. Laitteen tumma tila palautettiin. **Avoinna:** lautaruutua ja ääntä
+ei ajettu, koska vuorossa ei ollut ackammon-ottelua eikä muita otteluita avata testinä, ja
+äänen kuulee vain Tommi. Havainto: Plain-kortin kuva näyttää Woodissa nykyisen puulaudan
+eikä sitä lautaa jonka paluu palauttaa (sama piirre kuin Decossa X-22:n kanssa).
+
+**Ääni kuultu 5.10.2026:** Tommi heitti noppaa Wood-teemassa tabletilla, ja kolahdus kuului
+(*"kolahdus kuuluu"*). Nappulan siirto oli hiljainen (*"nyt ei kuulunut mitään"*), koska oma
+siirto kootaan sovelluksessa eikä lauta muutu ennen lähetystä; sääntö vertasi vain lautoja.
+Korjattu samana yönä: askelten määrän kasvu kolahtaa nappulana, peruminen on hiljainen.
+Korjaus (`36950273`) kuunneltiin tabletilla 5.10.2026 klo 0.55 kuulokkeilla: *"askel kuului"*.
+Lautaruutu Woodissa on kaapattu samalla kertaa (`docs/kuvat/wood-teema-lauta.png`, ottelu
+vuoron alussa ennen heittoa, lauta arvottu rastitetuista). Kuutiota ei kuunneltu, koska tuplausta
+ei tullut pelissä vastaan. Voimakkuutta nopan rinnalla ei arvioitu (*"en osaa arvioida
+voimakkuutta, koska keskityin kuuntelemaan sitä"*); se jää kuultavaksi tavallisessa pelissä.
+
+**TalkBackin vaimennus todennettu tabletilla 5.10.2026 klo 18.07–18.10.** Ennen tätä lupaus
+App Helpissä ja kytkimen selitteessä nojasi pelkkään koodiin (`isTouchExplorationEnabled`).
+Ajo tehtiin kuorella (`sessio-21-9-kuori2`, airlock 503) siirtovuoron laudalla, ja sama
+napautus pisteen 4 nappulaan kokosi askeleen adb:llä, joka ohittaa kosketuksella tutkimisen.
+Askel peruttiin joka kerta `Undo Move`lla, eikä mitään lähetetty. Tommi kuunteli tabletin
+ääressä. TalkBack pois: *"kolahdus kuului"* (18.07.54). TalkBack päällä
+(`touchExplorationEnabled=true`) kahdesti: ensin ei kolahdusta (18.08.23), mutta Tommi
+keskittyi TalkBackiin, joten ajo toistettiin. Toisella kerralla ei kuulunut kolahdusta eikä
+TalkBackin ääntä (18.09.20). Kaappaukset osoittavat, että askel syntyi molemmilla
+kerroilla (kolmonen käyttämättä, kuutonen käytetty). TalkBack purettiin klo 18.09.53
+(`Bound services:{}`), ja proxy ja tunneli poistettiin. Todisteet ovat kansiossa
+`raakasivut/sessio-5-10-wood-talkback/`. Ajon alussa laudalle palautui kuoren ottelulle
+aiemmin koottu kahden askeleen luonnos, ja se peruttiin ensin.
 
 ## 5. Kirjoittava asetusnäkymä
 

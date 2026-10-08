@@ -387,6 +387,26 @@ internal data class PanelLook(
             light = true,
         )
 
+        /** Vaalea Wood kaikilla laudoilla, kuten [PLAIN_LIGHT] mutta teeman puussa. */
+        val WOOD_LIGHT = PanelLook(
+            background = DgBoard.PanelLight.WoodBg,
+            outline = DgBoard.PanelLight.WoodOutline,
+            muted = DgBoard.PanelLight.WoodMuted,
+            cubeOutline = DgBoard.Palette.Cube,
+            card = DgBoard.PanelLight.WoodCard,
+            text = DgBoard.PanelLight.WoodText,
+            secondary = DgBoard.PanelLight.WoodMuted,
+            faint = DgBoard.PanelLight.WoodMuted,
+            accent = DgBoard.PanelLight.WoodAccent,
+            conflict = DgBoard.PanelLight.Conflict,
+            button = DgBoard.PanelLight.WoodButton,
+            onButton = DgBoard.PanelLight.WoodBg,
+            irreversible = DgBoard.PanelLight.PlainIrreversible,
+            irreversibleBorder = DgBoard.PanelLight.PlainIrreversible,
+            outlineButton = DgBoard.PanelLight.WoodMuted,
+            light = true,
+        )
+
         /**
          * Puulaudan paneeli: lokerosarakkeen puuta kuten Monte Carlo variantissa, ja samat
          * kaksi vaaleampaa sävyä, ks. [DgBoard.Wood].
@@ -406,9 +426,10 @@ internal data class PanelLook(
         }
 
         /** Paneeli laitteen tilan mukaan: vaaleassa teemasta, tummassa lautatyylistä. */
-        fun of(style: BoardStyle, light: Boolean, deco: Boolean): PanelLook = when {
+        fun of(style: BoardStyle, light: Boolean, deco: Boolean, wood: Boolean = false): PanelLook = when {
             !light -> of(style)
             deco -> DECO_LIGHT
+            wood -> WOOD_LIGHT
             else -> PLAIN_LIGHT
         }
     }
@@ -417,7 +438,12 @@ internal data class PanelLook(
 /** Paneeli tälle koostukselle: laitteen tila [dgDark]ista ja teema [LocalAppTheme]sta. */
 @Composable
 internal fun panelLookFor(style: BoardStyle): PanelLook =
-    PanelLook.of(style, light = !dgDark(), deco = LocalAppTheme.current == AppTheme.DECO)
+    PanelLook.of(
+        style,
+        light = !dgDark(),
+        deco = LocalAppTheme.current == AppTheme.DECO,
+        wood = LocalAppTheme.current == AppTheme.WOOD,
+    )
 
 /**
  * Kuution ulkoasu lautatyylin mukaan (Tommin tilaus 22.9.2026: *"teemoita kuutio myös"*).

@@ -641,6 +641,18 @@ object DgBoard {
         val PlainAccent = Color(0xFF6B5844)
         val PlainIrreversible = Color(0xFFB5E6DC)
 
+        /**
+         * Vaalea Wood (4.10.2026): teeman hunajainen vaahtera ja pähkinäinen nappi. Kortilla
+         * `#E9D9BE` teksti on 11,8:1, hiljainen 6,6:1 ja aksentti 5,4:1; napin teksti 8,4:1.
+         */
+        val WoodBg = Color(0xFFF3E7D3)
+        val WoodCard = Color(0xFFE9D9BE)
+        val WoodOutline = Color(0xFFB79A74)
+        val WoodText = Color(0xFF2B1C14)
+        val WoodMuted = Color(0xFF5A4330)
+        val WoodAccent = Color(0xFF7A4A22)
+        val WoodButton = Color(0xFF5A3920)
+
         val Conflict = Color(0xFFB3261E)
     }
 

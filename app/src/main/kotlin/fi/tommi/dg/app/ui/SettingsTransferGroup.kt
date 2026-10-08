@@ -216,7 +216,6 @@ private fun labelFor(file: String): Int = when (file) {
     "dg_move_arrows" -> R.string.settings_move_arrows
     "dg_beaver_confirm" -> R.string.settings_confirm_beaver_toggle
     "dg_dice_tap" -> R.string.settings_dice_tap
-    "dg_sky_theme" -> R.string.settings_background
     "dg_rarity" -> R.string.settings_rarity
     "dg_match_order" -> R.string.settings_transfer_match_order
     "dg_message_filter" -> R.string.settings_transfer_message_filter
