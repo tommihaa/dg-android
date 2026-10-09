@@ -21,6 +21,10 @@ import fi.tommi.dg.app.session.SharedPrefsPointPress
 import fi.tommi.dg.app.session.SharedPrefsMoveArrows
 import fi.tommi.dg.app.session.DiceSwapStore
 import fi.tommi.dg.app.session.SharedPrefsDiceSubmit
+import fi.tommi.dg.app.session.SharedPrefsDiceRoll
+import fi.tommi.dg.app.session.SharedPrefsBoardExtras
+import fi.tommi.dg.app.session.DiceRollStore
+import fi.tommi.dg.app.session.BoardExtrasStore
 import fi.tommi.dg.app.ui.OwnTournamentCount
 import fi.tommi.dg.app.session.SharedPrefsDiceSwap
 import fi.tommi.dg.app.session.ForcedStepsStore
@@ -192,6 +196,12 @@ class AppContainer(context: Context) {
 
     /** Noppien painallus vaihtaa järjestyksen, samaa lajia kuin [diceSubmit]. Oletus pois. */
     val diceSwap: DiceSwapStore by lazy { SharedPrefsDiceSwap(appContext) }
+
+    /** Vastustajan noppien painallus heittää, samaa lajia kuin [diceSubmit]. Oletus pois. */
+    val diceRoll: DiceRollStore by lazy { SharedPrefsDiceRoll(appContext) }
+
+    /** Laudan omat lisälinkit näkyvissä, oletus päällä. Ks. [BoardExtrasStore]. */
+    val boardExtras: BoardExtrasStore by lazy { SharedPrefsBoardExtras(appContext) }
 
     /** Siirtonuolet kootusta siirrosta, oletus pois. Ks. [MoveArrowsStore]. */
     val moveArrows: MoveArrowsStore by lazy { SharedPrefsMoveArrows(appContext) }

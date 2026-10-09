@@ -278,6 +278,10 @@ fun BoardScreen(
      */
     diceSubmitTap: Boolean = false,
     diceSwapTap: Boolean = false,
+    /** Vastustajan noppien painallus heittää (testaajan toive 9.10.2026). Oletus pois. */
+    diceRollTap: Boolean = false,
+    /** `Mark position`, `Reminders` ja `Cube reminder` näkyvissä (9.10.2026), ks. `BoardExtrasStore`. */
+    boardExtras: Boolean = true,
     /** Siirtonuolet kootusta siirrosta (Tommi 29.9.2026, `MoveArrowsStore`). Oletus pois. */
     moveArrows: Boolean = false,
     /** Painetun pisteen numero laudan reunassa (Tommi 4.10.2026, `PointPressStore`). Oletus pois. */
@@ -425,6 +429,7 @@ fun BoardScreen(
                     when (state) {
                         is BoardUiState.Loaded -> CompositionLocalProvider(
                             LocalActionsBlocked provides state.blocked,
+                            LocalScoreBesideName provides (scoreStyle == ScoreStyle.NAME),
                         ) {
                             LoadedBoard(
                                 state,
@@ -434,6 +439,8 @@ fun BoardScreen(
                                 scoreStyle = scoreStyle,
                                 diceSubmitTap = diceSubmitTap,
                                 diceSwapTap = diceSwapTap,
+                                diceRollTap = diceRollTap,
+                                boardExtras = boardExtras,
                                 moveArrows = moveArrows,
                                 pointPress = pointPress,
                                 onPointMiss = { woodPlayer?.play(WoodSound.MISS) },
@@ -1201,6 +1208,10 @@ private fun LoadedBoard(
     /** Ks. [diceTapFor]: kaksi kytkintä, sääntö on funktiossa. */
     diceSubmitTap: Boolean,
     diceSwapTap: Boolean,
+    /** Ks. [diceRollTapFor]. */
+    diceRollTap: Boolean,
+    /** Ks. `BoardExtrasStore`: sovelluksen omat lisälinkit paneelissa. */
+    boardExtras: Boolean,
     /** Piirretäänkö kootun siirron nuolet, ks. [MoveArrowLayer]. */
     moveArrows: Boolean,
     /** Syttyykö painetun pisteen numero, ks. [PointPress]. */
@@ -1245,7 +1256,8 @@ private fun LoadedBoard(
     // sama asia kuin away jota ei ole. Rahapelin varareitti ei siis muutu mistään.
     val awayOf: (PlayerPanel) -> Int? = when (scoreStyle) {
         ScoreStyle.AWAY -> state.board::awayOf
-        ScoreStyle.SITE -> { _ -> null }
+        // Nimen perässä on sivun oma luku, joten away ei ole käytössä (9.10.2026).
+        ScoreStyle.SITE, ScoreStyle.NAME -> { _ -> null }
     }
 
     // Kosketus syntyy laudan omista linkeistä, ja se on tyhjä silloin kun sivu ei tarjoa
@@ -1514,7 +1526,7 @@ private fun LoadedBoard(
             // tai muistutukset.
             // Vain viivaa varten, ks. [SidePanel].
             val panelActionsPresent =
-                (chat != null && !chatCardVisible) || board.skipHref != null || gameKnown
+                (chat != null && !chatCardVisible) || board.skipHref != null || (gameKnown && boardExtras)
             // **Ahtaan paneelin rivitys luetaan lukumäärästä** (Tommin sääntö 21.9.2026
             // kännykän kaappauksen jälkeen: *"jos sivupaneelin yläosassa on pariton määrä
             // toimintoja, niin anna Skip Game olla omalla rivillään"*). `FlowRow` rivitti
@@ -1540,11 +1552,15 @@ private fun LoadedBoard(
                 board.cube?.position != CubePosition.TOP &&
                 board.matchLength != 1
             val showMark = board.moveNumber != null
+            // Lisälinkit voi piilottaa (testaajan toive 9.10.2026, `BoardExtrasStore`). Ehto on
+            // sama kuin pelin tunnistus, joten piilotettu ja tunnistamaton peli näyttävät samalta:
+            // sivun napit (`Message`, `Skip Game`) jäävät, linkit lähtevät.
+            val extrasShown = gameKnown && boardExtras
             // `Skip Game` oli pystylaudalla `Roll Dicen` alla 24.–26.9.2026; nyt se on aina
             // tässä joukossa (Tommin valinta A 26.9.2026, `docs/UI.md` › Pystylaudan lisät).
             val buttonCount = (if (messageVisible) 1 else 0) +
                 (if (board.skipHref != null) 1 else 0)
-            val linkCount = if (gameKnown) 1 + (if (cubeVisible) 1 else 0) + (if (showMark) 1 else 0) else 0
+            val linkCount = if (extrasShown) 1 + (if (cubeVisible) 1 else 0) + (if (showMark) 1 else 0) else 0
             val buttonsOwnRow = compactPanel && buttonCount > 0 &&
                 (buttonCount == 2 || (buttonCount + linkCount) % 2 == 1)
             // Viiden toiminnon tila (`Next Game` -sivu: `Chat`, `Skip Game` ja kolme
@@ -1613,7 +1629,7 @@ private fun LoadedBoard(
                 board.skipHref?.let { href -> SkipGameAction(href, onFollow, compact = compactPanel && !LocalRoomyPortrait.current) }
             }
             // Pystylaudalla sivun napit kulkevat `Mark position`in parina, ks. [ReminderActions].
-            val pairRows = panelBelow && gameKnown
+            val pairRows = panelBelow && extrasShown
             val reminderActions: @Composable () -> Unit = {
                 if (pairRows) {
                     // Sivun napit piirtää [ReminderActions] parin alkuun.
@@ -1636,7 +1652,7 @@ private fun LoadedBoard(
                     siteButtons()
                 }
 
-                if (gameKnown) {
+                if (extrasShown) {
                     ReminderActions(
                         onToggleComposing = {
                             composing = !composing
@@ -1747,6 +1763,14 @@ private fun LoadedBoard(
                     DiceTap.SUBMIT -> ({ pressChecked(CompositionSession.SUBMIT_MOVE, false) })
                     DiceTap.SWAP -> ({ onFollow(CompositionSession.LOCAL_SWAP) })
                     null -> null
+                }
+            // Vastustajan nopat heittävät samaa reittiä kuin `Roll Dice` -nappi (9.10.2026).
+            // Ei vahvistusta samasta syystä kuin lähetyksellä yllä: nappikaan ei kysy.
+            val onOpponentDiceTap: (() -> Unit)? =
+                if (diceRollTapFor(board.form?.submits, diceRollTap)) {
+                    { pressChecked(ROLL_DICE_SUBMIT, false) }
+                } else {
+                    null
                 }
 
             // **Sivun tilarivit keskikaistalle kun siellä on vapaa puolisko** (tilanneteksti
@@ -1919,6 +1943,7 @@ private fun LoadedBoard(
                     onPress = pressChecked,
                     onCubePress = pressCube,
                     onDiceTap = onDiceTap,
+                    onOpponentDiceTap = onOpponentDiceTap,
                     // Nuolet luetaan samasta kokoamisesta kuin piirretty lauta (`boardNow`), joten
                     // ne eivät voi näyttää muuta kuin sitä mikä lähtee. Sivun omalla laudalla
                     // kokoamista ei ole, eikä nuolia silloin myöskään.
@@ -2834,6 +2859,9 @@ private fun PanelActionStack(
 
 /** Pystylaudan paneeli väljässä muodossa, ks. [RoomyOrCompact]. Lukevat lisien napit. */
 internal val LocalRoomyPortrait = compositionLocalOf { false }
+
+/** Pisteet nimen perässä (`ScoreStyle.NAME`, 9.10.2026), ks. [PlayerPanelView]. */
+internal val LocalScoreBesideName = compositionLocalOf { false }
 
 /**
  * Piirtää [content]in väljänä (`true`) jos se mahtuu annettuun korkeuteen, muuten ahtaana.
@@ -3782,6 +3810,11 @@ private fun MatchCard(
     compact: Boolean,
     onOpenPage: (String) -> Unit,
     modifier: Modifier = Modifier,
+    /**
+     * Lohko ei mahdu muuten (9.10.2026, [CenteredOverStack]): kierros siirtyy hännälle kuten
+     * ahtaassa paneelissa ja turnauksen nimi mahtuu yhdelle riville.
+     */
+    tight: Boolean = false,
 ) {
     // **Ottelutiedot kortissa kuten pelaajat** (Tommin tilaus 8.9.2026 kesken
     // pelisession: *"ottelutietoja voisi ymparoida laatikko, jotta ne erottaisi
@@ -3798,7 +3831,7 @@ private fun MatchCard(
     // `Length 5`:stä sivuston omaan `5 point match` -muotoon (Tommin tilaus 24.9.2026).
     val moveText = board.moveNumber?.let { stringResource(R.string.board_move_number, it) }
     val lengthText = board.matchLength?.let { stringResource(R.string.board_match_length, it) }
-    val roundOnTail = compact && roundLabel != null && moveText != null
+    val roundOnTail = (compact || tight) && roundLabel != null && moveText != null
     val tailParts = listOfNotNull(roundLabel.takeIf { roundOnTail }, lengthText, moveText)
     val tail = tailParts.takeIf { it.isNotEmpty() }?.reduce { a, b ->
         stringResource(R.string.board_round_and_move, a, b)
@@ -3833,7 +3866,7 @@ private fun MatchCard(
                     style = MaterialTheme.typography.labelLarge,
                     color = eventColor?.takeIf { line == board.eventName } ?: LocalPanelLook.current.text,
                     textAlign = TextAlign.Center,
-                    maxLines = 2,
+                    maxLines = if (tight) 1 else 2,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
@@ -3978,8 +4011,8 @@ private fun SidePanel(
                     formActions()
                 }
             },
-        ) {
-            MatchCard(board, roundLabel, compact, onOpenPage)
+        ) { tight ->
+            MatchCard(board, roundLabel, compact, onOpenPage, tight = tight)
         }
 
         // **Toiminnot asuivat tässä paneelin yläpuolella 10.8.-14.8.2026, eivät enää.**
@@ -4068,19 +4101,27 @@ private fun CenteredOverStack(
     modifier: Modifier = Modifier,
     above: @Composable () -> Unit,
     stack: @Composable () -> Unit,
-    content: @Composable () -> Unit,
+    /** `tight` on tosi kun lohko ei muuten mahdu, ks. [MatchCard]in tiivis muoto. */
+    content: @Composable (tight: Boolean) -> Unit,
 ) {
-    Layout(
-        contents = listOf(above, content, stack),
-        modifier = modifier,
-    ) { (aboveMeasurables, contentMeasurables, stackMeasurables), constraints ->
+    SubcomposeLayout(modifier) { constraints ->
         val loose = constraints.copy(minHeight = 0)
-        val abovePlaceables = aboveMeasurables.map { it.measure(loose) }
-        val contentPlaceables = contentMeasurables.map { it.measure(loose) }
-        val stackPlaceables = stackMeasurables.map { it.measure(loose) }
+        val abovePlaceables = subcompose("above", above).map { it.measure(loose) }
+        val stackPlaceables = subcompose("stack", stack).map { it.measure(loose) }
         val aboveHeight = abovePlaceables.sumOf { it.height }
-        val contentHeight = contentPlaceables.sumOf { it.height }
         val stackHeight = stackPlaceables.sumOf { it.height }
+        // **Ahdas lohko tiivistää sisällön ja viimeisenä jättää sen pois** (testaajapalaute
+        // 9.10.2026, Chromebookin puhelinikkuna). Lisät sijoitettiin ennen negatiiviseen
+        // y:hyn, eli vastustajan kortin päälle, kun kolme lohkoa ei mahtunut. Ottelukortti on
+        // lohkoista ainoa joka ei ole teko, joten se antaa tilaa ensin.
+        fun fits(contentHeight: Int) = !constraints.hasBoundedHeight ||
+            aboveHeight + contentHeight + stackHeight <= constraints.maxHeight
+        var contentPlaceables = subcompose("content") { content(false) }.map { it.measure(loose) }
+        if (!fits(contentPlaceables.sumOf { it.height })) {
+            contentPlaceables = subcompose("tight") { content(true) }.map { it.measure(loose) }
+            if (!fits(contentPlaceables.sumOf { it.height })) contentPlaceables = emptyList()
+        }
+        val contentHeight = contentPlaceables.sumOf { it.height }
         val height = if (constraints.hasBoundedHeight) {
             constraints.maxHeight
         } else {
@@ -4096,7 +4137,9 @@ private fun CenteredOverStack(
             // ottelukortin ja oman kortin välin keskellä, ja lisät vastustajan kortin ja
             // ottelukortin välin keskellä. Ahtaassa lohkossa välit ovat nollaa ja
             // keskitys palautuu kiinni korttiin, ks. [DgBoard.centeredTop].
-            var aboveY = (contentTop - aboveHeight) / 2
+            // Lisät eivät nouse lohkon yläreunan yli (9.10.2026), vaikka lohko olisi niille
+            // ja pinolle yhdessäkin liian matala.
+            var aboveY = ((contentTop - aboveHeight) / 2).coerceAtLeast(0)
             abovePlaceables.forEach { placeable ->
                 placeable.placeRelative((width - placeable.width) / 2, aboveY)
                 aboveY += placeable.height
@@ -4234,7 +4277,11 @@ private fun PlayerPanelView(
     matchLength: Int? = null,
     modifier: Modifier = Modifier,
 ) {
-    val score = cardScoreText(panel, away, other, otherAway, matchLength)
+    // **Nimen perässä vain oma luku** (`ScoreStyle.NAME`, testaajan toive 9.10.2026:
+    // *Unknown DailyGammoner (0)*). Kortti on silloin yhden rivin korkuinen, ja se on valinnan syy.
+    val besideName = LocalScoreBesideName.current
+    val ownPoints = (panel.scoreLabel ?: panel.score?.toString()).takeIf { besideName }
+    val score = if (besideName) null else cardScoreText(panel, away, other, otherAway, matchLength)
     // **Kortti on linkki pelaajanäkymään** (Tommin toive 14.9.2026 illalla). Napautus
     // avaa sivun oman profiilipolun lukunäkymään; ilman polkua (nimet linkittöminä
     // sivuston asetuksella) kortti on pelkkä kortti eikä näytä napautettavalta.
@@ -4284,7 +4331,8 @@ private fun PlayerPanelView(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = panel.player.displayName,
+                        text = ownPoints?.let { stringResource(R.string.board_score_beside_name, panel.player.displayName, it) }
+                            ?: panel.player.displayName,
                         style = MaterialTheme.typography.titleSmall,
                         color = ratedNameColor(panel, onPanel = true),
                         maxLines = 1,
@@ -4369,6 +4417,8 @@ private fun Board(
      * sääntö on kutsujalla ([diceTapFor]), jotta lauta ei tunne kokoamisen tiloja.
      */
     onDiceTap: (() -> Unit)? = null,
+    /** Vastustajan noppien painallus, ks. [diceRollTapFor]. Null kun painallus ei tee mitään. */
+    onOpponentDiceTap: (() -> Unit)? = null,
     /** Kootun siirron nuolet, tyhjä kun niitä ei piirretä. Ks. [MoveArrowLayer]. */
     arrows: List<MoveArrow> = emptyList(),
     /** Vastustajan edellisen siirron nuolet vastustajan värillä, tyhjä kun niitä ei piirretä. */
@@ -4609,6 +4659,7 @@ private fun Board(
                             showActions = middleShowActions,
                             verify = verify,
                             onDiceTap = onDiceTap,
+                            onOpponentDiceTap = onOpponentDiceTap,
                             cube = if (cubeOnStrip && !cubeUnowned) shownCube else null,
                             cubeOffered = canAccept,
                             notes = stripNotes,
@@ -5407,6 +5458,8 @@ private fun MiddleStrip(
     verify: VerifyBox = VerifyBox.NONE,
     /** Omien noppien painallus, ks. [diceTapFor]. Null kun painallus ei tee mitään. */
     onDiceTap: (() -> Unit)? = null,
+    /** Vastustajan noppien painallus, ks. [diceRollTapFor]. */
+    onOpponentDiceTap: (() -> Unit)? = null,
     /**
      * Kuutio kaistalla, tai null kun se on lokerosarakkeessa. Ks. kaistan kuutiokohta alla
      * ja [OffTrayColumn]: sama kuutio on aina tasan yhdessä paikassa.
@@ -5498,7 +5551,7 @@ private fun MiddleStrip(
                 modifier = Modifier.align(Alignment.CenterStart).width(group),
                 contentAlignment = Alignment.Center,
             ) {
-                DiceGroup(opponentDice, roles, metrics)
+                DiceGroup(opponentDice, roles, metrics, onTap = onOpponentDiceTap)
             }
         }
         // Muurin kohta täyttyy napeista kun niitä on. Tässä oli aiemmin pip-vahti, ja se
@@ -6682,6 +6735,18 @@ internal fun diceTapFor(
     swapEnabled && composition.canSwap -> DiceTap.SWAP
     else -> null
 }
+
+/**
+ * Heittääkö vastustajan noppien painallus (testaajan toive 9.10.2026: *Option to "Roll
+ * Dice" by tapping on opponents dice?*). Ehto on sivun oma `Roll Dice` -nappi eikä
+ * pääteltyä vuoroa, joten painallus tekee täsmälleen sen minkä nappi tekisi ja vain kun
+ * nappi on tarjolla. Kytkin on oletuksena pois kuten muilla noppakytkimillä.
+ */
+internal fun diceRollTapFor(submits: Collection<String>?, enabled: Boolean): Boolean =
+    enabled && submits?.contains(ROLL_DICE_SUBMIT) == true
+
+/** `Roll Dice` sivun omana sanana, ks. [DOUBLE_SUBMIT]. */
+internal const val ROLL_DICE_SUBMIT = "Roll Dice"
 
 /** Noppien painalluksen teot. Ks. [diceTapFor]. */
 internal enum class DiceTap {

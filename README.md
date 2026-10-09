@@ -122,10 +122,39 @@ what was measured about the site (`KOHDE.md`), how the modules fit together
 not in this repository (`SUBSTANSSI.md`, `AVOIMET.md` and others): those are the private
 working notes, and the pointers are left as they are rather than rewritten.
 
+## Reading the code
+
+The app holds your DailyGammon password and your messages, and Google Play's review does
+not read the code. Anyone can, and if you find something that should not be there, please
+tell the other players as well as me.
+
+The code comments are in Finnish. They are long on purpose: most of them say why the code
+does what it does, and the reason is usually something measured on the site. Pasting a
+file into a translator or a language model gives a readable English version.
+
+A few files carry the main ideas, and their opening comments are the place to start:
+
+| File | What it holds |
+|---|---|
+| `core-scrape/.../DgPages.kt` | Page recognition. A signed-out request returns 200 OK and the login form, so the app decides from the content what page it got, never from the status code. |
+| `core-net/.../DgClient.kt` | The only way out to the network. It signs in again silently when the session has expired and keeps a minimum gap between requests to be polite to a small site. |
+| `core-scrape/.../ChatParser.kt` | The chat after a move: the page the whole app exists for, since the opponent's message is shown only here and the site does not keep it. |
+| `data/.../MessageArchive.kt` | A fetched message reaches the screen only through the archive, after it has been saved. Fetching is destructive, so showing first and saving later could lose a message. |
+| `core-domain/.../BoardState.kt` | The board at one moment, read from the page and not computed. Move codes come from the page's own links. |
+| `core-domain/.../LocalComposition.kt` | Building a move on the device and going to the network only at `Submit Move`. |
+
+The parsers are tested against saved copies of real pages in
+`core-scrape/src/test/resources/fixtures/`, and those tests are often the quickest way to
+see what a parser expects.
+
 ## Status
 
-Not in the Play Store, and there are no release builds here. If you build it yourself, you
-are using your own DailyGammon account through an unofficial client, at your own risk.
+In a closed test on Google Play since 1 October 2026. The current version is 1.2. Google
+lets a new developer's app into the store only after a closed test, so testers are welcome:
+how to join is on the [test page](https://tommihaa.github.io/dg-android/).
+
+There are no release builds here. If you build it yourself, you are using your own
+DailyGammon account through an unofficial client, at your own risk.
 
 ## License
 

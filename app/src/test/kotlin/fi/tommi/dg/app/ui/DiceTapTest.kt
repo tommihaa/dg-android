@@ -120,4 +120,16 @@ class DiceTapTest {
     fun `ilman kokoamista painallus ei tee mitaan`() {
         assertNull(diceTapFor(null, submitEnabled = true, swapEnabled = true))
     }
+
+    /**
+     * Vastustajan noppien heitto (testaajan toive 9.10.2026): vain kytkin päällä ja vain kun
+     * sivu tarjoaa `Roll Dice`n. Tuplaustarjous ilman heittoa ei kelpaa.
+     */
+    @Test
+    fun `vastustajan nopat heittavat vain kun sivu tarjoaa heittoa`() {
+        assertEquals(true, diceRollTapFor(listOf("Roll Dice", "Double"), enabled = true))
+        assertEquals(false, diceRollTapFor(listOf("Roll Dice"), enabled = false))
+        assertEquals(false, diceRollTapFor(listOf("Accept", "Decline"), enabled = true))
+        assertEquals(false, diceRollTapFor(null, enabled = true))
+    }
 }

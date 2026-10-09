@@ -159,6 +159,10 @@ fun SettingsScreen(
     onDiceSubmitTapChange: (Boolean) -> Unit,
     diceSwapTap: Boolean,
     onDiceSwapTapChange: (Boolean) -> Unit,
+    diceRollTap: Boolean,
+    onDiceRollTapChange: (Boolean) -> Unit,
+    boardExtras: Boolean,
+    onBoardExtrasChange: (Boolean) -> Unit,
     /** Lukuruutujen pystylukko (Tommi 2.9.2026), lauta on vaakaan aina. Ks. [DeviceSection]. */
     portraitLock: Boolean,
     onPortraitLockChange: (Boolean) -> Unit,
@@ -375,6 +379,10 @@ fun SettingsScreen(
                                 onDiceSubmitTapChange = onDiceSubmitTapChange,
                                 diceSwapTap = diceSwapTap,
                                 onDiceSwapTapChange = onDiceSwapTapChange,
+                                diceRollTap = diceRollTap,
+                                onDiceRollTapChange = onDiceRollTapChange,
+                                boardExtras = boardExtras,
+                                onBoardExtrasChange = onBoardExtrasChange,
                                 portraitLock = portraitLock,
                                 onPortraitLockChange = onPortraitLockChange,
                                 fullScreen = fullScreen,
@@ -495,6 +503,10 @@ private fun DeviceSection(
     onDiceSubmitTapChange: (Boolean) -> Unit,
     diceSwapTap: Boolean,
     onDiceSwapTapChange: (Boolean) -> Unit,
+    diceRollTap: Boolean,
+    onDiceRollTapChange: (Boolean) -> Unit,
+    boardExtras: Boolean,
+    onBoardExtrasChange: (Boolean) -> Unit,
     portraitLock: Boolean,
     onPortraitLockChange: (Boolean) -> Unit,
     fullScreen: Boolean,
@@ -654,6 +666,7 @@ private fun DeviceSection(
                     listOf(
                         ScoreStyle.AWAY to R.string.settings_score_style_away,
                         ScoreStyle.SITE to R.string.settings_score_style_site,
+                        ScoreStyle.NAME to R.string.settings_score_style_name,
                     ).forEach { (style, label) ->
                         OptionCard(
                             label = stringResource(label),
@@ -663,22 +676,32 @@ private fun DeviceSection(
                             large = board?.let { b ->
                                 { height ->
                                     ZoomedPicture(height) {
-                                        PreviewScore(b, look, panelLookFor(boardStyle), awayShown = style == ScoreStyle.AWAY)
+                                        PreviewScore(b, look, panelLookFor(boardStyle), awayShown = style == ScoreStyle.AWAY, besideName = style == ScoreStyle.NAME)
                                     }
                                 }
                             },
                         ) {
                             if (board != null) {
-                                PreviewScore(board, look, panelLookFor(boardStyle), awayShown = style == ScoreStyle.AWAY)
+                                PreviewScore(board, look, panelLookFor(boardStyle), awayShown = style == ScoreStyle.AWAY, besideName = style == ScoreStyle.NAME)
                             }
                         }
                     }
                 }
             }
+            // Laudan omat lisälinkit (testaajan toive 9.10.2026). Board-ryhmässä eikä Playing-
+            // ryhmässä, koska kytkin muuttaa sitä mitä laudalla näkyy eikä sitä mitä painallus tekee.
+            DeviceGroup(title = stringResource(R.string.settings_board_extras), striped = false) {
+                DeviceToggle(
+                    label = stringResource(R.string.settings_board_extras_toggle),
+                    explain = stringResource(R.string.settings_board_extras_explain),
+                    checked = boardExtras,
+                    onChange = onBoardExtrasChange,
+                )
+            }
             // Kätisyys on ensimmäinen laitekytkin joka kuvaa pelaajaa eikä sovellusta (Tommin
             // päätös 9.9.2026). Selite sanoo syyn eikä vain seurausta: paneeli menee toisen
             // käden ulottuville.
-            DeviceGroup(title = stringResource(R.string.settings_handedness), striped = false) {
+            DeviceGroup(title = stringResource(R.string.settings_handedness), striped = true) {
                 // Kaksi korttia esikatseluineen 24.9.2026 alkaen (Tommin valinta): valintaruutu ei
                 // näyttänyt mitä kytkin tekee, ja kortti näyttää paneelin puolen. Arvo ja
                 // tallennus ovat samat kuin ruudulla, vain esitys vaihtui.
@@ -799,6 +822,14 @@ private fun DeviceSection(
                     explain = stringResource(R.string.settings_dice_swap_explain),
                     checked = diceSwapTap,
                     onChange = onDiceSwapTapChange,
+                )
+                // Kolmas noppakytkin (testaajan toive 9.10.2026): vastustajan nopat, koska
+                // heittovuorossa omia noppia ei vielä ole ja vastustajan heitto on laudalla.
+                DeviceToggle(
+                    label = stringResource(R.string.settings_dice_roll_toggle),
+                    explain = stringResource(R.string.settings_dice_roll_explain),
+                    checked = diceRollTap,
+                    onChange = onDiceRollTapChange,
                 )
             }
             // **Beaverin vahvistus** (Tommin tilaus 27.9.2026, `BeaverConfirmStore`). Yksi kytkin:

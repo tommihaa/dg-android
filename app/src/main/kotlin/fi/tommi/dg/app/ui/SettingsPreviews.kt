@@ -201,7 +201,7 @@ private const val DISABLED_ALPHA = 0.38f
  * kortti näyttää 4.10.2026 alkaen parin oma ensin, `4-away 2-away` tai `1-3/5`.
  */
 @Composable
-internal fun PreviewScore(board: BoardState, look: BoardLook, panel: PanelLook, awayShown: Boolean) {
+internal fun PreviewScore(board: BoardState, look: BoardLook, panel: PanelLook, awayShown: Boolean, besideName: Boolean = false) {
     Column(
         modifier = Modifier
             .clip(RoundedCornerShape(6.dp))
@@ -229,16 +229,21 @@ internal fun PreviewScore(board: BoardState, look: BoardLook, panel: PanelLook, 
                     }
                 }
                 Column(modifier = Modifier.padding(start = 8.dp)) {
+                    // Nimen perässä vain oma luku, kuten laudan kortissa (`ScoreStyle.NAME`).
+                    val own = (player.scoreLabel ?: player.score?.toString()).takeIf { besideName }
                     Text(
-                        text = player.player.name.orEmpty(),
+                        text = own?.let { stringResource(R.string.board_score_beside_name, player.player.name.orEmpty(), it) }
+                            ?: player.player.name.orEmpty(),
                         style = MaterialTheme.typography.labelMedium,
                         color = panel.text,
                     )
-                    Text(
-                        text = previewCardScoreText(board, player, awayShown).orEmpty(),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = panel.text,
-                    )
+                    if (own == null) {
+                        Text(
+                            text = previewCardScoreText(board, player, awayShown).orEmpty(),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = panel.text,
+                        )
+                    }
                 }
             }
         }

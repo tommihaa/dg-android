@@ -8223,3 +8223,42 @@ vaihtoehto oli oma ryhmä Themen alla aina näkyvissä. Paikka syntyi poistosta,
 Lukupinta (`DgReadingSurface.kt`) jäi, vaikka sen alkuperäinen syy oli kuvio tekstin alla.
 Sen poisto on eri päätös, jota ei kysytty.
 
+
+### Chromebookin ikkuna ja testaajien toiveet (testaajapalaute 9.10.2026)
+
+**Palaute tuli suljetun testin Google-ryhmään** kahdelta testaajalta. Molemmat olivat
+Chromebookilla. Toinen ei saanut ikkunaa suuremmaksi kuin puhelimen kokoiseksi, ja toisen
+kaappauksessa (1920×864, sovellus noin 880×395 keskellä) `Skip Game` ja `Mark position`
+piirtyivät vastustajan kortin päälle. Tommi kuittasi korjaukset ja kaikki toiveet samana
+päivänä.
+
+**Chromebookin ikkuna.** Manifestin `screenOrientation="portrait"` lukitsee sovelluksen
+ChromeOS:ssä puhelimen kokoiseen ikkunaan. Kiinteä suunta poistui manifestista, ja
+pystylukko asetetaan nyt `MainActivity.onCreate`ssa ennen ensimmäistä ruutua. ChromeOS:llä
+(`isChromeOs`, ARC:n ominaisuusnimi) sovellus ei pyydä suuntaa koskaan (`orientationFor`in
+`freeWindow`), koska pyyntö muuttaisi ikkunan muotoa eikä käännä laitetta. Todentamatta:
+Chromebookia ei ole, joten korjaus on päätelty eikä mitattu. Vahvistus tulee testaajalta.
+
+**Päällekkäisyys.** `CenteredOverStack` sijoitti lisät negatiiviseen y:hyn, kun lisät,
+ottelukortti ja sivun napit eivät mahtuneet lohkoon. Nyt ottelukortti tiivistyy ensin
+(nimi yhdelle riville, kierros hännälle) ja vasta viimeisenä jää pois, koska se on lohkoista
+ainoa joka ei ole teko. Todennettu tabletilla kuoren alla testaajan ikkunan kokoisena
+(`wm size 1756x790`, `wm density 320`, eli 878×395 dp): lisät pysyvät kortin alla.
+
+**Kolme uutta laitekytkintä**, kaikki testaajan toiveita:
+
+- *Score* sai kolmannen arvon *Points won, next to the name* (`ScoreStyle.NAME`): kortti on
+  `Hirsute Harry (3)` yhdellä rivillä ilman paria ja pituutta, koska pituus on jo ottelukortissa.
+- *Show Mark position and the reminders* (`BoardExtrasStore`, oletus päällä) piilottaa
+  `Mark position`, `Reminders` ja `Cube reminder` -linkit. Kirjoitetut muistutukset näkyvät
+  yhä, ja `Skip Game` ja `Message` jäävät, koska ne ovat sivun tekoja.
+- *Roll by tapping the opponent's dice* (`DiceRollStore`, oletus pois): vastustajan noppien
+  napautus on `Roll Dice`, vain kun sivu tarjoaa sitä (`diceRollTapFor`).
+
+Todennettu kuoriproxyn alla: kortit, piilotetut linkit ja vapautunut tila testaajan ikkunassa,
+sekä napautus joka lähetti `?submit=Roll+Dice` (kuori vastasi tallennetulla sivulla). Kuvat
+`raakasivut/testaajapalaute-9-10/`. Tabletin omat asetukset palautettiin ajon jälkeen.
+
+**Rikottu sääntö samassa ajossa.** `docs/TESTAUS.md`:n sääntö 2 rikkoutui ennen kuorta:
+`wm size` asetettiin elävällä tilillä, ja sen jälkeen otteluluettelossa tehtiin pyyhkäisyjä ja
+yksi napautus. Lautaa ei avattu eikä mitään lähtenyt, ja koko palautettiin ennen kuorta.

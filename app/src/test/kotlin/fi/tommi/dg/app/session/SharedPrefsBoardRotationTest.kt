@@ -94,4 +94,21 @@ class SharedPrefsBoardRotationTest {
             orientationFor(onBoard = true, portraitLock = false, signingIn = true),
         )
     }
+
+    // Chromebook (testaajapalaute 9.10.2026): suuntapyyntö lukitsisi ikkunan koon.
+    @Test
+    fun `vapaa ikkuna ei pyyda suuntaa milloinkaan`() {
+        for (onBoard in listOf(true, false)) for (writing in listOf(true, false)) {
+            assertEquals(
+                ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED,
+                orientationFor(
+                    onBoard = onBoard,
+                    portraitLock = true,
+                    writing = writing,
+                    signingIn = true,
+                    freeWindow = true,
+                ),
+            )
+        }
+    }
 }

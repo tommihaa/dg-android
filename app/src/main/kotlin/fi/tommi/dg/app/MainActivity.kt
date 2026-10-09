@@ -1,5 +1,6 @@
 package fi.tommi.dg.app
 
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.content.res.Configuration
@@ -219,12 +220,16 @@ class MainActivity : FragmentActivity() {
 
         val container = (application as DgApplication).container
 
-        // Manifesti sanoo kylmää käynnistystä varten `portrait`. Jos pystylukko on kytketty
-        // pois (Tommin päätös 2.9.2026, `docs/UI.md`), suunta vapautetaan tässä ennen
-        // ensimmäistä ruutua eikä vasta navigoinnin efektissä, jotta kädessä vaakana oleva
-        // tabletti ei ehdi kääntyä pystyyn ja takaisin.
-        if (!container.portraitLock.get()) {
-            requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+        // Kylmän käynnistyksen suunta asetetaan tässä ennen ensimmäistä ruutua eikä vasta
+        // navigoinnin efektissä, jotta kädessä vaakana oleva tabletti ei ehdi kääntyä pystyyn
+        // ja takaisin. Manifesti sanoi `portrait` 9.10.2026 asti, mutta ChromeOS lukitsee
+        // kiinteän suunnan sovelluksen puhelimen kokoiseen ikkunaan (kaksi testaajaa
+        // Chromebookilla, `docs/UI.md` › Chromebookin ikkuna). Siksi lukko on nyt koodissa.
+        val freeWindow = isChromeOs(this)
+        requestedOrientation = if (container.portraitLock.get() && !freeWindow) {
+            ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+        } else {
+            ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
         }
 
         setContent {
@@ -398,6 +403,7 @@ class MainActivity : FragmentActivity() {
 
                     LaunchedEffect(onBoard, portraitLock, boardWriting, boardRotates, signingIn, phoneTyping) {
                         this@MainActivity.requestedOrientation = orientationFor(
+                            freeWindow = freeWindow,
                             onBoard = onBoard,
                             portraitLock = portraitLock,
                             writing = boardWriting || phoneTyping,
@@ -1264,6 +1270,8 @@ class MainActivity : FragmentActivity() {
                             }
                             var diceSubmitTap by remember { mutableStateOf(container.diceSubmit.get()) }
                             var diceSwapTap by remember { mutableStateOf(container.diceSwap.get()) }
+                            var diceRollTap by remember { mutableStateOf(container.diceRoll.get()) }
+                            var boardExtras by remember { mutableStateOf(container.boardExtras.get()) }
                             var moveArrows by remember { mutableStateOf(container.moveArrows.get()) }
                             var opponentArrows by remember { mutableStateOf(container.moveArrows.opponent()) }
                             var pointPress by remember { mutableStateOf(container.pointPress.get()) }
@@ -1397,6 +1405,16 @@ class MainActivity : FragmentActivity() {
                                 onDiceSwapTapChange = { enabled ->
                                     container.diceSwap.save(enabled)
                                     diceSwapTap = enabled
+                                },
+                                diceRollTap = diceRollTap,
+                                onDiceRollTapChange = { enabled ->
+                                    container.diceRoll.save(enabled)
+                                    diceRollTap = enabled
+                                },
+                                boardExtras = boardExtras,
+                                onBoardExtrasChange = { shown ->
+                                    container.boardExtras.save(shown)
+                                    boardExtras = shown
                                 },
                                 portraitLock = portraitLock,
                                 onPortraitLockChange = { enabled ->
@@ -1745,6 +1763,8 @@ class MainActivity : FragmentActivity() {
                                 // seuraavassa ottelussa ilman erillistä virtaa.
                                 diceSubmitTap = container.diceSubmit.get(),
                                 diceSwapTap = container.diceSwap.get(),
+                                diceRollTap = container.diceRoll.get(),
+                                boardExtras = container.boardExtras.get(),
                                 moveArrows = container.moveArrows.get(),
                                 pointPress = container.pointPress.get(),
                                 // Kolahdus vain Wood-teemassa, ja silloinkin oma kytkin päättää.
@@ -1793,8 +1813,32 @@ class MainActivity : FragmentActivity() {
  * [signingIn] (1.10.2026) on kirjautumisruutu tai puhelimella kirjoittaminen, jotka ovat
  * pystyssä aina. Se tulee laudan jälkeen ja ennen pystylukkoa, koska lukko pois päältä ei
  * saa kääntää niitä vaakaan.
+ *
+ * [freeWindow] (9.10.2026) on Chromebook, jossa sovellus on ikkuna eikä näyttö. Siellä mikään
+ * suuntapyyntö ei käännä laitetta vaan muuttaa ikkunan muotoa tai lukitsee sen koon, joten
+ * suunta jätetään aina käyttäjälle. Se voittaa kaiken muun.
  */
 internal fun orientationFor(
+    onBoard: Boolean,
+    portraitLock: Boolean,
+    writing: Boolean = false,
+    boardRotates: Boolean = false,
+    signingIn: Boolean = false,
+    freeWindow: Boolean = false,
+): Int = when {
+    freeWindow -> ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+    else -> orientationOnScreen(onBoard, portraitLock, writing, boardRotates, signingIn)
+}
+
+/**
+ * Chromebook, eli Android-sovellus ikkunana ChromeOS:n työpöydällä. Androidin oma tunniste
+ * ARC-ympäristölle; Googlen ohje ChromeOS-sovelluksille käyttää samaa ominaisuusnimeä.
+ */
+internal fun isChromeOs(context: Context): Boolean =
+    context.packageManager.hasSystemFeature("org.chromium.arc") ||
+        context.packageManager.hasSystemFeature("org.chromium.arc.device_management")
+
+private fun orientationOnScreen(
     onBoard: Boolean,
     portraitLock: Boolean,
     writing: Boolean = false,

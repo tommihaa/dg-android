@@ -298,6 +298,13 @@ ehtona piirtokohdassa, koska noppalokeroita on kaksi. Lähetys ei kysy vahvistus
 valinta: sama teko `Submit Move` -napista ei kysy sitäkään, ja kysyminen vain toisessa
 reitissä tekisi niistä eri mieliset. Suoja on kytkin joka on oletuksena pois.
 
+**Kolme laitevalintaa testaajapalautteesta 9.10.2026** (Tommin kuittaus samana päivänä,
+`docs/UI.md` › *Chromebookin ikkuna ja testaajien toiveet*). `dice_roll` samassa
+`dg_dice_tap`-tiedostossa (`DiceRollStore`, oletus pois) tekee vastustajan nopista
+`Roll Dice` -napin, vain kun sivu tarjoaa sitä (`diceRollTapFor`). `score_style` sai arvon
+`NAME`, joka näyttää oman pistemäärän nimen perässä. `dg_board_extras` (`BoardExtrasStore`,
+oletus päällä) piilottaa laudan omat lisälinkit, ja se on lisätty asetusten siirtotiedostoon.
+
 **Oletukset ovat nykyinen käytös** (`COUNTER` ja `AWAY`), eikä se seuraa `board_style`n
 sivustouskollisesta oletuksesta: kumpikin kytkin syntyi havainnosta eikä viasta, ja
 oletuksen vaihtaminen olisi eri päätös jota ei ole kysytty. Jos se joskus kysytään,

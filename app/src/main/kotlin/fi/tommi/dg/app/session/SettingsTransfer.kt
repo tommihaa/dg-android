@@ -149,6 +149,7 @@ class SettingsTransfer(private val prefs: (String) -> SharedPreferences) {
             "dg_point_press",
             "dg_beaver_confirm",
             "dg_dice_tap",
+            "dg_board_extras",
             "dg_rarity",
             "dg_match_order",
             "dg_message_filter",

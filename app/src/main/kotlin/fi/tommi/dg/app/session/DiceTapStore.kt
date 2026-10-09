@@ -72,3 +72,33 @@ class SharedPrefsDiceSwap(private val prefs: SharedPreferences) : DiceSwapStore 
         const val KEY = "dice_swap"
     }
 }
+
+/**
+ * Vastustajan noppien painallus heittää, eli sama teko kuin `Roll Dice` (testaajan toive
+ * 9.10.2026, Tommin kuittaus samana päivänä). Kolmas noppakytkin samassa tiedostossa, koska
+ * laji on sama: painallus laudalla tarkoittaa tekoa. Oletus pois samasta syystä kuin muilla.
+ */
+interface DiceRollStore {
+
+    fun get(): Boolean
+
+    fun save(enabled: Boolean)
+}
+
+class SharedPrefsDiceRoll(private val prefs: SharedPreferences) : DiceRollStore {
+
+    constructor(context: Context) : this(
+        context.applicationContext.getSharedPreferences(FILE_NAME, Context.MODE_PRIVATE),
+    )
+
+    override fun get(): Boolean = prefs.getBoolean(KEY, false)
+
+    override fun save(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY, enabled).apply()
+    }
+
+    private companion object {
+        const val FILE_NAME = "dg_dice_tap"
+        const val KEY = "dice_roll"
+    }
+}
