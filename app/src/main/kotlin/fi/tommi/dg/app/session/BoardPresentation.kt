@@ -43,7 +43,7 @@ enum class ScoreStyle {
     SITE,
 
     /**
-     * Pelkkä oma pistemäärä nimen perässä, `Unknown DailyGammoner (2)` (testaajan toive 9.10.2026, Tommin
+     * Pelkkä oma pistemäärä nimen perässä, `Anonymized DailyGammoner (2)` (testaajan toive 9.10.2026, Tommin
      * kuittaus samana päivänä). Pituus on jo ottelukortissa, joten pari ja pituus jäävät
      * pois ja kortti on rivin matalampi.
      */

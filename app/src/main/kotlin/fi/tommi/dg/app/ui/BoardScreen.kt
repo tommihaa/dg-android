@@ -4278,7 +4278,7 @@ private fun PlayerPanelView(
     modifier: Modifier = Modifier,
 ) {
     // **Nimen perässä vain oma luku** (`ScoreStyle.NAME`, testaajan toive 9.10.2026:
-    // *Unknown DailyGammoner (0)*). Kortti on silloin yhden rivin korkuinen, ja se on valinnan syy.
+    // *Anonymized DailyGammoner (0)*). Kortti on silloin yhden rivin korkuinen, ja se on valinnan syy.
     val besideName = LocalScoreBesideName.current
     val ownPoints = (panel.scoreLabel ?: panel.score?.toString()).takeIf { besideName }
     val score = if (besideName) null else cardScoreText(panel, away, other, otherAway, matchLength)
