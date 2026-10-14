@@ -130,6 +130,9 @@ fun SettingsScreen(
     /** Wood-teeman kolahdus, oma kytkin (Tommi 4.10.2026). Soi vain Wood-teemassa. */
     woodSound: Boolean,
     onWoodSoundChange: (Boolean) -> Unit,
+    /** Äänet jotka on jätetty pois `Game sounds` -kytkimen alta (Tommi 14.10.2026). */
+    mutedSounds: Set<WoodSound>,
+    onMutedSoundsChange: (Set<WoodSound>) -> Unit,
     /** Odotuksen ilmaisin nappien paikalla, oma kytkin (Tommi 18.9.2026). Ks. [DeviceSection]. */
     busyStyle: BusyStyle,
     onBusyStyleChange: (BusyStyle) -> Unit,
@@ -349,6 +352,8 @@ fun SettingsScreen(
                                 onAppThemeChange = onAppThemeChange,
                                 woodSound = woodSound,
                                 onWoodSoundChange = onWoodSoundChange,
+                                mutedSounds = mutedSounds,
+                                onMutedSoundsChange = onMutedSoundsChange,
                                 boardStyle = boardStyle,
                                 onBoardStyleChange = onBoardStyleChange,
                                 boardShuffle = boardShuffle,
@@ -403,6 +408,7 @@ fun SettingsScreen(
                                 onToggleFold = onToggleFold,
                             )
                             settingsTransfer?.let { SettingsTransferGroup(it, onSettingsImported) }
+                            AppVersionLine(Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 16.dp))
                         }
                     }
                 }
@@ -473,6 +479,9 @@ private fun DeviceSection(
     onAppThemeChange: (AppTheme) -> Unit,
     woodSound: Boolean,
     onWoodSoundChange: (Boolean) -> Unit,
+    /** Äänet jotka on jätetty pois `Game sounds` -kytkimen alta (Tommi 14.10.2026). */
+    mutedSounds: Set<WoodSound>,
+    onMutedSoundsChange: (Set<WoodSound>) -> Unit,
     boardStyle: BoardStyle,
     onBoardStyleChange: (BoardStyle) -> Unit,
     boardShuffle: Boolean,
@@ -593,6 +602,18 @@ private fun DeviceSection(
                 checked = woodSound,
                 onChange = onWoodSoundChange,
             )
+            // Ääni kerrallaan pois (Tommin tilaus 14.10.2026). Ruudut ovat aina näkyvissä ja
+            // harmaita kun kytkin on pois (Tommin valinta), jotta pelaaja näkee mitä ääniä on
+            // ennen kuin kytkee ne päälle. Ohi-napautus soi vain painalluskytkimen kanssa, joten
+            // sen ruutu on harmaa myös silloin kun painalluskytkin on pois.
+            WoodSound.entries.forEach { sound ->
+                SoundToggle(
+                    label = stringResource(soundLabel(sound)),
+                    checked = sound !in mutedSounds,
+                    onChange = { on -> onMutedSoundsChange(if (on) mutedSounds - sound else mutedSounds + sound) },
+                    enabled = woodSound && (sound != WoodSound.MISS || pointPress),
+                )
+            }
         }
 
         // Neljä taittuvaa ryhmää Themen alla (Tommin valinta 27.9.2026): laudan ulkoasu,
@@ -1062,6 +1083,39 @@ private fun DeviceToggle(
             modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 4.dp),
         )
     }
+}
+
+/** Yhden pelin äänen ruutu `Game sounds` -kytkimen alla, sisennettynä ja ilman selitettä. */
+@Composable
+private fun SoundToggle(
+    label: String,
+    checked: Boolean,
+    onChange: (Boolean) -> Unit,
+    enabled: Boolean,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .toggleable(value = checked, onValueChange = onChange, role = Role.Checkbox, enabled = enabled)
+            .padding(start = 48.dp, end = 16.dp, top = 2.dp, bottom = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Checkbox(checked = checked, onCheckedChange = null, enabled = enabled)
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = if (enabled) Color.Unspecified else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+            modifier = Modifier.padding(start = 12.dp),
+        )
+    }
+}
+
+private fun soundLabel(sound: WoodSound): Int = when (sound) {
+    WoodSound.DICE -> R.string.settings_sound_dice
+    WoodSound.CHECKER -> R.string.settings_sound_checker
+    WoodSound.CUBE -> R.string.settings_sound_cube
+    WoodSound.MISS -> R.string.settings_sound_miss
+    WoodSound.MATCH -> R.string.settings_sound_match
 }
 
 /**

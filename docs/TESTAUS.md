@@ -1083,3 +1083,14 @@ todennettu tabletilla, jossa ehto on **epätosi**: palkit ovat vapaat, joten pii
 tehdä lainkaan. Puhelimella (Pixel 8a) ehto on tosi, eli lukituksen toinen haara on
 ajamatta. Odotus on että palkit piiloutuvat laudalle kerran ja palaavat paluussa kerran,
 eikä lokissa ole enempää kuin yksi `hide` ja yksi `show`.
+
+## Pelisession komennot
+
+Siirretty `CLAUDE.md`:stä 12.10.2026 sanatarkasti. Laukaisin (proxy päälle kysymättä) on yhä
+`CLAUDE.md`:ssä.
+
+Sama kolmena komentona yhdessä, todennuksineen ja purkuineen: `python tyokalut/sessio.py
+aloita --hakemisto raakasivut/sessio-<pvm>`, `tila` ja `lopeta`. Se lukee hakemiston
+käynnissä olevan proxyn komentoriviltä eikä muistista, ja hyväksyy itsensä vasta kun
+tabletin pyyntö on ilmestynyt oikeaan `istunto.tsv`:hen. Käsin ajettu sarja 3.9.2026 meni
+oikein, mutta prosessitarkistus jäi muistin varaan; skripti tekee sen aina.

@@ -141,6 +141,11 @@ class ForumParserTest {
     }
 
     @Test
+    fun `new from here -otsakkeen paikka on sita seuraava viesti`() {
+        assertEquals(3, thread.newFromOrdinal)
+    }
+
+    @Test
     fun `viimeisen viestin runko ei sisalla footeria`() {
         val last = thread.posts.last()
         assertFalse(last.body.contains("Add a Comment"), "Footer vuoti runkoon: ${last.body}")
@@ -157,6 +162,8 @@ class ForumParserTest {
         )!!
         assertEquals(3, page.posts.size)
         assertEquals("testipelaaja", page.posts.first().author.name)
+        // Ketjussa ei ole New From Here -otsaketta, joten paikkaa ei ole.
+        assertNull(page.newFromOrdinal)
         // U+2019 on windows-1252:n 0x92, se merkki joka erottaa merkistön Latin-1:stä.
         assertTrue(page.posts.first().body.contains('’')) {
             "Merkistö hukkui: ${page.posts.first().body}"
@@ -297,6 +304,42 @@ class ForumParserTest {
         )
         val comment = composeAdd.write(title = null, comment = "Vastaus")!!
         assertEquals(listOf("comment" to "Vastaus", "submit" to "Submit Comment"), comment.fields.toList())
+    }
+
+    @Test
+    fun `esikatselunappi luetaan sivulta ja lahtee samalla kenttanimella`() {
+        assertEquals("Preview", composeAdd.previewLabel)
+        assertEquals("Preview", composeNew.previewLabel)
+        val preview = composeAdd.preview(title = null, comment = "Vastaus")!!
+        assertEquals("/bg/forum2/main/submitadd/60001", preview.action)
+        assertEquals(listOf("comment" to "Vastaus", "submit" to "Preview"), preview.fields.toList())
+        assertNull(composeNew.preview(title = "", comment = "Runko"))
+    }
+
+    @Test
+    fun `esikatselun runko on sivuston omassa muodossaan`() {
+        val preview = ForumParser.parsePreview(fixture("forum_preview.html"))!!
+        // Yksittäinen rivinvaihto on välilyönti, tyhjä rivi kappale (mitattu 14.10.2026).
+        assertEquals(
+            "Preview measurement 14.10.2026, line one line two after a single line break\n\n" +
+                "Second paragraph: http://example.com and https://example.com\n\n" +
+                "a < b & c \"quoted\" <b>bold?</b> ääkköset",
+            preview.body,
+        )
+        // Vain http://-osoite on sivulla linkki.
+        val link = preview.links.single()
+        assertEquals("http://example.com", link.href)
+        assertEquals("http://example.com", preview.body.substring(link.start, link.end))
+    }
+
+    @Test
+    fun `esikatselu ei ole kirjoituslomake eika muu sivu esikatselu`() {
+        // Sivulla on lomake, mutta sen lähetysnappi on Post Message, joka on mittaamatta.
+        // Lähetys kulkee siksi kommenttisivun omalla lomakkeella eikä tällä.
+        assertEquals("Post Message", ForumParser.parseCompose(fixture("forum_preview.html"))?.submitLabel)
+        assertNull(ForumParser.parsePreview(fixture("forum_compose_add.html")))
+        assertNull(ForumParser.parsePreview(fixture("forum_read.html")))
+        assertNull(ForumParser.parsePreview(fixture("forum_posted.html")))
     }
 
     @Test

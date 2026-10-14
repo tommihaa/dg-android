@@ -34,8 +34,16 @@ class WoodSoundTest {
     }
 
     @Test
-    fun `toisen ottelun lauta on hiljainen`() {
-        assertNull(woodSoundFor(lauta(), lauta(id = "7000012", dice = noppa)))
+    fun `poisjatetyt aanet luetaan nimista ja tuntematon nimi ohitetaan`() {
+        assertEquals(
+            setOf(WoodSound.DICE, WoodSound.MATCH),
+            woodSoundsNamed(setOf("DICE", "MATCH", "POISTETTU")),
+        )
+    }
+
+    @Test
+    fun `toisen ottelun lauta kumahtaa gongina`() {
+        assertEquals(WoodSound.MATCH, woodSoundFor(lauta(), lauta(id = "7000012", dice = noppa)))
     }
 
     @Test

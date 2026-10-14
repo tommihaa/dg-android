@@ -423,6 +423,7 @@ private fun MatchList(
                     // riippumatta siitä onko otteluita. Tyhjä lista ei saa viedä reunapäivää
                     // mukanaan.
                     ArchiveEdgeLine(edge = archiveEdge)
+                    AppVersionLine(modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 8.dp))
 
                     // Merkityt asemat samaa lajia kuin reunapäivä: laitteen oma tieto
                     // joka on olemassa riippumatta otteluista. Linkki eikä lukema, koska
@@ -492,10 +493,14 @@ private fun ArchiveEdgeLine(edge: ArchiveEdgeState) {
         text = when (edge) {
             ArchiveEdgeState.Unknown -> stringResource(R.string.archive_edge_loading)
             ArchiveEdgeState.Empty -> stringResource(R.string.archive_edge_empty)
-            is ArchiveEdgeState.Reaches -> stringResource(
-                R.string.archive_edge,
-                ArchiveEdge.formatDate(edge.storedAtEpochMillis),
-            )
+            is ArchiveEdgeState.Reaches -> {
+                // Haarukka alusta loppuun (Tommin tilaus 9.10.2026). Saman päivän haarukka
+                // sanotaan yhtenä päivänä, koska "9 Oct – 9 Oct" näyttäisi viallisuudelta.
+                val from = ArchiveEdge.formatDate(edge.fromEpochMillis)
+                val to = ArchiveEdge.formatDate(edge.storedAtEpochMillis)
+                if (from == to) stringResource(R.string.archive_edge, to)
+                else stringResource(R.string.archive_range, from, to)
+            }
         },
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,

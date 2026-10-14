@@ -117,6 +117,7 @@ import fi.tommi.dg.app.ui.rememberDgWallpaper
 import fi.tommi.dg.app.ui.dgScreenBackground
 import kotlin.random.Random
 import fi.tommi.dg.app.ui.tabFor
+import fi.tommi.dg.app.ui.woodSoundsNamed
 import fi.tommi.dg.app.ui.MESSAGES_ROUTE
 import fi.tommi.dg.app.ui.MARKS_ROUTE
 import fi.tommi.dg.app.ui.MarksScreen
@@ -136,6 +137,7 @@ import fi.tommi.dg.app.ui.tabRowInsets
 import fi.tommi.dg.app.ui.TopViewModel
 import fi.tommi.dg.domain.MatchId
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -316,8 +318,9 @@ class MainActivity : FragmentActivity() {
                     // riippuvuutta siitä milloin edellinen ruutu ehtii purkautua.
                     //
                     // **Pystylukko on laiteasetus 2.9.2026 alkaen** (Tommin päätös, `docs/UI.md`),
-                    // lauta on vaakaan aina. Pois kytkettynä lukuruudut seuraavat laitteen
-                    // asentoa (`UNSPECIFIED`). Asetus luetaan tilana, jotta asetusruudussa
+                    // ja laudan suunnalla on oma kytkimensä. Pois kytkettynä lukuruudut seuraavat
+                    // laitteen asentoa (`UNSPECIFIED`), ja se on oletus 10.10.2026 alkaen
+                    // (`docs/UI.md` › Suunta on oletuksena vapaa). Asetus luetaan tilana, jotta asetusruudussa
                     // tehty vaihto vaikuttaa heti eikä vasta seuraavassa navigoinnissa.
                     val entry by navController.currentBackStackEntryAsState()
                     val onBoard = entry?.destination?.route == BoardRoute.PATTERN
@@ -328,7 +331,7 @@ class MainActivity : FragmentActivity() {
                     var fullScreen by remember { mutableStateOf(container.fullScreen.get()) }
                     HideSystemBarsWhileVisible(enabled = fullScreen)
                     // Laudan pystytila on oma kytkimensä 23.9.2026 alkaen (Tommin päätös,
-                    // oletus vaaka). Tilana samasta syystä kuin pystylukko.
+                    // oletus seuraa laitetta 10.10.2026 alkaen). Tilana samasta syystä kuin pystylukko.
                     var boardRotates by remember { mutableStateOf(container.boardRotation.get()) }
                     var leftHanded by remember { mutableStateOf(container.handedness.get()) }
                     // Taustakuvien kansio tilana samasta syystä kuin pystylukko: valinta asetusruudussa
@@ -584,8 +587,11 @@ class MainActivity : FragmentActivity() {
                                 }
                             }
                             val archiveEdge by remember(account) {
-                                container.messages.observeNewestStoredAt(account)
-                                    .map(ArchiveEdgeState::from)
+                                combine(
+                                    container.messages.observeOldestStoredAt(account),
+                                    container.messages.observeNewestStoredAt(account),
+                                    ArchiveEdgeState::from,
+                                )
                             }.collectAsStateWithLifecycle(initialValue = ArchiveEdgeState.Unknown)
                             // Jono luetaan samalla tavalla ja samasta syystä: se on kannassa
                             // eikä verkossa, joten se on luettavissa myös silloin kun
@@ -1058,6 +1064,7 @@ class MainActivity : FragmentActivity() {
                             val archive by discussionModel.archive.collectAsStateWithLifecycle()
                             val compose by discussionModel.compose.collectAsStateWithLifecycle()
                             val post by discussionModel.post.collectAsStateWithLifecycle()
+                            val preview by discussionModel.preview.collectAsStateWithLifecycle()
                             val hide by discussionModel.hide.collectAsStateWithLifecycle()
                             val draftTitle by discussionModel.draftTitle.collectAsStateWithLifecycle()
                             val draftComment by discussionModel.draftComment.collectAsStateWithLifecycle()
@@ -1098,6 +1105,10 @@ class MainActivity : FragmentActivity() {
                                 onCloseCompose = discussionModel::closeCompose,
                                 onPost = discussionModel::post,
                                 onDismissPost = discussionModel::dismissPost,
+                                // Sivuston oma esikatselu, Tommin tilaus 14.10.2026.
+                                preview = preview,
+                                onPreview = discussionModel::preview,
+                                onClosePreview = discussionModel::closePreview,
                                 hide = hide,
                                 onHide = discussionModel::hide,
                                 onDismissHide = discussionModel::dismissHide,
@@ -1134,6 +1145,7 @@ class MainActivity : FragmentActivity() {
                                     )
                                     val siteHelp by searchModel.site.collectAsStateWithLifecycle()
                                     InfoScreen(
+                                        ownName = container.credentials.get()?.login,
                                         siteHelp = siteHelp,
                                         onLoadSiteHelp = searchModel::load,
                                         onOpen = { openSection = it },
@@ -1276,6 +1288,7 @@ class MainActivity : FragmentActivity() {
                             var opponentArrows by remember { mutableStateOf(container.moveArrows.opponent()) }
                             var pointPress by remember { mutableStateOf(container.pointPress.get()) }
                             var woodSound by remember { mutableStateOf(container.appTheme.woodSound()) }
+                            var mutedSounds by remember { mutableStateOf(woodSoundsNamed(container.appTheme.mutedSounds())) }
 
                             // Kansiovalitsin taustakuville: sama mekanismi kuin varmuuskopion
                             // tiedostolla (pysyvä uri-oikeus), mutta kansio ja lukuoikeus.
@@ -1360,6 +1373,11 @@ class MainActivity : FragmentActivity() {
                                 onWoodSoundChange = { on ->
                                     container.appTheme.saveWoodSound(on)
                                     woodSound = on
+                                },
+                                mutedSounds = mutedSounds,
+                                onMutedSoundsChange = { muted ->
+                                    container.appTheme.saveMutedSounds(muted.map { it.name }.toSet())
+                                    mutedSounds = muted
                                 },
                                 busyDeco = busyDeco,
                                 onBusyDecoChange = { on ->
@@ -1769,6 +1787,7 @@ class MainActivity : FragmentActivity() {
                                 pointPress = container.pointPress.get(),
                                 // Kolahdus vain Wood-teemassa, ja silloinkin oma kytkin päättää.
                                 woodSound = container.appTheme.woodSound(),
+                                mutedSounds = woodSoundsNamed(container.appTheme.mutedSounds()),
                                 // Sama lukuhetki. Oletus seuraa sivun tuplausvahvistusta
                                 // kunnes pelaaja koskee kytkimeen (27.9.2026).
                                 confirmBeaver = container.beaverConfirm.effective(container.siteSettings.get()),

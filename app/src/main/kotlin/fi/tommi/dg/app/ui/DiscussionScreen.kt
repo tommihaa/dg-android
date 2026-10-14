@@ -12,9 +12,11 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -41,6 +43,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLinkStyles
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
@@ -49,6 +52,7 @@ import androidx.compose.ui.unit.dp
 import fi.tommi.dg.app.R
 import fi.tommi.dg.domain.ForumArchivePage
 import fi.tommi.dg.domain.ForumBoard
+import fi.tommi.dg.domain.ForumBodyLink
 import fi.tommi.dg.domain.ForumComposePage
 import fi.tommi.dg.domain.ForumIndex
 import fi.tommi.dg.domain.ForumMonthLink
@@ -120,15 +124,32 @@ fun DiscussionScreen(
     onCloseCompose: () -> Unit = {},
     onPost: () -> Unit = {},
     onDismissPost: () -> Unit = {},
+    /** Esikatselu lomakkeen päällä tai null kun ruudulla on lomake (14.10.2026). */
+    preview: PreviewUiState? = null,
+    onPreview: () -> Unit = {},
+    onClosePreview: () -> Unit = {},
     hide: HideUiState = HideUiState.Idle,
     onHide: (ForumThread) -> Unit = {},
     onDismissHide: () -> Unit = {},
     onToggleHidden: () -> Unit = {},
 ) {
-    // Järjestys on kerrosten järjestys: ketju sulkeutuu ensin, arkisto sitten, ja vasta
-    // sen jälkeen back poistuu välilehdeltä.
+    // Ketjun lista avautuu [ThreadUiState.Loaded.startIndex]istä (testaajapalaute 13.10.2026).
+    // Tila on tässä eikä ketjunäkymässä, koska kommenttilomake korvaa näkymän: paluu
+    // lomakkeelta jättää lukijan siihen mihin hän jäi. Uusi lataus (toinen ketju tai sama
+    // ketju kommentin jälkeen) aloittaa omasta kohdastaan.
+    val loadedThread = thread as? ThreadUiState.Loaded
+    val threadListState = rememberSaveable(loadedThread, saver = LazyListState.Saver) {
+        LazyListState(firstVisibleItemIndex = loadedThread?.startIndex ?: 0)
+    }
+
+    // Esikatselu on lomakkeen päällä, joten back palaa siitä lomakkeelle eikä sulje lomaketta.
+    val previewing = compose != null && preview != null
+
+    // Järjestys on kerrosten järjestys: esikatselu ja lomake ensin, ketju sitten, arkisto sen
+    // jälkeen ja vasta lopuksi back poistuu välilehdeltä.
     BackHandler(enabled = compose != null || thread != null || archive != null) {
         when {
+            previewing -> onClosePreview()
             compose != null -> onCloseCompose()
             thread != null -> onCloseThread()
             else -> onCloseArchive()
@@ -146,6 +167,7 @@ fun DiscussionScreen(
                 title = {
                     Text(
                         when {
+                            previewing -> stringResource(R.string.discussion_preview_title)
                             compose is ComposeUiState.Loaded ->
                                 compose.page.heading ?: composeTitle(compose.kind)
                             compose != null -> composeTitle(compose.kind)
@@ -167,6 +189,7 @@ fun DiscussionScreen(
                     if (compose != null || thread != null || archive != null) {
                         TextButton(
                             onClick = when {
+                                previewing -> onClosePreview
                                 compose != null -> onCloseCompose
                                 thread != null -> onCloseThread
                                 else -> onCloseArchive
@@ -217,9 +240,19 @@ fun DiscussionScreen(
                     onPost = onPost,
                     onDismissPost = onDismissPost,
                     onClose = onCloseCompose,
+                    preview = preview,
+                    onPreview = onPreview,
+                    onClosePreview = onClosePreview,
+                    onOpenPage = onOpenPage,
                 )
             } else if (thread != null) {
-                ThreadView(thread = thread, onClose = onCloseThread, onOpenComment = onOpenComment, onOpenPage = onOpenPage)
+                ThreadView(
+                    thread = thread,
+                    listState = threadListState,
+                    onClose = onCloseThread,
+                    onOpenComment = onOpenComment,
+                    onOpenPage = onOpenPage,
+                )
             } else if (archive != null) {
                 ArchiveView(
                     archive = archive,
@@ -567,6 +600,7 @@ private fun ArchiveContent(
 @Composable
 private fun ThreadView(
     thread: ThreadUiState,
+    listState: LazyListState,
     onClose: () -> Unit,
     onOpenComment: () -> Unit,
     onOpenPage: (String) -> Unit,
@@ -588,8 +622,20 @@ private fun ThreadView(
             retryLabel = stringResource(R.string.discussion_thread_back),
         )
 
-        is ThreadUiState.Loaded -> DgLazyColumn(modifier = Modifier.fillMaxSize()) {
+        is ThreadUiState.Loaded -> DgLazyColumn(modifier = Modifier.fillMaxSize(), state = listState) {
             items(thread.page.posts, contentType = { DgStripedRow }) { post ->
+                // Sivun oma väliotsake ensimmäisen uuden viestin yläpuolella, sivuston
+                // punaisella kaikissa teemoissa (Tommin valinta 14.10.2026). Se on viestin
+                // rivin sisällä eikä oma rivinsä, jotta lukukohdan indeksi ei siirry.
+                if (post.ordinal != null && post.ordinal == thread.page.newFromOrdinal) {
+                    Text(
+                        text = stringResource(R.string.discussion_new_from_here),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = SITE_NEW_RED,
+                        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp),
+                    )
+                }
                 PostView(post, onOpenPage)
                 HorizontalDivider()
             }
@@ -625,6 +671,10 @@ private fun ComposeView(
     onPost: () -> Unit,
     onDismissPost: () -> Unit,
     onClose: () -> Unit,
+    preview: PreviewUiState?,
+    onPreview: () -> Unit,
+    onClosePreview: () -> Unit,
+    onOpenPage: (String) -> Unit,
 ) {
     when (compose) {
         is ComposeUiState.Loading -> BusyCentered()
@@ -641,16 +691,47 @@ private fun ComposeView(
             retryLabel = stringResource(R.string.board_back),
         )
 
-        is ComposeUiState.Loaded -> ComposeForm(
-            page = compose.page,
-            post = post,
-            draftTitle = draftTitle,
-            draftComment = draftComment,
-            onDraftTitleChange = onDraftTitleChange,
-            onDraftCommentChange = onDraftCommentChange,
-            onPost = onPost,
-            onDismissPost = onDismissPost,
-        )
+        is ComposeUiState.Loaded -> {
+            // Vahvistus on yhteinen lomakkeelle ja esikatselulle: kummankin lähetysnappi avaa
+            // saman dialogin. Lähetys kulkee aina lomakkeen omalla napilla. Esikatselusivun
+            // oma nappi (`Post Message`) on mittaamatta, joten sitä ei käytetä (14.10.2026).
+            var confirming by rememberSaveable { mutableStateOf(false) }
+            if (preview == null) {
+                ComposeForm(
+                    page = compose.page,
+                    post = post,
+                    draftTitle = draftTitle,
+                    draftComment = draftComment,
+                    onDraftTitleChange = onDraftTitleChange,
+                    onDraftCommentChange = onDraftCommentChange,
+                    onPreview = onPreview,
+                    onSubmit = { confirming = true },
+                    onDismissPost = onDismissPost,
+                )
+            } else {
+                PreviewView(
+                    page = compose.page,
+                    preview = preview,
+                    post = post,
+                    onEdit = onClosePreview,
+                    onSubmit = { confirming = true },
+                    onDismissPost = onDismissPost,
+                    onOpenPage = onOpenPage,
+                )
+            }
+            if (confirming) {
+                // Hetki ennen lähettämistä (SUBSTANSSI kohta 59): viesti jää palstalle omalla
+                // nimellä eikä sitä voi muokata tai poistaa itse. Nappi on sivun oma sana.
+                ConfirmDialog(
+                    title = stringResource(R.string.discussion_confirm_title),
+                    body = stringResource(R.string.discussion_confirm_body),
+                    confirmLabel = compose.page.submitLabel,
+                    onConfirm = { confirming = false; onPost() },
+                    onDismiss = { confirming = false },
+                    cancelLabel = stringResource(R.string.discussion_confirm_cancel),
+                )
+            }
+        }
     }
 }
 
@@ -662,11 +743,11 @@ private fun ComposeForm(
     draftComment: String,
     onDraftTitleChange: (String) -> Unit,
     onDraftCommentChange: (String) -> Unit,
-    onPost: () -> Unit,
+    onPreview: () -> Unit,
+    onSubmit: () -> Unit,
     onDismissPost: () -> Unit,
 ) {
     val sending = post is PostUiState.Sending
-    var confirming by rememberSaveable { mutableStateOf(false) }
     val titleTooLong = page.titleMaxLength?.let { draftTitle.trim().length > it } == true
     val titleMissing = page.isNewThread && draftTitle.isBlank()
     val canPost = !sending && draftComment.isNotBlank() && !titleMissing && !titleTooLong
@@ -709,10 +790,16 @@ private fun ComposeForm(
                 maxLines = 14,
                 label = { Text(stringResource(R.string.discussion_comment_label)) },
             )
-            // Sivun oma napin sana (`Create New Thread` tai `Submit Comment`), sama kuin
-            // vahvistusdialogissa (Tommin päätös 22.9.2026, `docs/UI.md`).
-            Button(onClick = { confirming = true }, enabled = canPost) {
-                Text(page.submitLabel)
+            // Sivun omat napit sivun järjestyksessä ja sanoin: `Preview` ja `Create New Thread`
+            // tai `Submit Comment`. Lähetysnapin sana on sama kuin vahvistusdialogissa (Tommin
+            // päätös 22.9.2026), esikatselu tuli 14.10.2026 (`docs/UI.md`).
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                page.previewLabel?.let { label ->
+                    OutlinedButton(onClick = onPreview, enabled = canPost) { Text(label) }
+                }
+                Button(onClick = onSubmit, enabled = canPost) {
+                    Text(page.submitLabel)
+                }
             }
         }
         // Lopputulos napin alla eikä lomakkeen alussa (Tommin päätös 14.9.2026, kaikki
@@ -724,18 +811,77 @@ private fun ComposeForm(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
+}
 
-    if (confirming) {
-        // Hetki ennen lähettämistä (SUBSTANSSI kohta 59): viesti jää palstalle omalla
-        // nimellä eikä sitä voi muokata tai poistaa itse. Nappi on sivun oma sana.
-        ConfirmDialog(
-            title = stringResource(R.string.discussion_confirm_title),
-            body = stringResource(R.string.discussion_confirm_body),
-            confirmLabel = page.submitLabel,
-            onConfirm = { confirming = false; onPost() },
-            onDismiss = { confirming = false },
-            cancelLabel = stringResource(R.string.discussion_confirm_cancel),
+/**
+ * Esikatselu lomakkeen tilalla (Tommin valinta 14.10.2026): sivuston palauttama runko samalla
+ * pinnalla ja samalla tekstityylillä kuin ketjun viesti, sen alla `Edit` ja lähetysnappi sivun
+ * omalla sanalla. Lähetysnappi avaa saman vahvistuksen kuin lomakkeella.
+ */
+@Composable
+private fun PreviewView(
+    page: ForumComposePage,
+    preview: PreviewUiState,
+    post: PostUiState,
+    onEdit: () -> Unit,
+    onSubmit: () -> Unit,
+    onDismissPost: () -> Unit,
+    onOpenPage: (String) -> Unit,
+) {
+    val editLabel = stringResource(R.string.discussion_preview_edit)
+    when (preview) {
+        PreviewUiState.Loading -> BusyCentered()
+
+        is PreviewUiState.Failed -> RetryNote(
+            text = preview.reason.text(),
+            onRetry = onEdit,
+            retryLabel = editLabel,
         )
+
+        PreviewUiState.NotAPreview -> RetryNote(
+            text = stringResource(R.string.discussion_not_a_preview),
+            onRetry = onEdit,
+            retryLabel = editLabel,
+        )
+
+        is PreviewUiState.Loaded -> {
+            val sending = post is PostUiState.Sending
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+                    .dgReadingSurface(),
+            ) {
+                Text(
+                    text = stringResource(R.string.discussion_preview_note),
+                    modifier = Modifier.padding(16.dp),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                HorizontalDivider()
+                Text(
+                    text = forumBodyText(preview.preview.body, preview.preview.links, onOpenPage),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                HorizontalDivider()
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        OutlinedButton(onClick = onEdit, enabled = !sending) { Text(editLabel) }
+                        Button(onClick = onSubmit, enabled = !sending) { Text(page.submitLabel) }
+                    }
+                    PostNote(post = post, onDismiss = onDismissPost)
+                    Text(
+                        text = stringResource(R.string.discussion_post_note),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -806,35 +952,12 @@ private fun PostNote(post: PostUiState, onDismiss: () -> Unit) {
  * porautuu sovelluksessa, ja muunlainen href jää tekstiksi koska sitä ei ole mitattu.
  * Linkki on primary-värinen ja alleviivattu, jotta napautettavuus näkyy.
  */
+/** Sivuston `New From Here` -otsakkeen väri (`<FONT COLOR=#FF0000>`, `forum_read.html`). */
+private val SITE_NEW_RED = Color(0xFFFF0000)
+
 @Composable
 private fun PostView(post: ForumPost, onOpenPage: (String) -> Unit) {
-    val linkStyle = TextLinkStyles(
-        style = SpanStyle(
-            color = MaterialTheme.colorScheme.primary,
-            textDecoration = TextDecoration.Underline,
-        ),
-    )
-    val body = buildAnnotatedString {
-        var cursor = 0
-        post.links.sortedBy { it.start }.forEach { link ->
-            if (link.start < cursor || link.end > post.body.length) return@forEach
-            append(post.body, cursor, link.start)
-            val annotation = when {
-                link.href.startsWith("http://") || link.href.startsWith("https://") ->
-                    LinkAnnotation.Url(link.href, linkStyle)
-                link.href.startsWith("/") ->
-                    LinkAnnotation.Clickable(link.href, linkStyle) { onOpenPage(link.href) }
-                else -> null
-            }
-            if (annotation == null) {
-                append(post.body, link.start, link.end)
-            } else {
-                withLink(annotation) { append(post.body, link.start, link.end) }
-            }
-            cursor = link.end
-        }
-        append(post.body, cursor, post.body.length)
-    }
+    val body = forumBodyText(post.body, post.links, onOpenPage)
     Column(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -856,6 +979,45 @@ private fun PostView(post: ForumPost, onOpenPage: (String) -> Unit) {
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+    }
+}
+
+/**
+ * Viestin tai esikatselun runko linkkeineen. Yksi funktio, jotta esikatselu näyttää samalta
+ * kuin sama teksti julkaistuna ketjussa.
+ */
+@Composable
+private fun forumBodyText(
+    text: String,
+    links: List<ForumBodyLink>,
+    onOpenPage: (String) -> Unit,
+): AnnotatedString {
+    val linkStyle = TextLinkStyles(
+        style = SpanStyle(
+            color = MaterialTheme.colorScheme.primary,
+            textDecoration = TextDecoration.Underline,
+        ),
+    )
+    return buildAnnotatedString {
+        var cursor = 0
+        links.sortedBy { it.start }.forEach { link ->
+            if (link.start < cursor || link.end > text.length) return@forEach
+            append(text, cursor, link.start)
+            val annotation = when {
+                link.href.startsWith("http://") || link.href.startsWith("https://") ->
+                    LinkAnnotation.Url(link.href, linkStyle)
+                link.href.startsWith("/") ->
+                    LinkAnnotation.Clickable(link.href, linkStyle) { onOpenPage(link.href) }
+                else -> null
+            }
+            if (annotation == null) {
+                append(text, link.start, link.end)
+            } else {
+                withLink(annotation) { append(text, link.start, link.end) }
+            }
+            cursor = link.end
+        }
+        append(text, cursor, text.length)
     }
 }
 

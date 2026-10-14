@@ -6,12 +6,13 @@ import android.content.SharedPreferences
 /**
  * Seuraako lauta laitteen asentoa, laitteen oma kytkin (`docs/ASETUKSET.md` luku 3).
  *
- * **Oletus on pois**, jolloin lauta on vaakaan kuten 24.8.2026 päätös sanoo (`docs/UI.md`,
- * Suunta lukittiin). Kytkin syntyi Tommin tilauksesta 23.9.2026: pelaaminen myös pystytilassa.
- * Päällä ollessaan lauta piirtyy pystyssä leveyden mittaan, samalla asettelulla jonka
- * kirjoitushetki sai 19.9.2026. Kuudes arvo (`docs/ARVOT.md`) on syy oletukseen: tekijän oma
- * lisä on valittava, ja perusasettelu on se johon mitoitus on tehty. Sama laji kuin
- * [PortraitLockStore]: ei lähde koskaan verkkoon.
+ * **Oletus on päällä 10.10.2026 alkaen** (Tommin päätös, `docs/UI.md` › *Suunta on oletuksena
+ * vapaa*): lauta seuraa laitteen asentoa, ja vaakalukko on valittava. Kytkin syntyi Tommin
+ * tilauksesta 23.9.2026 oletuksena pois. Päällä ollessaan lauta piirtyy pystyssä leveyden
+ * mittaan, samalla asettelulla jonka kirjoitushetki sai 19.9.2026. Kuudes arvo
+ * (`docs/ARVOT.md`) on syy oletukseen: vaakalukko on tekijän oman laitteen maku, ja muilla
+ * laitteilla pakotus toi testaajille toimimattomuutta. Sama laji kuin [PortraitLockStore]:
+ * ei lähde koskaan verkkoon.
  */
 interface BoardRotationStore {
 
@@ -26,7 +27,7 @@ class SharedPrefsBoardRotation(private val prefs: SharedPreferences) : BoardRota
         context.applicationContext.getSharedPreferences(FILE_NAME, Context.MODE_PRIVATE),
     )
 
-    override fun get(): Boolean = prefs.getBoolean(KEY, false)
+    override fun get(): Boolean = prefs.getBoolean(KEY, true)
 
     override fun save(enabled: Boolean) {
         prefs.edit().putBoolean(KEY, enabled).apply()

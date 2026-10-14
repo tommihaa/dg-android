@@ -84,6 +84,16 @@ interface AppThemeStore {
     fun woodSound(): Boolean
 
     fun saveWoodSound(enabled: Boolean)
+
+    /**
+     * Äänet jotka pelaaja on jättänyt pois `Game sounds` -kytkimen alta (Tommin tilaus
+     * 14.10.2026), `WoodSound`in niminä. Oletus on tyhjä, eli kytkin päällä soi kaikki.
+     * Tallennetaan poisjätetyt eikä valitut, jotta myöhemmin lisätty ääni soi ilman erillistä
+     * valintaa samoin kuin muutkin.
+     */
+    fun mutedSounds(): Set<String>
+
+    fun saveMutedSounds(names: Set<String>)
 }
 
 class SharedPrefsAppTheme(private val prefs: SharedPreferences) : AppThemeStore {
@@ -117,11 +127,18 @@ class SharedPrefsAppTheme(private val prefs: SharedPreferences) : AppThemeStore 
         prefs.edit().putBoolean(KEY_WOOD_SOUND, enabled).apply()
     }
 
+    override fun mutedSounds(): Set<String> = prefs.getStringSet(KEY_MUTED_SOUNDS, null)?.toSet().orEmpty()
+
+    override fun saveMutedSounds(names: Set<String>) {
+        prefs.edit().putStringSet(KEY_MUTED_SOUNDS, names).apply()
+    }
+
     private companion object {
         const val FILE_NAME = "dg_app_theme"
         const val KEY = "app_theme"
         const val KEY_BOARD = "board_before"
         const val KEY_BUSY_DECO = "busy_deco_before"
         const val KEY_WOOD_SOUND = "wood_sound"
+        const val KEY_MUTED_SOUNDS = "wood_sound_muted"
     }
 }

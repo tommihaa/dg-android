@@ -10,8 +10,10 @@ import fi.tommi.dg.domain.ForumBoard
 import fi.tommi.dg.domain.ForumComposePage
 import fi.tommi.dg.domain.ForumIndex
 import fi.tommi.dg.domain.ForumMonthLink
+import fi.tommi.dg.domain.ForumPreview
 import fi.tommi.dg.domain.ForumThread
 import fi.tommi.dg.domain.ForumThreadPage
+import fi.tommi.dg.domain.postOrdinalOf
 import fi.tommi.dg.net.DgResponse
 import fi.tommi.dg.scrape.DgPages
 import fi.tommi.dg.scrape.ForumParser
@@ -54,7 +56,12 @@ sealed interface ThreadUiState {
     /** [origin] on listan rivi, jotta otsikko on ruudulla jo latauksen aikana. */
     data class Loading(val origin: ForumThread) : ThreadUiState
 
-    data class Loaded(val page: ForumThreadPage) : ThreadUiState
+    /**
+     * [startIndex] on se viesti (paikka [ForumThreadPage.posts]issa) josta lista avautuu
+     * ylimpänä. Avattaessa se on sivuston oma lukukohta, kommentin jälkeen oma viesti, ja
+     * kumpikin on se mihin selain sivun omasta linkistä hyppää (testaajapalaute 13.10.2026).
+     */
+    data class Loaded(val page: ForumThreadPage, val startIndex: Int = 0) : ThreadUiState
 
     /** 200 OK, mutta sivu ei ole ketju. */
     data object NotAThread : ThreadUiState
@@ -99,6 +106,22 @@ sealed interface ComposeUiState {
     data class NotAForm(override val kind: ComposeKind) : ComposeUiState
 
     data class Failed(override val kind: ComposeKind, val reason: Failure) : ComposeUiState
+}
+
+/**
+ * Esikatselun tila. Null [DiscussionViewModel.preview]issa tarkoittaa että ruudulla on
+ * lomake. Esikatselu on lomakkeen päällä oleva kerros eikä lomakkeen tila, koska `Edit`
+ * palaa samaan lomakkeeseen luonnoksineen (Tommin valinta 14.10.2026, `docs/UI.md`).
+ */
+sealed interface PreviewUiState {
+    data object Loading : PreviewUiState
+
+    data class Loaded(val preview: ForumPreview) : PreviewUiState
+
+    /** 200 OK, mutta sivu ei ole esikatselu. */
+    data object NotAPreview : PreviewUiState
+
+    data class Failed(val reason: Failure) : PreviewUiState
 }
 
 /**
@@ -184,6 +207,9 @@ class DiscussionViewModel(
     private val _post = MutableStateFlow<PostUiState>(PostUiState.Idle)
     val post: StateFlow<PostUiState> = _post.asStateFlow()
 
+    private val _preview = MutableStateFlow<PreviewUiState?>(null)
+    val preview: StateFlow<PreviewUiState?> = _preview.asStateFlow()
+
     private val _hide = MutableStateFlow<HideUiState>(HideUiState.Idle)
     val hide: StateFlow<HideUiState> = _hide.asStateFlow()
 
@@ -248,7 +274,7 @@ class DiscussionViewModel(
 
     // Epäonnistunut päivitys saa korvata näkyvän sisällön virheruudulla: valinta eikä
     // vuoto, ks. perustelu `LoungeViewModel.read`.
-    private fun fetch() {
+    private fun fetch(keepOnFailure: Boolean = false) {
         val path = _path.value ?: run {
             _state.value = DiscussionUiState.NoPath
             return
@@ -257,8 +283,9 @@ class DiscussionViewModel(
             is DiscussionUiState.Loaded -> current.copy(refreshing = true)
             else -> DiscussionUiState.Loading
         }
+        val shown = _state.value as? DiscussionUiState.Loaded
         viewModelScope.launch {
-            _state.value = withContext(io) {
+            val next = withContext(io) {
                 when (val response = pages.fetch(path)) {
                     is DgResponse.Ok ->
                         ForumParser.parseIndex(response.html)?.let { index ->
@@ -278,6 +305,13 @@ class DiscussionViewModel(
                     // Tunnuksia ei poisteta täällä: CredentialsStoren omistaa TopViewModel.
                     DgResponse.AuthFailed -> DiscussionUiState.SessionExpired
                 }
+            }
+            // Vanhentunut istunto näytetään aina, koska lista ei silloin enää päivity mistään.
+            val failed = next is DiscussionUiState.Failed || next is DiscussionUiState.NotAForumPage
+            _state.value = if (keepOnFailure && shown != null && failed) {
+                shown.copy(refreshing = false)
+            } else {
+                next
             }
         }
     }
@@ -340,8 +374,13 @@ class DiscussionViewModel(
     }
 
     /**
-     * Avaa ketjun. Polku on listan rivin oma `readPath` fragmentteineen; fragmentti on
-     * selaimen oma osoitin eikä kulje verkon yli, ja OkHttp pudottaa sen itse.
+     * Avaa ketjun. Polku on listan rivin oma `readPath` fragmentteineen; fragmentti ei kulje
+     * verkon yli ja OkHttp pudottaa sen itse.
+     *
+     * **Fragmentti on silti ruudun asia**: se on sivuston muistama viimeinen luettu viesti, ja
+     * selain hyppää siihen. Ilman sitä iso ketju avautui joka kerta alusta (testaajapalaute
+     * 13.10.2026). Lukukohtaa ei pidetä kirjaa itse, koska sivusto pitää sen jo, myös
+     * selaimessa ja muissa sovelluksissa luetusta.
      */
     fun openThread(origin: ForumThread) {
         if (_thread.value is ThreadUiState.Loading) return
@@ -353,7 +392,12 @@ class DiscussionViewModel(
                 when (val response = pages.fetch(origin.readPath)) {
                     is DgResponse.Ok ->
                         ForumParser.parseThread(response.html)
-                            ?.let { ThreadUiState.Loaded(it) }
+                            ?.let { page ->
+                                ThreadUiState.Loaded(
+                                    page = page,
+                                    startIndex = page.indexOfPost(origin.lastReadOrdinal) ?: 0,
+                                )
+                            }
                             ?: ThreadUiState.NotAThread
                     is DgResponse.Offline -> ThreadUiState.Failed(Failure.Offline)
                     is DgResponse.ServerError -> ThreadUiState.Failed(Failure.Server(response.code))
@@ -367,9 +411,17 @@ class DiscussionViewModel(
         }
     }
 
+    /**
+     * Sulkee ketjun ja hakee indeksin uudelleen, jos ketju ehti latautua. Sivusto poistaa
+     * New-merkin luetulta ketjulta, mutta ruudulla oli yhä ennen lukua haettu lista
+     * (testaajapalaute 9.10.2026). Haku ei kuluta mitään, ja epäonnistunut haku jättää
+     * näkyvän listan paikalleen, koska sulkeminen ei ole päivityspyyntö.
+     */
     fun closeThread() {
+        val read = _thread.value is ThreadUiState.Loaded
         _thread.value = null
         openThreadPath = null
+        if (read) fetch(keepOnFailure = true)
     }
 
     /**
@@ -391,6 +443,7 @@ class DiscussionViewModel(
         if (_compose.value is ComposeUiState.Loading || _post.value is PostUiState.Sending) return
 
         _post.value = PostUiState.Idle
+        _preview.value = null
         composePath = path
         val draft = drafts[path]
         _draftTitle.value = draft?.first.orEmpty()
@@ -423,7 +476,48 @@ class DiscussionViewModel(
      */
     fun closeCompose() {
         if (_post.value is PostUiState.Sending) return
+        _preview.value = null
         _compose.value = null
+    }
+
+    /**
+     * Lähettää luonnoksen lomakkeen omalla `Preview`-napilla ja näyttää sivuston vastauksen
+     * (Tommin tilaus 14.10.2026). Mitään ei julkaista: mittauksessa ketjun viestimäärä pysyi
+     * samana (`ForumPreviewCaptureLiveTest`). Esikatselun aikana luonnosta ei voi muokata,
+     * joten esikatselu näyttää juuri sen tekstin, joka lähtee lähetysnapista.
+     */
+    fun preview() {
+        if (_preview.value is PreviewUiState.Loading || _post.value is PostUiState.Sending) return
+        val compose = _compose.value as? ComposeUiState.Loaded ?: return
+        val submission = compose.page.preview(title = _draftTitle.value, comment = _draftComment.value)
+            ?: return
+
+        _preview.value = PreviewUiState.Loading
+        viewModelScope.launch {
+            val result = withContext(io) {
+                when (val response = forms.send(submission)) {
+                    is DgResponse.Ok ->
+                        ForumParser.parsePreview(response.html)
+                            ?.let { PreviewUiState.Loaded(it) }
+                            ?: PreviewUiState.NotAPreview
+                    is DgResponse.Offline -> PreviewUiState.Failed(Failure.Offline)
+                    is DgResponse.ServerError -> PreviewUiState.Failed(Failure.Server(response.code))
+                    DgResponse.Sleeping -> PreviewUiState.Failed(Failure.Sleeping)
+                    DgResponse.AuthFailed -> {
+                        _state.value = DiscussionUiState.SessionExpired
+                        null
+                    }
+                }
+            }
+            // Edit ehti palata lomakkeelle kesken haun, eikä vastausta tuoda sen päälle.
+            if (_preview.value is PreviewUiState.Loading) _preview.value = result
+        }
+    }
+
+    /** Esikatselun `Edit`: paluu lomakkeelle luonnoksineen. Kesken olevaa lähetystä ei jätetä. */
+    fun closePreview() {
+        if (_post.value is PostUiState.Sending) return
+        _preview.value = null
     }
 
     fun setDraftTitle(value: String) {
@@ -482,6 +576,7 @@ class DiscussionViewModel(
                 composePath?.let(drafts::remove)
                 _draftTitle.value = ""
                 _draftComment.value = ""
+                _preview.value = null
                 _compose.value = null
             }
         }
@@ -491,8 +586,9 @@ class DiscussionViewModel(
      * **Kuittaussivu mitattiin 4.9.2026** (fixture `forum_posted.html`), ja se muutti
      * todisteen lajin. Tähän asti onnistuminen luettiin siitä että lähetetty teksti löytyi
      * uudelleen haetusta ketjusta, eli sovelluksen omasta vertailusta. Nyt sivusto sanoo
-     * sen itse: vastauksella on linkki `Review your message.`, joka osoittaa juuri syntyneen
-     * viestin ankkuriin (`DgPages.isForumPostedPage`).
+     * sen itse: vastauksella on linkki `Review your message.` (`DgPages.isForumPostedPage`).
+     * Linkin numero on omaa viestiä **edeltävä** viesti eikä oma (mitattu kahdesti: 4.9.2026
+     * linkki `#54` ja oma viesti 55, 14.10.2026 linkki `#11` ja oma viesti 12).
      *
      * Ketju haetaan silti uudelleen, koska ruudun on näytettävä oma viesti paikallaan.
      * Ero on siinä mitä tapahtuu kun haku epäonnistuu: kuitattu lähetys on kuitattu, vaikka
@@ -500,12 +596,21 @@ class DiscussionViewModel(
      * vastaa jotain muuta kuin mitattua kuittausta.
      */
     private fun confirmComment(responseHtml: String, comment: String): PostUiState {
-        val kuitattu = DgPages.isForumPostedPage(responseHtml)
+        val ownPath = DgPages.postedMessagePath(responseHtml)
+        val kuitattu = ownPath != null
         val fresh = ForumParser.parseThread(responseHtml)
             ?: openThreadPath?.let { path ->
                 (pages.fetch(path) as? DgResponse.Ok)?.let { ForumParser.parseThread(it.html) }
             }
-        if (fresh != null) _thread.value = ThreadUiState.Loaded(fresh)
+        // Ketju avautuu omasta viestistä, joka on kuittauksen linkin nimeämää viestiä seuraava.
+        // Ilman linkkiä se on viimeinen viesti, koska kommentti menee ketjun perään.
+        val own = ownPath?.let(::postOrdinalOf)?.plus(1)
+        if (fresh != null) {
+            _thread.value = ThreadUiState.Loaded(
+                page = fresh,
+                startIndex = fresh.indexOfPost(own) ?: fresh.posts.lastIndex.coerceAtLeast(0),
+            )
+        }
         if (kuitattu) return PostUiState.Done(ComposeKind.COMMENT)
         if (fresh == null) return PostUiState.Unconfirmed(ComposeKind.COMMENT)
         // Ensimmäinen ei-tyhjä rivi riittää todisteeksi: sivu rivittää ja kappaleistaa
@@ -580,3 +685,10 @@ class DiscussionViewModel(
             DiscussionViewModel(pages, forms, forumPathUpstream) as T
     }
 }
+
+/**
+ * Viestin paikka listassa sivun omasta numerosta tai null kun numeroa ei ole tai sitä ei ole
+ * sivulla. Haku eikä vähennyslasku, koska numero on sivun ankkuri eikä listan paikka.
+ */
+private fun ForumThreadPage.indexOfPost(ordinal: Int?): Int? =
+    ordinal?.let { n -> posts.indexOfFirst { it.ordinal == n }.takeIf { it >= 0 } }

@@ -426,11 +426,11 @@ class DgPagesTest {
     }
 
     /**
-     * Kuittaus nimeaa syntyneen viestin, ja se on sen hyodyllisin piirre: osoite osoittaa
-     * ankkuriin ketjussa eika ketjun alkuun.
+     * Kuittauksen linkki osoittaa ankkuriin ketjussa. Numero on omaa viestiä edeltävä: tämän
+     * fixturen lähetyksessä oma viesti oli 55 (mitattu uudelleen 14.10.2026 raakasivusta).
      */
     @Test
-    fun `kuittaus nimeaa syntyneen viestin osoitteen`() {
+    fun `kuittauksen linkki osoittaa omaa viestia edeltavaan ankkuriin`() {
         val path = DgPages.postedMessagePath(org.jsoup.Jsoup.parse(fixture("forum_posted.html")))
 
         assertEquals("/bg/forum2/politics/read/60001/54#54", path)

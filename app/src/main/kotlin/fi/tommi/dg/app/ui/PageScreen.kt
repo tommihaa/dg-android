@@ -287,6 +287,7 @@ private fun ProfileContent(
     var confirmingIgnore by remember { mutableStateOf(false) }
     var confirmingInvite by remember { mutableStateOf<InviteChoice?>(null) }
     val actionBusy = action is ProfileActionUiState.Sending
+    val openMap = rememberPlayersMapOpener(page.player.name)
     // Resurssit luetaan LazyColumnin ulkopuolella, koska sen rakennuslohko ei ole composable.
     val exportNote = exportText(export)
     val actionNote = actionText(action)
@@ -477,6 +478,10 @@ private fun ProfileContent(
                 ) { onOpenPath(path) }
             }
         }
+        // Pelaajien kartta tämän pelaajan kohdalle (Tommin valinta 9.10.2026). Linkki on aina,
+        // koska kartan nimilista haetaan vasta painalluksesta: App Help lupaa ettei sovellus
+        // lue mitään avaamatonta. Ilman merkkiä kartta avautuu alusta ja ilmoitus kertoo sen.
+        item { LinkRow(stringResource(R.string.players_map_label), openMap) }
         if (page.activeMatches.isNotEmpty()) {
             item {
                 PageHeading(

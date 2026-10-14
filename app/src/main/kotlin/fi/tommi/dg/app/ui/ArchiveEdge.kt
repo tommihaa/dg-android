@@ -63,8 +63,14 @@ sealed interface ArchiveEdgeState {
     /** Kanta vastasi, eikä arkistossa ole yhtään viestiä. */
     data object Empty : ArchiveEdgeState
 
-    /** Kanta vastasi, ja tuorein tallennus on tältä hetkeltä. */
-    data class Reaches(val storedAtEpochMillis: Long) : ArchiveEdgeState
+    /**
+     * Kanta vastasi, ja tuorein tallennus on tältä hetkeltä. [fromEpochMillis] on vanhin
+     * tallennus, haarukan alku (9.10.2026); ilman sitä haarukka alkaa samasta päivästä.
+     */
+    data class Reaches(
+        val storedAtEpochMillis: Long,
+        val fromEpochMillis: Long = storedAtEpochMillis,
+    ) : ArchiveEdgeState
 
     companion object {
         /**
@@ -76,5 +82,11 @@ sealed interface ArchiveEdgeState {
          */
         fun from(newestStoredAtEpochMillis: Long?): ArchiveEdgeState =
             newestStoredAtEpochMillis?.let(::Reaches) ?: Empty
+
+        /** Haarukka: vanhin ja tuorein tallennus. Puuttuva alku on sama kuin loppu. */
+        fun from(oldestStoredAtEpochMillis: Long?, newestStoredAtEpochMillis: Long?): ArchiveEdgeState =
+            newestStoredAtEpochMillis
+                ?.let { Reaches(it, oldestStoredAtEpochMillis ?: it) }
+                ?: Empty
     }
 }

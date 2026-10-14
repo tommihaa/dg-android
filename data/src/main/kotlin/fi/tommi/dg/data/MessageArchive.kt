@@ -103,6 +103,9 @@ interface MessageArchive {
      */
     fun observeNewestStoredAt(account: String?): Flow<Long?>
 
+    /** Arkiston alkupäivä, haarukan toinen pää. `null` kun arkisto on tyhjä. */
+    fun observeOldestStoredAt(account: String?): Flow<Long?>
+
     /**
      * Merkitsee viestit poistetuiksi (6.10.2026): ne katoavat jokaisesta näkymästä, viennistä
      * ja varmuuskopiosta mutta jäävät roskakoriin 30 päiväksi. Saman kutsun viestit ovat
@@ -162,6 +165,8 @@ class RoomMessageArchive(
     override suspend fun claimUnowned(account: String): Int = dao.claimUnowned(account)
 
     override fun observeNewestStoredAt(account: String?): Flow<Long?> = dao.observeNewestStoredAt(account)
+
+    override fun observeOldestStoredAt(account: String?): Flow<Long?> = dao.observeOldestStoredAt(account)
 
     override suspend fun delete(ids: List<String>, account: String?, at: Long): Int =
         if (ids.isEmpty()) 0 else dao.markDeleted(ids, account, at)

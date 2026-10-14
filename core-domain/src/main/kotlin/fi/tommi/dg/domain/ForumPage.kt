@@ -62,8 +62,8 @@ data class ForumThread(
     val title: String,
     /**
      * Lukusivun polku sellaisenaan fragmentteineen, esim.
-     * `/bg/forum2/main/read/64107#3`. Fragmentti on palvelimen oma osoitin ensimmäiseen
-     * lukemattomaan viestiin, ja se säilytetään koska polkua ei koota.
+     * `/bg/forum2/main/read/64107#3`. Fragmentti on palvelimen oma osoitin viimeiseen
+     * luettuun viestiin ([lastReadOrdinal]) ja se säilytetään koska polkua ei koota.
      */
     val readPath: String,
     /** Viestien määrä ketjussa, tai null kun solu ei ole luku. */
@@ -83,7 +83,23 @@ data class ForumThread(
      * rivillä (`listhidden`-näkymässä) ja kuukausisivulla, jossa linkkejä ei ole.
      */
     val hidePath: String? = null,
-)
+) {
+    /**
+     * Viimeinen luettu viesti palvelimen omasta fragmentista. Mitattu 14.10.2026 kaappauksista:
+     * ketjun 64101 rivi oli `#19` ja ketjusivulla `New From Here` oli viestien 19 ja 20
+     * välissä; luetun ketjun fragmentti on sen viestimäärä. Null kun fragmenttia ei ole (ketjua
+     * ei ole avattu tällä tilillä) ja kuukausisivun riveillä, joilla sitä ei ole koskaan.
+     */
+    val lastReadOrdinal: Int? get() = postOrdinalOf(readPath)
+}
+
+/**
+ * Viestin numero palstan polun fragmentista, esim. 19 polusta `/bg/forum2/main/read/64101#19`
+ * ja 54 polusta `/bg/forum2/politics/read/60001/54#54`. Fragmentti on sivun oma
+ * `<A NAME=n>`-ankkuri, joten numero on sama kuin [ForumPost.ordinal]. Null kun fragmenttia
+ * ei ole tai se ei ole luku.
+ */
+fun postOrdinalOf(path: String): Int? = path.substringAfter('#', "").toIntOrNull()
 
 /**
  * Palstan kuukausiarkisto (`/bg/forum2/<palsta>/month` ja `.../month/<vuosi>/<kk>`).
@@ -123,6 +139,12 @@ data class ForumThreadPage(
      * koota ketjun tunnuksesta vaan luetaan linkistä; null kun linkkiä ei ole.
      */
     val addCommentPath: String? = null,
+    /**
+     * Ensimmäinen viesti sivun oman `New From Here` -otsakkeen jälkeen, tai null kun otsaketta
+     * ei ole (Tommin tilaus ja valinta 14.10.2026). Paikka luetaan sivulta eikä lasketa
+     * lukukohdasta, jotta sivusto päättää sen myös selaimessa luetun mukaan.
+     */
+    val newFromOrdinal: Int? = null,
 )
 
 /**
@@ -153,6 +175,11 @@ data class ForumComposePage(
     val submitField: String,
     /** Lähetysnapin arvo sivun sanoin: `Create New Thread` tai `Submit Comment`. */
     val submitLabel: String,
+    /**
+     * Esikatselunapin arvo sivun sanoin, sivulla `Preview`. Nappi on samanniminen kuin
+     * lähetysnappi ja palvelin erottaa ne arvosta. Null kun lomakkeella ei ole sitä.
+     */
+    val previewLabel: String? = null,
 ) {
     /** Onko tämä uuden ketjun lomake (otsikkokenttä) eikä kommentti. */
     val isNewThread: Boolean get() = titleField != null
@@ -161,7 +188,18 @@ data class ForumComposePage(
      * Lomake lähetettäväksi. Null jos teksti on tyhjä, tai jos uuden ketjun otsikko on tyhjä
      * tai sivun rajaa pitempi: sivuston oma selain ei päästäisi sitäkään läpi.
      */
-    fun write(title: String?, comment: String): FormSubmission? {
+    fun write(title: String?, comment: String): FormSubmission? =
+        fill(title, comment, button = submitLabel)
+
+    /**
+     * Sama lomake esikatselunapilla (Tommin tilaus 14.10.2026). Palvelin vastaa sivulla jossa
+     * teksti on sivuston omassa muodossaan eikä mitään julkaista. Null samoin ehdoin kuin
+     * [write] ja lisäksi kun lomakkeella ei ole esikatselunappia.
+     */
+    fun preview(title: String?, comment: String): FormSubmission? =
+        previewLabel?.let { fill(title, comment, button = it) }
+
+    private fun fill(title: String?, comment: String, button: String): FormSubmission? {
         if (comment.isBlank()) return null
         val fields = linkedMapOf<String, String>()
         titleField?.let { field ->
@@ -171,7 +209,7 @@ data class ForumComposePage(
             fields[field] = value
         }
         fields[commentField] = comment
-        fields[submitField] = submitLabel
+        fields[submitField] = button
         return FormSubmission(action = action, method = method, fields = fields)
     }
 }
@@ -214,4 +252,18 @@ data class ForumPost(
      * jota ei voi todentaa.
      */
     val postedAtText: String?,
+)
+
+/**
+ * Palstan esikatselu: sivuston vastaus kun lomake lähetetään `Preview`-napilla (mitattu
+ * 14.10.2026, fixture `forum_preview.html`). Runko on sivuston omassa muodossaan: yksittäinen
+ * rivinvaihto on kadonnut, tyhjästä rivistä on tullut kappale ja `http://`-osoite on linkki
+ * mutta `https://`-osoite ei.
+ *
+ * Mitään ei julkaistu, joten tällä ei ole kirjoittajaa eikä aikaa.
+ */
+data class ForumPreview(
+    /** Runko tekstinä samassa muodossa kuin [ForumPost.body]. */
+    val body: String,
+    val links: List<ForumBodyLink> = emptyList(),
 )

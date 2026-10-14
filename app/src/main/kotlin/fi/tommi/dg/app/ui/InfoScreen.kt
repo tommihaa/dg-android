@@ -100,6 +100,8 @@ fun InfoScreen(
     siteHelp: SiteHelpSearchState = SiteHelpSearchState.Idle,
     /** Pyytää `/help`in noudon; kutsutaan kun hakukenttään kirjoitetaan tai uusinnasta. */
     onLoadSiteHelp: () -> Unit = {},
+    /** Kirjautuneen tilin nimi, jonka kohdalle pelaajien kartta avautuu (9.10.2026). */
+    ownName: String? = null,
 ) {
     // Kenttä on ruudun omaa tilaa: haku ei lähetä mitään sivustolle App Helpin osalta, ja
     // DG Helpin nouto pyydetään erikseen ensimmäisellä merkillä.
@@ -142,6 +144,7 @@ fun InfoScreen(
                 return@Column
             }
 
+            val openMap = rememberPlayersMapOpener(ownName)
             InfoSection.entries.forEach { section ->
                 InfoRow(
                     label = stringResource(section.labelRes),
@@ -149,6 +152,17 @@ fun InfoScreen(
                     onClick = { onOpen(section) },
                 )
                 HorizontalDivider()
+                // Pelaajien kartta Linksin perässä (Tommin valinta 9.10.2026 kahdesta
+                // laitekaappauksesta, toinen oli linkki Loungen Players-jaksossa). Ei
+                // [InfoSection], koska rivi ei porraudu ruutuun vaan avaa selaimen.
+                if (section == InfoSection.SiteLinks) {
+                    InfoRow(
+                        label = stringResource(R.string.players_map_label),
+                        summary = stringResource(R.string.players_map_summary),
+                        onClick = openMap,
+                    )
+                    HorizontalDivider()
+                }
             }
 
             // Viimeisenä ja ilman vahvistusdialogia. Teko on nyt kahden napautuksen päässä

@@ -18,9 +18,10 @@ import org.robolectric.annotation.Config
  * Laudan pystytilan kytkin levyllä ja suuntasäännössä (`docs/ASETUKSET.md` luku 3,
  * `docs/UI.md` › Lauta pystyssä).
  *
- * Ensimmäinen väite on se jonka takia tämä testi on olemassa: **oletus on vaaka**. Jos oletus
- * vaihtuisi vahingossa, lauta kääntyisi pystyyn kaikilta joilla kytkintä ei ole koskettu, ja
- * puhelimella nappula putoaisi 29 dp:stä noin 20 dp:hen.
+ * Kaksi ensimmäistä väitettä ovat ne joiden takia tämä testi on olemassa: **lauta seuraa
+ * laitetta ja pystylukko on pois oletuksena** (Tommin päätös 10.10.2026, `docs/UI.md` › Suunta
+ * on oletuksena vapaa). Jos oletus palaisi vahingossa, pakotus koskisi taas kaikkia joilla
+ * kytkintä ei ole koskettu, myös testaajien laitteita.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
@@ -36,7 +37,18 @@ class SharedPrefsBoardRotationTest {
     }
 
     @Test
-    fun `oletus on vaaka`() {
+    fun `oletus seuraa laitetta`() {
+        assertTrue(SharedPrefsBoardRotation(prefs).get())
+    }
+
+    @Test
+    fun `pystylukon oletus on pois`() {
+        assertFalse(SharedPrefsPortraitLock(prefs).get())
+    }
+
+    @Test
+    fun `kytkin pois sailyy yli uuden lukijan`() {
+        SharedPrefsBoardRotation(prefs).save(false)
         assertFalse(SharedPrefsBoardRotation(prefs).get())
     }
 

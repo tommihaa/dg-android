@@ -614,8 +614,14 @@ Viesteistä ja siirroista (Tommin havainnot ja kuvakaappaukset 29.7.2026):
 - **Palstan rakenne, mitattu 26.8.2026 kaappauksista `sessio/0416_bg_forum2.html` ja
   `sessio/0417_bg_forum2_main_read_64101.html`.** Indeksin (`/bg/forum2`) ketjurivit
   tunnistaa linkeistä `/bg/forum2/main/read/<id>`, joissa on yleensä perässä fragmentti
-  (`#3`), palvelimen oma osoitin ensimmäiseen lukemattomaan viestiin; ilman fragmenttia
-  linkki vie ketjun alkuun. Lukemattoman ketjun rivillä on punainen `New`-merkki linkin
+  (`#3`), palvelimen oma osoitin ~~ensimmäiseen lukemattomaan~~ **viimeiseen luettuun**
+  viestiin; ilman fragmenttia linkki vie ketjun alkuun. **Korjattu 14.10.2026 kaappauksista:**
+  ketjun 64101 rivi oli `#19` (21 viestiä) ja ketjusivulla `New From Here` on viestien 19 ja 20
+  välissä (`sessio/0416` ja `0417`). Luetun ketjun fragmentti on sen viestimäärä (`sessio-13-9-ilta2/0003`:
+  `64208#10` kymmenellä viestillä, `64131#120` sadallakahdellakymmenellä) ja avaamattomalla
+  ketjulla sitä ei ole (`64106`, New-merkki, kolme viestiä). Selain avaa siis viimeisen luetun
+  viestin ylimpänä. Sovellus tekee samoin 14.10.2026 alkaen (`ForumThread.lastReadOrdinal`).
+  Lukemattoman ketjun rivillä on punainen `New`-merkki linkin
   edellä samassa solussa. Sarakkeet: otsikko, viestimäärä (`ALIGN=CENTER`), aloittaja
   (`<I>`), Hide-linkki. Palstoja on kaksi (`General` oletuksena, `/bg/forum2/politics`).
   Ketjusivulla otsikko on `<H2>`, ja jokainen viesti alkaa ankkurista `<A NAME=n>` ja
@@ -665,8 +671,9 @@ Viesteistä ja siirroista (Tommin havainnot ja kuvakaappaukset 29.7.2026):
   `WRAP=physical` tarkoittaa että selain lähettää tekstialueen rivinvaihdot sellaisinaan
   80 sarakkeen kohdalta; sovellus lähettää käyttäjän omat rivinvaihdot eikä rivitä itse,
   koska rivitys on selaimen vanha oletus eikä palvelimen vaatimus (mittaamatta, oletus
-  kirjattu). **Mittaamatta on myös lähetyksen vastaussivu** kummallakin lomakkeella sekä
-  `Preview`-sivun muoto. Onnistuminen luetaan siitä että ketju tai indeksi haettuna uudelleen
+  kirjattu). **Mittaamatta on myös lähetyksen vastaussivu** kummallakin lomakkeella ~~sekä
+  `Preview`-sivun muoto~~ (**`Preview` mitattu 14.10.2026**, ks. *Palstan viesti: tyhjä rivi
+  säilyy, rivinvaihto ei*). Onnistuminen luetaan siitä että ketju tai indeksi haettuna uudelleen
   sisältää lähetetyn tekstin tai otsikon, samaan tapaan kuin luovutuksessa kadonnut rivi.
   Kommenttisivu haettiin General-palstan ketjuun ilman ketjun avaamista: `add`-polku
   johdettiin indeksin `read`-polusta, ja ketjuksi valittiin sellainen jolla ei ollut
@@ -2011,8 +2018,13 @@ hakematta `/bg/top`ia. Viestijonon `/bg/nextgame` tyhjänä on yhä mittaamatta.
   **Palstakommentti** (`POST /bg/forum2/<palsta>/submitadd/<id>`) vastaa 1400-tavuisella
   sivulla, joka on palstan tavallinen kuori: otsikko on sama `DailyGammon Forum: <palsta>`
   kuin ketjulla ja indeksillä, `H2` on ketjun otsikko ja runko on vakiolause `Thank you for
-  your comments.` Tunnistus on siksi linkissä `Review your message.`, jonka osoite **nimeää
-  juuri syntyneen viestin** muodossa `/bg/forum2/<palsta>/read/<ketju>/<numero>#<numero>`.
+  your comments.` Tunnistus on siksi linkissä `Review your message.`, jonka osoite on muotoa
+  `/bg/forum2/<palsta>/read/<ketju>/<numero>#<numero>`. **Numero on omaa viestiä edeltävä
+  viesti** (korjattu 14.10.2026): 4.9.2026 linkki `#54` ja oma viesti 55
+  (`sessio-4-9-ilta/0029_…`), 14.10.2026 linkki `#11` ja oma viesti 12 (`palsta-14-10/0007_…`).
+  Kirjaus sanoi 4.9. linkin nimeävän juuri syntyneen viestin, eikä sitä verrattu ketjuun.
+  Kummassakin lähetyksessä ketju oli haettu juuri ennen, joten mittaus ei erota edeltävää
+  viestiä viimeksi luetusta.
   Uuden ketjun vastausta (`submitnew`) ei ole mitattu.
 
   **Turnausilmoittautumisen peruutus** (`GET /bg/lounge?action=cancel&event=<id>&userid=<id>`)
@@ -2106,6 +2118,27 @@ saa olla mitä tahansa, koska sivusto rivittää itse.
 
 `Preview` on turvallinen mittausväline, koska se ei luo ketjua eikä kirjoita mitään: vastaus
 on `Preview Comment` -otsikoitu sivu ja sen alla sama lomake uudestaan.
+
+**Vastaussivu kaapattiin 14.10.2026 Tommin luvalla** (`ForumPreviewCaptureLiveTest`, yksi
+lähetys luetun ketjun 64286 kommenttilomakkeelle; raakasivu `raakasivut/forum2_preview.html`,
+fixture `forum_preview.html`). Ketju haettiin ennen ja jälkeen. Viestejä oli kumpaakin kertaa
+kaksi. Sivu on palstan tavallinen kuori, jonka `<TITLE>` on sama kuin indeksillä. Rakenne:
+
+- `<H2>Preview Comment</H2><HR>`, sen alla runko ja `<HR>`, sitten lomake `Edit Comment:`
+  samalla `action`illa ja tekstialueella, jossa teksti on entiteetteinä.
+- **Yksittäinen rivinvaihto jää raa'aksi rivinvaihdoksi**, jonka selain näyttää välilyöntinä.
+  Tyhjä rivi tulee `<P>`:nä. Tämä vahvistaa 5.9. mittauksen HTML:n tasolla.
+- **`http://`-osoite on linkki, `https://`-osoite ei ole**: rinnakkain samassa virkkeessä
+  `<A HREF=http://example.com>http://example.com</A> and https://example.com`. Tämä ratkaisee
+  `docs/PALSTAPOSTAUS.md`:n avoimen kahden selityksen kysymyksen. Laiteajossa näppäimistö
+  kirjoitti alun isolla (`Http://`), eikä sekään tullut linkiksi.
+- HTML:n erikoismerkit tulevat entiteetteinä (`&lt;b&gt;`), joten käyttäjän HTML näkyy merkkeinä
+  eikä kumpikaan `<HR>` voi tulla käyttäjän tekstistä. Ääkköset kulkivat ehjinä.
+- **Esikatselusivun lähetysnappi on `Post Message`**, ei kommenttisivun `Submit Comment`.
+  Sitä ei ole mitattu, joten sovellus lähettää aina kommenttisivun omalla lomakkeella.
+
+Uuden ketjun esikatselua (`submitnew` napilla `Preview`) ei kaapattu tällä kertaa; 5.9.
+mittauksen mukaan sen otsake on sama `Preview Comment`.
 
 ## Sivuston toiminnot joita sovellus ei tee (koottu 27.9.2026)
 

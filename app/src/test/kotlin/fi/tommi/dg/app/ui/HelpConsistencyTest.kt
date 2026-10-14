@@ -136,6 +136,9 @@ class HelpConsistencyTest {
             "Verify Decline", // sivuston vahvistusruutu
             "Verify Double", // sivuston vahvistusruutu
             "Save to Drive", // Androidin jakovalikon kohde
+            "Game Dashboard", // ChromeOSin ikkunavalikko, testaajan sanoin 13.10.2026
+            "Screen Size", // sama valikko
+            "Resizable", // sama valikko
         )
         val ui = strings.filterKeys { !it.startsWith("help_") }.values.joinToString("\n")
         val named = strings.filterKeys { it.startsWith("help_a_") }.values
@@ -186,6 +189,28 @@ class HelpConsistencyTest {
         assertEquals(BoardStyle.entries.size, styles.size)
         assertMentions(listOf("look"), styles)
         assertMentions(listOf("look"), listOf(strings.getValue("settings_theme"), strings.getValue("settings_board_style"),strings.getValue("settings_dice_style"), strings.getValue("settings_score_style"), strings.getValue("settings_busy_style")))
+    }
+
+    @Test
+    fun suunnanOletuksetSanotaan() {
+        // Tommin päätös 10.10.2026 (`docs/UI.md` › Suunta on oletuksena vapaa): pystylukko on
+        // oletuksena pois ja lauta seuraa laitetta. Ohje sanoo molemmat oletukset, ja ne
+        // luetaan säilöjen lähdekoodista, jotta oletuksen vaihto kaataa tämän ennen ohjetta.
+        val lock = File("src/main/kotlin/fi/tommi/dg/app/session/PortraitLockStore.kt").readText()
+        val board = File("src/main/kotlin/fi/tommi/dg/app/session/BoardRotationStore.kt").readText()
+        assertTrue("pystylukon oletus muuttui: help_a_settings vanheni", "getBoolean(KEY, false)" in lock)
+        assertTrue("laudan suunnan oletus muuttui: help_a_settings vanheni", "getBoolean(KEY, true)" in board)
+        assertMentions(
+            listOf("settings"),
+            listOf(
+                "<b>Keep lists and messages upright</b>, which is off unless you turn it on",
+                "<b>Turn the board with the device</b>, which is on unless you turn it off",
+                // Laitekohtainen suositus (Tommin tilaus 10.10.2026): puhelimelle pakotukset, tabletille oletukset.
+                "On a phone we suggest turning on <b>Keep lists and messages upright</b>",
+                "turning off <b>Turn the board with the device</b>",
+                "On a tablet the defaults work well",
+            ),
+        )
     }
 
     @Test

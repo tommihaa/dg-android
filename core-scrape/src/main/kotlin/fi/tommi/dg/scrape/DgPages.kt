@@ -135,8 +135,9 @@ object DgPages {
      * **Tunnistus on linkissä eikä otsikossa**, ja se on mittauksen sanelema: sivu on
      * palstan tavallinen kuori, jonka `TITLE` on sama `DailyGammon Forum: <palsta>` kuin
      * ketjulla ja indeksillä. Ainoa kohta joka esiintyy vain kuittauksessa on linkki
-     * `Review your message.`, ja se on myös hyödyllisin: sen osoite nimeää **juuri sen
-     * viestin joka syntyi** (`/bg/forum2/<palsta>/read/<ketju>/<numero>#<numero>`).
+     * `Review your message.` (`/bg/forum2/<palsta>/read/<ketju>/<numero>#<numero>`). Numero
+     * on omaa viestiä **edeltävä** viesti: 4.9.2026 linkki `#54` ja oma viesti 55, 14.10.2026
+     * linkki `#11` ja oma viesti 12. Aiempi kirjaus sanoi linkin nimeävän oman viestin.
      *
      * Mitattu 4.9.2026 raaoista tavuista kommentista (`forum_posted.html`,
      * `POST /bg/forum2/politics/submitadd/<id>`). **Uuden ketjun vastausta ei ole
@@ -147,6 +148,17 @@ object DgPages {
 
     fun isForumPostedPage(document: Document): Boolean =
         postedMessagePath(document) != null
+
+    fun postedMessagePath(html: String): String? = postedMessagePath(Jsoup.parse(html))
+
+    /**
+     * Onko sivu palstan esikatselu, eli vastaus `Preview`-napilla lähetettyyn lomakkeeseen
+     * (mitattu 14.10.2026, fixture `forum_preview.html`). Tunnus on sivun oma otsake
+     * `Preview Comment` ja sen alla sama lomake uudestaan; otsikko on sama kuin indeksillä.
+     */
+    fun isForumPreview(document: Document): Boolean =
+        document.select("h2").any { it.text().trim() == FORUM_PREVIEW_HEADING } &&
+            document.selectFirst("form textarea[name]") != null
 
     /** Kuittauksen `Review your message.` -linkin osoite, tai null kun sivu ei ole kuittaus. */
     fun postedMessagePath(document: Document): String? =
@@ -376,6 +388,9 @@ object DgPages {
      * jokaisella lautasivulla tasan 24, jokaisella muulla nolla.
      */
     private const val POINT_IMAGE_COUNT = 24
+
+    /** Palstan esikatselusivun `<h2>` sivun omalla sanalla, ks. [isForumPreview]. */
+    const val FORUM_PREVIEW_HEADING = "Preview Comment"
 
     /**
      * Onko sivu lautasivu, eli onko sillä asema jonka voi piirtää.

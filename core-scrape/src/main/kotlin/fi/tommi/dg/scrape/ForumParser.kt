@@ -7,6 +7,7 @@ import fi.tommi.dg.domain.ForumComposePage
 import fi.tommi.dg.domain.ForumIndex
 import fi.tommi.dg.domain.ForumMonthLink
 import fi.tommi.dg.domain.ForumPost
+import fi.tommi.dg.domain.ForumPreview
 import fi.tommi.dg.domain.ForumThread
 import fi.tommi.dg.domain.ForumThreadPage
 import fi.tommi.dg.domain.FormMethod
@@ -87,6 +88,9 @@ object ForumParser {
     private val BOARD_NAME = Regex("""DailyGammon Forum:\s*(.+?)\s*$""")
     /** Viestin alku, sivun oma ankkuri. */
     private val POST_ANCHOR = Regex("""<A\s+NAME=(\d+)>""", RegexOption.IGNORE_CASE)
+
+    /** Sivun oma väliotsake viimeisen luetun ja ensimmäisen uuden viestin välissä (`forum_read.html`). */
+    private val NEW_FROM_HERE = Regex("""<H3>\s*<FONT[^>]*>\s*New From Here\s*</FONT>\s*</H3>""", RegexOption.IGNORE_CASE)
     /** Allekirjoitusrivin alku, jonka jälkeen runko ei jatku. */
     private val SIGNATURE = Regex("""<P>\s*<B>\s*Posted\s+by\b""", RegexOption.IGNORE_CASE)
     /** Aikaleima allekirjoituksesta: kaikki nimen jälkeisen " at ":n perässä. */
@@ -128,9 +132,14 @@ object ForumParser {
         val document = Jsoup.parse(html)
         val form = document.selectFirst(COMPOSE_FORM) ?: return null
         val comment = form.selectFirst("textarea[name]") ?: return null
-        val submit = form.select("input[type=submit][name]")
-            .firstOrNull { !it.attr("value").equals(PREVIEW, ignoreCase = true) }
+        val buttons = form.select("input[type=submit][name]")
+        val submit = buttons.firstOrNull { !it.attr("value").equals(PREVIEW, ignoreCase = true) }
             ?: return null
+        // Esikatselu kelpaa vain samannimisenä kuin lähetys, koska kenttä on yksi ja arvo
+        // ratkaisee: eri nimellä nappi olisi eri lomake, jota ei ole mitattu.
+        val preview = buttons.firstOrNull {
+            it.attr("value").equals(PREVIEW, ignoreCase = true) && it.attr("name") == submit.attr("name")
+        }
         val title = form.selectFirst("input[type=text][name]")
 
         return ForumComposePage(
@@ -145,6 +154,7 @@ object ForumParser {
             commentField = comment.attr("name"),
             submitField = submit.attr("name"),
             submitLabel = submit.attr("value"),
+            previewLabel = preview?.attr("value"),
         )
     }
 
@@ -208,7 +218,7 @@ object ForumParser {
         return ForumThread(
             title = readLink.text().trim(),
             // Polku fragmentteineen sellaisenaan: #n on palvelimen oma osoitin
-            // ensimmäiseen lukemattomaan viestiin.
+            // viimeiseen luettuun viestiin (ForumThread.lastReadOrdinal).
             readPath = readPath,
             postCount = row.select("td[align=center]").firstNotNullOfOrNull {
                 it.text().trim().toIntOrNull()
@@ -251,7 +261,44 @@ object ForumParser {
             posts = posts,
             addCommentPath = document.selectFirst(ADD_COMMENT_LINK)?.attr("href")
                 ?.takeIf { it.isNotBlank() },
+            // Otsake on viestien välissä omana `<H3>`:naan, ja sitä seuraava ankkuri on
+            // ensimmäinen uusi viesti. Käyttäjän teksti kulkee entiteetteinä, joten rungossa
+            // oleva sama lause ei osu tagilliseen hakuun.
+            newFromOrdinal = NEW_FROM_HERE.find(html)?.let { marker ->
+                anchors.firstOrNull { it.range.first > marker.range.last }?.groupValues?.get(1)?.toIntOrNull()
+            },
         )
+    }
+
+    /**
+     * Esikatselu, eli vastaus lomakkeeseen joka lähetettiin `Preview`-napilla. Runko luetaan
+     * samalla tavalla kuin ketjun viesti, joten se näyttää ruudulla samalta kuin julkaistuna.
+     */
+    fun parsePreview(html: String): ForumPreview? {
+        val document = Jsoup.parse(html)
+        if (!DgPages.isForumPreview(document)) return null
+        val heading = document.select("h2").first { it.text().trim() == DgPages.FORUM_PREVIEW_HEADING }
+
+        // Runko on otsakkeen jälkeisen `<HR>`:n ja seuraavan `<HR>`:n välissä ja sen jälkeen
+        // tulee lomake (mitattu 14.10.2026). Haku kulkee sisarsolmuina eikä raakatekstinä,
+        // jotta HTML-kommentti tai lomakkeen teksti ei osu siihen. Käyttäjän teksti tulee
+        // entiteetteinä (`&lt;`), joten rungossa ei voi olla omaa `<HR>`-elementtiä.
+        val body = Element("div")
+        var opened = false
+        var node = heading.nextSibling()
+        while (node != null) {
+            val next = node.nextSibling()
+            if (node is Element && node.normalName() == "hr") {
+                if (opened) break
+                opened = true
+            } else if (opened) {
+                body.appendChild(node.clone())
+            }
+            node = next
+        }
+        if (!opened) return null
+        val (text, links) = paragraphText(body)
+        return ForumPreview(body = text, links = links)
     }
 
     private fun parsePost(ordinal: Int?, segment: String): ForumPost {

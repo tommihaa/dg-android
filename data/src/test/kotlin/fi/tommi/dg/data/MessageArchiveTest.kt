@@ -144,6 +144,19 @@ class MessageArchiveTest {
     }
 
     @Test
+    fun `haarukan alku on tilin vanhin tallennus`() = runTest {
+        // Top Pagen arkistorivi näyttää alun ja lopun (9.10.2026). Toisen tilin vanhempi
+        // viesti ei siirrä alkua, ja tyhjä tili antaa nullin eikä nollaa.
+        arkisto.archive(viesti("uudempi", receivedAt = 3_000), TILI)
+        arkisto.archive(viesti("vanhempi", receivedAt = 2_000), TILI)
+        arkisto.archive(viesti("siskon", receivedAt = 500), TOINEN_TILI)
+
+        assertEquals(2_000L, arkisto.observeOldestStoredAt(TILI).first())
+        assertEquals(3_000L, arkisto.observeNewestStoredAt(TILI).first())
+        assertNull(arkisto.observeOldestStoredAt(null).first())
+    }
+
+    @Test
     fun `kirjautumaton nakee tyhjan arkiston eika kaikkien yhteista`() = runTest {
         arkisto.archive(viesti("oma"), TILI)
 

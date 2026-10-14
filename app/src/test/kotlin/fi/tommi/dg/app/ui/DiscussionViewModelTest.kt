@@ -111,10 +111,82 @@ class DiscussionViewModelTest {
         assertEquals(listOf(POLKU, "/bg/forum2/main/read/60001#3"), fetcher.requested)
         val open = malli.thread.value as ThreadUiState.Loaded
         assertEquals(1, open.page.posts.size)
+        // Lukukohtaa 3 ei ole yhden viestin sivulla, joten lista avautuu alusta.
+        assertEquals(0, open.startIndex)
     }
 
     @Test
-    fun `sulkeminen palauttaa listalle eika hae mitaan`() {
+    fun `ketju avautuu sivuston omasta lukukohdasta`() {
+        // Rivin #2 on viimeinen luettu viesti ja selain hyppää siihen: viesti 2 ylimpänä,
+        // New From Here sen alla (testaajapalaute 13.10.2026).
+        val fetcher = RecordingFetcher { path ->
+            if (path == POLKU) DgResponse.Ok(INDEKSI_LUKUKOHDALLA) else DgResponse.Ok(KETJU_KOLME)
+        }
+        val malli = malli(fetcher)
+
+        runTest(dispatcher) {
+            advanceUntilIdle()
+            malli.openThread((malli.state.value as DiscussionUiState.Loaded).index.threads.single())
+            advanceUntilIdle()
+        }
+
+        assertEquals(listOf(POLKU, "/bg/forum2/main/read/60001#2"), fetcher.requested)
+        val open = malli.thread.value as ThreadUiState.Loaded
+        assertEquals(3, open.page.posts.size)
+        assertEquals(1, open.startIndex)
+    }
+
+    @Test
+    fun `avaamaton ketju avautuu alusta`() {
+        // Ilman fragmenttia ketjua ei ole avattu tällä tilillä ja sivun linkki vie alkuun.
+        val fetcher = RecordingFetcher { path ->
+            if (path == POLKU) DgResponse.Ok(INDEKSI_AVAAMATON) else DgResponse.Ok(KETJU_KOLME)
+        }
+        val malli = malli(fetcher)
+
+        runTest(dispatcher) {
+            advanceUntilIdle()
+            malli.openThread((malli.state.value as DiscussionUiState.Loaded).index.threads.single())
+            advanceUntilIdle()
+        }
+
+        assertEquals(0, (malli.thread.value as ThreadUiState.Loaded).startIndex)
+    }
+
+    @Test
+    fun `kommentin jalkeen ketju avautuu kuittauksen nimeamaa viestia seuraavasta`() {
+        // Kuittauksen Review your message. osoittaa omaa viestiä edeltävään viestiin (mitattu
+        // 4.9. ja 14.10.2026). Linkki #1 tarkoittaa omaa viestiä 2, ja ketjussa on sen perässä
+        // vielä yksi, joten testi erottaa linkin varareitistä (viimeinen viesti).
+        val fetcher = RecordingFetcher { path ->
+            when (path) {
+                POLKU -> DgResponse.Ok(INDEKSI_LUKUKOHDALLA)
+                "/bg/forum2/main/add/60001" -> DgResponse.Ok(KOMMENTTILOMAKE)
+                else -> DgResponse.Ok(KETJU_KOLME)
+            }
+        }
+        val sender = RecordingSender { DgResponse.Ok(KUITTAUS) }
+        val malli = malli(fetcher, sender = sender)
+
+        runTest(dispatcher) {
+            advanceUntilIdle()
+            malli.openThread((malli.state.value as DiscussionUiState.Loaded).index.threads.single())
+            advanceUntilIdle()
+            malli.openComment()
+            advanceUntilIdle()
+            malli.setDraftComment("Toinen viesti")
+            malli.post()
+            advanceUntilIdle()
+        }
+
+        assertEquals(PostUiState.Done(ComposeKind.COMMENT), malli.post.value)
+        assertEquals(1, (malli.thread.value as ThreadUiState.Loaded).startIndex)
+    }
+
+    @Test
+    fun `luetun ketjun sulkeminen hakee indeksin uudelleen`() {
+        // Sivusto poistaa New-merkin luetulta ketjulta, joten lista luetaan uudelleen eikä
+        // ruudulle jää lukua edeltävä merkki (testaajapalaute 9.10.2026).
         val fetcher = RecordingFetcher { path ->
             if (path == POLKU) DgResponse.Ok(INDEKSI) else DgResponse.Ok(KETJU)
         }
@@ -125,10 +197,33 @@ class DiscussionViewModelTest {
             malli.openThread((malli.state.value as DiscussionUiState.Loaded).index.threads.single())
             advanceUntilIdle()
             malli.closeThread()
+            advanceUntilIdle()
         }
 
         assertNull(malli.thread.value)
-        assertEquals(2, fetcher.requested.size)
+        assertEquals(listOf(POLKU, "/bg/forum2/main/read/60001#3", POLKU), fetcher.requested)
+        assertTrue(malli.state.value is DiscussionUiState.Loaded)
+    }
+
+    @Test
+    fun `sulkemisen jalkeinen epaonnistunut haku jattaa listan nakyviin`() {
+        val fetcher = RecordingFetcher { path ->
+            if (path == POLKU) DgResponse.Ok(INDEKSI) else DgResponse.Ok(KETJU)
+        }
+        val malli = malli(fetcher)
+
+        runTest(dispatcher) {
+            advanceUntilIdle()
+            malli.openThread((malli.state.value as DiscussionUiState.Loaded).index.threads.single())
+            advanceUntilIdle()
+            fetcher.answer = { DgResponse.Offline("testi") }
+            malli.closeThread()
+            advanceUntilIdle()
+        }
+
+        val state = malli.state.value as DiscussionUiState.Loaded
+        assertEquals(1, state.index.threads.size)
+        assertEquals(false, state.refreshing)
     }
 
     @Test
@@ -270,7 +365,83 @@ class DiscussionViewModelTest {
         assertEquals(PostUiState.Done(ComposeKind.COMMENT), malli.post.value)
         assertNull(malli.compose.value)
         assertEquals("", malli.draftComment.value)
-        assertEquals(2, (malli.thread.value as ThreadUiState.Loaded).page.posts.size)
+        val open = malli.thread.value as ThreadUiState.Loaded
+        assertEquals(2, open.page.posts.size)
+        // Vastauksessa ei ole kuittauslinkkiä, joten oma viesti on ketjun viimeinen.
+        assertEquals(1, open.startIndex)
+    }
+
+    @Test
+    fun `esikatselu lahtee sivun omalla preview-napilla ja edit palaa luonnokseen`() {
+        val fetcher = RecordingFetcher { path ->
+            when (path) {
+                POLKU -> DgResponse.Ok(INDEKSI)
+                "/bg/forum2/main/add/60001" -> DgResponse.Ok(KOMMENTTILOMAKE)
+                else -> DgResponse.Ok(KETJU)
+            }
+        }
+        val sender = RecordingSender { DgResponse.Ok(ESIKATSELU) }
+        val malli = malli(fetcher, sender = sender)
+
+        runTest(dispatcher) {
+            advanceUntilIdle()
+            malli.openThread((malli.state.value as DiscussionUiState.Loaded).index.threads.single())
+            advanceUntilIdle()
+            malli.openComment()
+            advanceUntilIdle()
+            malli.setDraftComment("Rivi yksi\nrivi kaksi")
+            malli.preview()
+            advanceUntilIdle()
+        }
+
+        val sent = sender.sent.single()
+        assertEquals("/bg/forum2/main/submitadd/60001", sent.action)
+        assertEquals(mapOf("comment" to "Rivi yksi\nrivi kaksi", "submit" to "Preview"), sent.fields)
+        val shown = malli.preview.value as PreviewUiState.Loaded
+        assertEquals("Rivi yksi rivi kaksi", shown.preview.body)
+        // Esikatselu ei ole lähetys: lomake ja luonnos ovat ennallaan.
+        assertEquals(PostUiState.Idle, malli.post.value)
+        assertTrue(malli.compose.value is ComposeUiState.Loaded)
+
+        malli.closePreview()
+        assertNull(malli.preview.value)
+        assertEquals("Rivi yksi\nrivi kaksi", malli.draftComment.value)
+    }
+
+    @Test
+    fun `esikatselusta lahetys kulkee lomakkeen omalla napilla`() {
+        // Esikatselusivun oma nappi on Post Message, joka on mittaamatta.
+        val fetcher = RecordingFetcher { path ->
+            when (path) {
+                POLKU -> DgResponse.Ok(INDEKSI)
+                "/bg/forum2/main/add/60001" -> DgResponse.Ok(KOMMENTTILOMAKE)
+                "/bg/forum2/main/read/60001#3" -> DgResponse.Ok(KETJU_VASTATTU)
+                else -> DgResponse.Ok(KETJU)
+            }
+        }
+        val sender = RecordingSender { submission ->
+            if (submission.fields["submit"] == "Preview") DgResponse.Ok(ESIKATSELU)
+            else DgResponse.Ok("<html><body>ok</body></html>")
+        }
+        val malli = malli(fetcher, sender = sender)
+
+        runTest(dispatcher) {
+            advanceUntilIdle()
+            malli.openThread((malli.state.value as DiscussionUiState.Loaded).index.threads.single())
+            advanceUntilIdle()
+            malli.openComment()
+            advanceUntilIdle()
+            malli.setDraftComment("Vastaukseni tähän\ntoinen rivi")
+            malli.preview()
+            advanceUntilIdle()
+            malli.post()
+            advanceUntilIdle()
+        }
+
+        assertEquals(listOf("Preview", "Submit Comment"), sender.sent.map { it.fields["submit"] })
+        assertEquals(PostUiState.Done(ComposeKind.COMMENT), malli.post.value)
+        assertNull(malli.preview.value)
+        assertNull(malli.compose.value)
     }
 
     @Test
@@ -599,6 +770,69 @@ class DiscussionViewModelTest {
             <a name=1>Runko.
             <p><b>Posted by <a href=/bg/user/10001>joku</a> at Mon Aug 3 21:29:44 2026</b><hr>
             <a href="/bg/forum2/main/add/60001">Add a Comment</a>
+            </body></html>
+        """.trimIndent()
+
+        val INDEKSI_LUKUKOHDALLA = """
+            <html><body>
+            <h1>DailyGammon Forum: General</h1>
+            <table><tr><th>Title</th><th>#</th><th>Poster</th></tr>
+            <tr><td><font color=#FF0000><b>New</b></font>
+            <a href="/bg/forum2/main/read/60001#2">Ketju</a></td>
+            <td align=center>3</td><td><i>joku</i></td></tr>
+            </table>
+            </body></html>
+        """.trimIndent()
+
+        val INDEKSI_AVAAMATON = """
+            <html><body>
+            <h1>DailyGammon Forum: General</h1>
+            <table><tr><th>Title</th><th>#</th><th>Poster</th></tr>
+            <tr><td><font color=#FF0000><b>New</b></font>
+            <a href="/bg/forum2/main/read/60001">Ketju</a></td>
+            <td align=center>3</td><td><i>joku</i></td></tr>
+            </table>
+            </body></html>
+        """.trimIndent()
+
+        /** Sivun muoto kuten `sessio/0417`: New From Here viimeisen luetun jälkeen. */
+        val KETJU_KOLME = """
+            <html><body>
+            <h2>Ketju</h2>
+            <a name=1>Ensimmäinen.
+            <p><b>Posted by <a href=/bg/user/10001>joku</a> at Mon Aug 3 21:29:44 2026</b><hr>
+            <a name=2>Toinen.
+            <p><b>Posted by <a href=/bg/user/10002>minä</a> at Tue Aug 4 10:00:00 2026</b><hr>
+            <h3>New From Here</h3>
+            <a name=3>Kolmas.
+            <p><b>Posted by <a href=/bg/user/10003>kolmas</a> at Wed Aug 5 12:00:00 2026</b><hr>
+            <a href="/bg/forum2/main/add/60001">Add a Comment</a>
+            </body></html>
+        """.trimIndent()
+
+        /** Esikatselu kuten fixture `forum_preview.html`: yksittäinen rivinvaihto jää raa'aksi. */
+        val ESIKATSELU = """
+            <html><body>
+            <h1>DailyGammon Forum: General</h1>
+            <h2>Preview Comment</h2><hr>
+            Rivi yksi
+            rivi kaksi<hr>
+            <form action=/bg/forum2/main/submitadd/60001 method=post>
+            <textarea name=comment>Rivi yksi
+            rivi kaksi</textarea>
+            <input type=submit name=submit value="Preview">
+            <input type=submit name=submit value="Post Message">
+            </form>
+            </body></html>
+        """.trimIndent()
+
+        /** Kommentin kuittaus kuten fixture `forum_posted.html`. */
+        val KUITTAUS = """
+            <html><body>
+            <h1>DailyGammon Forum: General</h1>
+            <h2>Ketju</h2>
+            Thank you for your comments.
+            <p><a href=/bg/forum2/main/read/60001/1#1>Review your message.</a>
             </body></html>
         """.trimIndent()
     }

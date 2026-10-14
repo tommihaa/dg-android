@@ -288,6 +288,8 @@ fun BoardScreen(
     pointPress: Boolean = false,
     /** Wood-teeman kolahdus (Tommi 4.10.2026, `WoodSounds.kt`). Oletus pois, eli äänetön. */
     woodSound: Boolean = false,
+    /** Äänet jotka pelaaja on jättänyt pois (Tommi 14.10.2026, `AppThemeStore.mutedSounds`). */
+    mutedSounds: Set<WoodSound> = emptySet(),
     /**
      * Laitteen `Confirm Beaver` (Tommin tilaus 27.9.2026, `BeaverConfirmStore`): kysyykö dialogi
      * ennen `Beaver!`ia ja `Accept Beaver`ia. Oletus on pois, eli kutsuja joka ei anna tätä saa
@@ -310,19 +312,20 @@ fun BoardScreen(
     // Kolahdus puuhun: uusi lauta verrataan edelliseen saman ruudun aikana, ja kuution napit
     // soivat painettaessa. Pois päältä soitinta ei ole, joten mitään ei ladata eikä soi.
     val woodPlayer = rememberWoodSounds(woodSound)
+    val playSound: (WoodSound) -> Unit = { if (it !in mutedSounds) woodPlayer?.play(it) }
     val loadedBoard = (state as? BoardUiState.Loaded)?.board
     val loadedSteps = (state as? BoardUiState.Loaded)?.composition?.steps?.size ?: 0
     var heardBoard by remember { mutableStateOf<BoardState?>(null) }
     var heardSteps by remember { mutableStateOf(0) }
     LaunchedEffect(loadedBoard, loadedSteps) {
         if (loadedBoard != null) {
-            woodSoundFor(heardBoard, loadedBoard, heardSteps, loadedSteps)?.let { woodPlayer?.play(it) }
+            woodSoundFor(heardBoard, loadedBoard, heardSteps, loadedSteps)?.let(playSound)
             heardBoard = loadedBoard
             heardSteps = loadedSteps
         }
     }
     val pressWithSound: (String, Boolean) -> Unit = { submit, verify ->
-        if (submit in WOOD_CUBE_SUBMITS) woodPlayer?.play(WoodSound.CUBE)
+        if (submit in WOOD_CUBE_SUBMITS) playSound(WoodSound.CUBE)
         onPress(submit, verify)
     }
 
@@ -443,7 +446,7 @@ fun BoardScreen(
                                 boardExtras = boardExtras,
                                 moveArrows = moveArrows,
                                 pointPress = pointPress,
-                                onPointMiss = { woodPlayer?.play(WoodSound.MISS) },
+                                onPointMiss = { playSound(WoodSound.MISS) },
                                 confirmBeaver = confirmBeaver,
                                 leftHanded = leftHanded,
                                 onRefresh = onRefresh,

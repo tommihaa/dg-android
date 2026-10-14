@@ -18,6 +18,7 @@ Kaytto (`docs/TESTAUS.md`, kuoriproxy):
     python tyokalut/kuoriproxy.py top.html lauta.html --user profiili_toinen.html   # pelaajakortti
     python tyokalut/kuoriproxy.py top.html paattymissivu.html --user profiili.html --sendmsg kuittaus.html
     python tyokalut/kuoriproxy.py top.html lauta.html --nuku raakasivut/kayttokatko.html
+    python tyokalut/kuoriproxy.py top.html lauta.html --submit top_ilman_ottelua.html  # siirron vastaus
     adb reverse tcp:8899 tcp:8899
     adb shell settings put global http_proxy 127.0.0.1:8899
 
@@ -54,6 +55,8 @@ if '--sendmsg' in ARGS:
     del ARGS[ARGS.index('--sendmsg'):ARGS.index('--sendmsg') + 2]
 if '--nuku' in ARGS:
     del ARGS[ARGS.index('--nuku'):ARGS.index('--nuku') + 2]
+if '--submit' in ARGS:
+    del ARGS[ARGS.index('--submit'):ARGS.index('--submit') + 2]
 MUU = open(ARGS[2], 'rb').read() if len(ARGS) > 2 else None
 # Neljas sivu on valinnainen: asetussivu `/bg/profile`, jolta sovellus lukee lautaan
 # vaikuttavat sivuston asetukset (`SiteBoardSettings`). Lisatty 9.9.2026, kun `Home boards
@@ -91,6 +94,12 @@ if '--user' in sys.argv:
 SENDMSG = None
 if '--sendmsg' in sys.argv:
     SENDMSG = open(sys.argv[sys.argv.index('--sendmsg') + 1], 'rb').read()
+# Siirron vastaus, `--submit jalkeen.html`. Lisätty 10.10.2026 kaupan toimintovideota varten:
+# ilman tätä `Submit Move` (`/bg/move/...?...submit=...`) sai saman laudan kuin avaus, eikä
+# ruutu muuttunut lainkaan. Vastaukseksi käy esimerkiksi Top Page jolta ottelu puuttuu.
+SUBMIT = None
+if '--submit' in sys.argv:
+    SUBMIT = open(sys.argv[sys.argv.index('--submit') + 1], 'rb').read()
 # Käyttökatko, `--nuku kayttokatko.html`. Lisätty 24.9.2026 käyttökatkoruudun
 # (`DgResponse.Sleeping`) todentamiseen laitteella: sivusto antoi ilmoituksen 11.9.2026,
 # mutta heräsi ennen asennusta, eikä katkoa voi aiheuttaa. Katko kytketään PC:ltä kesken
@@ -142,6 +151,9 @@ class H(http.server.BaseHTTPRequestHandler):
         elif self.command == 'POST' and arvot.get('submit') == 'To Top':
             # Sivuston oma vastaus To Topille on Top Page, ja juuri se on tassa testattava.
             laji = 'TOP'
+        elif SUBMIT is not None and polku.startswith('/bg/move/') and (
+                'submit=' in (osat.query or '') or 'submit' in arvot):
+            laji = 'SUBMIT'
         elif polku.startswith('/bg/move/'):
             laji = 'OVER'
         elif MUU is not None and polku.startswith('/bg/game/'):
@@ -175,6 +187,8 @@ class H(http.server.BaseHTTPRequestHandler):
             self.vastaa(TOP)
         elif laji == 'OVER':
             self.vastaa(OVER)
+        elif laji == 'SUBMIT':
+            self.vastaa(SUBMIT)
         elif laji == 'MUU':
             self.vastaa(MUU)
         elif laji == 'KAYTTAJA':

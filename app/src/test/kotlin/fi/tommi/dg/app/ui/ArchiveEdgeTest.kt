@@ -49,6 +49,13 @@ class ArchiveEdgeTest {
         assertNotEquals(ArchiveEdgeState.Unknown, ArchiveEdgeState.from(null))
     }
 
+    @Test
+    fun `haarukka saa alun ja lopun ja puuttuva alku on loppu`() {
+        assertEquals(ArchiveEdgeState.Reaches(3_000L, 1_000L), ArchiveEdgeState.from(1_000L, 3_000L))
+        assertEquals(ArchiveEdgeState.Reaches(3_000L, 3_000L), ArchiveEdgeState.from(null, 3_000L))
+        assertEquals(ArchiveEdgeState.Empty, ArchiveEdgeState.from(null, null))
+    }
+
     /** Vastannut kanta antaa reunapäivän sellaisenaan, eikä [ArchiveEdgeState.from] tuota
      * koskaan lukematonta tilaa: se on kerääjän alkuarvo eikä kannan vastaus. */
     @Test

@@ -16,7 +16,8 @@ import fi.tommi.dg.domain.BoardState
  * Kolahdus puuhun (Tommin tilaus 4.10.2026: *"äänet ovat mukana kun nopat kolahtaa puuhun"*).
  * Kolme tapahtumaa Tommin valinnan mukaan: nopan laskeutuminen, nappulan siirto ja kuution
  * tuplaus. Neljäs on ohi-napautus pisteeseen jolta ei voi siirtää (6.10.2026), ja se soi vain
- * painalluskytkimen ollessa päällä. Äänet on syntetisoitu (`tyokalut/puuaanet.py`), joten
+ * painalluskytkimen ollessa päällä. Viides on gongi kun `Next` tuo seuraavan ottelun ruudulle
+ * (10.10.2026, Tommin valinta: *"kung-fu-ottelun tunnelmaa luova gongi"*). Äänet on syntetisoitu (`tyokalut/puuaanet.py`), joten
  * lisenssiä ei ole.
  *
  * **Ääni on poikkeus äänettömyyslinjaan** (kaanoni 4.10.2026, laajennettu 6.10.2026,
@@ -24,12 +25,17 @@ import fi.tommi.dg.domain.BoardState
  * luvan (kytkin `Game sounds`, oletus pois, mikä tahansa teema), laitteen äänetön tai
  * värinätila voittaa, ja TalkBackin ollessa päällä ääni vaikenee, jotta se ei peitä puhetta.
  */
-internal enum class WoodSound(val res: Int) {
+enum class WoodSound(val res: Int) {
     DICE(R.raw.wood_dice),
     CHECKER(R.raw.wood_checker),
     CUBE(R.raw.wood_cube),
     MISS(R.raw.wood_miss),
+    MATCH(R.raw.match_gong),
 }
+
+/** Tallennetut nimet ääniksi; tuntematon nimi ohitetaan, jotta poistettu ääni ei kaada lukua. */
+fun woodSoundsNamed(names: Set<String>): Set<WoodSound> =
+    WoodSound.entries.filter { it.name in names }.toSet()
 
 /**
  * Mikä ääni soi kun lauta vaihtuu [prev]istä [next]iin, tai null. [prevSteps] ja [nextSteps]
@@ -38,8 +44,9 @@ internal enum class WoodSound(val res: Int) {
  * (laitteella 5.10.2026, Tommi: *"nyt ei kuulunut mitään"*). Peruminen on hiljainen. Puhdas funktio, jotta sääntö
  * on testattavissa ilman laitetta.
  *
- * Ensimmäinen lauta ja toisen ottelun lauta ovat hiljaisia, koska niissä mikään ei liikkunut
- * pelaajan silmien edessä: ottelun avaus näyttää valmiin tilanteen. Uudet nopat voittavat
+ * Ensimmäinen lauta on hiljainen, koska siinä mikään ei liikkunut pelaajan silmien edessä:
+ * ottelun avaus luettelosta näyttää valmiin tilanteen. Toisen ottelun lauta saman ruudun aikana
+ * on `Next`in tai `Next Game`n tuoma, ja se kumahtaa gongina (10.10.2026, ennen hiljainen). Uudet nopat voittavat
  * nappulat, koska vuoron vaihtuessa molemmat voivat muuttua samalla sivulla ja yksi ääni
  * kerrallaan riittää. Kuutio ei ole tässä vaan napin painalluksessa ([WOOD_CUBE_SUBMITS]).
  */
@@ -49,7 +56,8 @@ internal fun woodSoundFor(
     prevSteps: Int = 0,
     nextSteps: Int = 0,
 ): WoodSound? {
-    if (prev == null || prev.matchId != next.matchId) return null
+    if (prev == null) return null
+    if (prev.matchId != next.matchId) return WoodSound.MATCH
     // Käytetty osa (`spent`) muuttuu jokaisella askeleella, joten se ei ole uusi heitto.
     fun BoardState.roll() = dice.map { it.value to it.owner }
     fun BoardState.checkers() = Triple(points, bar, borneOff)
@@ -66,7 +74,8 @@ internal class WoodSoundPlayer(context: Context) {
     private val audio = context.getSystemService(AudioManager::class.java)
     private val accessibility = context.getSystemService(AccessibilityManager::class.java)
     private val pool = SoundPool.Builder()
-        .setMaxStreams(2)
+        // Gongi soi 2,2 s, joten uuden ottelun ensimmäinen kolahdus mahtuu sen rinnalle.
+        .setMaxStreams(3)
         .setAudioAttributes(
             AudioAttributes.Builder()
                 .setUsage(AudioAttributes.USAGE_GAME)

@@ -28,6 +28,13 @@
             android:resizeableActivity="true"
             android:windowSoftInputMode="adjustResize"
             android:theme="@style/Theme.DgAndroid">
+            <!-- ChromeOS avasi ikkunan puhelimen kokoisena, kunnes testaaja valitsi Game
+                 Dashboardin Screen Size -valikosta Resizable (10.10. ja 13.10.2026). Toive tabletin
+                 kokoisesta aloitusikkunasta; muut alustat eivät lue tätä. Ks. docs/UI.md ›
+                 Chromebookin ikkuna. -->
+            <meta-data
+                android:name="WindowManagerPreference:FreeformWindowSize"
+                android:value="tablet" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

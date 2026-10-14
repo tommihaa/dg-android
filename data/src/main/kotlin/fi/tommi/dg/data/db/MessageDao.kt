@@ -95,6 +95,14 @@ interface MessageDao {
     fun observeNewestStoredAt(account: String?): Flow<Long?>
 
     /**
+     * Arkiston alkupäivä, eli haarukan toinen pää (Tommin tilaus 9.10.2026): milloin tämä
+     * laite kirjoitti tilin vanhimman yhä näkyvän viestin. Sama sarake ja sama tyhjän
+     * kannan `null` kuin [observeNewestStoredAt]issa.
+     */
+    @Query("SELECT MIN(storedAtEpochMillis) FROM messages WHERE account = :account AND deletedAtEpochMillis IS NULL")
+    fun observeOldestStoredAt(account: String?): Flow<Long?>
+
+    /**
      * Ensimmäinen kirjautunut tili ottaa omistajattomat rivit omikseen.
      *
      * Rivit ovat omistajattomia vain siksi, että ne tallennettiin ennen kuin sarake oli

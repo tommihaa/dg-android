@@ -82,6 +82,8 @@ class FakeArchive : MessageArchive {
 
     override fun observeNewestStoredAt(account: String?): Flow<Long?> = MutableStateFlow(null)
 
+    override fun observeOldestStoredAt(account: String?): Flow<Long?> = MutableStateFlow(null)
+
     override suspend fun delete(ids: List<String>, account: String?, at: Long): Int {
         val fresh = rows.value.map { it.id }.filter { it in ids && it !in deletedAt.value }
         deletedAt.value = deletedAt.value + fresh.associateWith { at }

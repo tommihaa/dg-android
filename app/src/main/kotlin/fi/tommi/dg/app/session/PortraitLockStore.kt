@@ -7,11 +7,12 @@ import android.content.SharedPreferences
  * Pidetäänkö lukuruudut (luettelo, viestit, foorumi, asetukset) pystylukossa, laitteen oma
  * kytkin (`docs/ASETUKSET.md` luku 3). Lauta on aina vaakaan riippumatta tästä.
  *
- * **Oletus on päällä**, koska se on 24.8.2026 päätös (`docs/UI.md`, Suunta lukittiin) ja sen
- * mittaus on yhä voimassa: puhelimen vaakaikkunassa listalle jäi nolla korkeutta. Kytkin
- * syntyi Tommin havainnosta 2.9.2026: tabletilla jonon tyhjentyessä lauta palaa luetteloon
- * ja tabletti kääntyy kädessä pystyyn kesken session. Pois kytkettynä lukuruudut seuraavat
- * laitteen asentoa. Sama laji kuin [DiceStyleStore]: ei lähde koskaan verkkoon.
+ * **Oletus on pois 10.10.2026 alkaen** (Tommin päätös, `docs/UI.md` › *Suunta on oletuksena
+ * vapaa*): lukuruudut seuraavat laitteen asentoa, ja pystylukko on valittava. Mittaus
+ * 24.8.2026 on yhä voimassa (puhelimen vaakaikkunassa listalle jää vähän korkeutta), mutta
+ * se on nyt käyttäjän valinta eikä kaikkien oletus. Kytkin syntyi Tommin havainnosta
+ * 2.9.2026: tabletilla jonon tyhjentyessä lauta palaa luetteloon ja tabletti kääntyy kädessä
+ * pystyyn kesken session. Sama laji kuin [DiceStyleStore]: ei lähde koskaan verkkoon.
  */
 interface PortraitLockStore {
 
@@ -26,7 +27,7 @@ class SharedPrefsPortraitLock(private val prefs: SharedPreferences) : PortraitLo
         context.applicationContext.getSharedPreferences(FILE_NAME, Context.MODE_PRIVATE),
     )
 
-    override fun get(): Boolean = prefs.getBoolean(KEY, true)
+    override fun get(): Boolean = prefs.getBoolean(KEY, false)
 
     override fun save(enabled: Boolean) {
         prefs.edit().putBoolean(KEY, enabled).apply()

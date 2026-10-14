@@ -258,13 +258,15 @@ esikatselu nimeää tiedoston ryhmän otsikolla `Move arrows`. Rivi puuttui siir
 nimitaulukosta 29.9.2026 asti, jolloin tiedosto näkyi esikatselussa nimellä *Handedness*.
 
 **Viides paikallinen kytkin 2.9.2026: lukuruutujen pystylukko.** `portrait_lock`
-(`PortraitLockStore`, **oletus päällä**) pitää luettelon, viestit, foorumin ja asetukset
+(`PortraitLockStore`, **oletus pois 10.10.2026 alkaen**, aiemmin päällä) pitää luettelon, viestit, foorumin ja asetukset
 pystyssä kuten 24.8.2026 päätös sanoo (`docs/UI.md`, Suunta lukittiin). Pois kytkettynä ne
 seuraavat laitteen asentoa. Lauta ei seuraa tätä kytkintä; se on Tommin rajaus samassa
 päätöksessä, ja laudan suunnalla on 23.9.2026 alkaen oma kytkin (alla). Oletus on päällä koska lukon mittaus on yhä voimassa puhelimella
 (vaakaikkunassa listalle jäi nolla korkeutta), ja kytkin syntyi tabletin tarpeesta: kädessä
 vaakana oleva tabletti kääntyi pystyyn kun jono tyhjeni. Tommin laitteella kytkin jätettiin
-pois päältä laiteajon jälkeen.
+pois päältä laiteajon jälkeen. **Oletus kääntyi pois 10.10.2026** (Tommin päätös, `docs/UI.md` ›
+*Suunta on oletuksena vapaa*): pakotus on valittava, koska se toi testaajien laitteille
+toimimattomuutta.
 
 **Kuudes paikallinen valinta 3.9.2026, ja se on lista eikä kytkin: fraasinapit.** `phrases`
 (`PhraseStore`, `SharedPrefsPhrases`) on viestiruudun fraasinappien lista tallennusjärjestyksessä.
@@ -376,12 +378,13 @@ lokerosarakkeen muttei paneelia, joten sen voi ottaa käyttöön ilman että siv
 siirtokäden alle. Juuri se hinta sai Tommin kytkemään peilauksen pois 9.9.2026 iltapäivällä.
 
 **Laudan pystytila, 23.9.2026.** `board_follows_device` (`BoardRotationStore`, **oletus
-pois**) antaa laudan seurata laitteen asentoa. Pois kytkettynä lauta on vaakaan kuten ennen.
+päällä 10.10.2026 alkaen**, aiemmin pois) antaa laudan seurata laitteen asentoa. Pois kytkettynä lauta on vaakaan kuten ennen.
 Päällä ollessaan lauta piirtyy pystyssä leveyden mittaan, ja sivupaneeli on sen alla. Rivi
 on samassa `Screen orientation` -ryhmässä kuin pystylukko, mutta kytkimet ovat toisistaan
-riippumattomia: pystylukko koskee vain lukuruutuja. Oletus on vaaka, koska pystyssä
-puhelimen nappula on noin 20 dp vaakalaudan 29 dp:n sijaan (Tommin päätös, `docs/UI.md` ›
-*Lauta pystyssä*). Ei lähde koskaan verkkoon.
+riippumattomia: pystylukko koskee vain lukuruutuja. Oletus oli vaaka 10.10.2026 asti, koska
+pystyssä puhelimen nappula on noin 20 dp vaakalaudan 29 dp:n sijaan (Tommin päätös, `docs/UI.md`
+› *Lauta pystyssä*). Nyt vaakalukko on valittava (`docs/UI.md` › *Suunta on oletuksena
+vapaa*), ja selite sanoo hinnan. Ei lähde koskaan verkkoon.
 
 **Beaverin vahvistus 27.9.2026: yksi kytkin, oletus sivulta.** `Confirm Beaver`
 (`BeaverConfirmStore`, tiedosto `dg_beaver_confirm`, ryhmä *Money game*) lisää dialogin ennen
@@ -477,7 +480,9 @@ Sivusto sanoo kolme asiaa (`6`, `7`, `board`), joten tiloilla oli aluksi **kolme
 - **Pip-luvun näkyvyys.** Kenttä `6` päällä: sivustolla pip-lukua ei ole. Sovellus ei silti saa
   piilottaa omaa vahtiaan, joten ehdotus on että **vahdin rivi jää ja vain muurin väliin
   piirretty luku noudattaa asetusta**. Muuten sivustouskollisuus ostaisi itselleen sen
-  hiljaisuuden joka luvussa 2 kiellettiin.
+  hiljaisuuden joka luvussa 2 kiellettiin. **Paikallinen kokoaminen ei enää riipu pip-luvusta
+  (10.10.2026):** kentän ollessa päällä istuin luetaan nimisolun väristä, ks. `docs/AVOIMET.md`
+  (testaajan nuolet ja noppien painallus).
 
 **Mikä ei vaihdu, ja miksi se on sama vastaus kolmeen kysymykseen.** Geometria pysyy: lokerot,
 paneelit, nappirivi, mitat ja kiilojen muoto. Symmetriset lokerot (DG Mobile -havainto
@@ -701,8 +706,8 @@ suoraan Woodiin palauttaa ensin Decoa edeltäneen laudan ja vasta sitten sovelta
 joten Deco-lauta ei jää voimaan eikä tallennu Woodin "ennen"-arvoksi.
 
 **Äänet** (`WoodSounds.kt`, `tyokalut/puuaanet.py`). Syntetisoitu modaalisynteesillä, eli
-tiedostot ovat omaa työtä eikä lisenssiä tarvita. Kolme WAV-tiedostoa `res/raw`issa,
-yhteensä noin 80 kt.
+tiedostot ovat omaa työtä eikä lisenssiä tarvita. Viisi WAV-tiedostoa `res/raw`issa,
+yhteensä noin 295 kt, josta gongi 194 kt.
 
 | Tapahtuma | Mistä luetaan | Ääni |
 |---|---|---|
@@ -710,9 +715,11 @@ yhteensä noin 80 kt.
 | Nappulan siirto | paikallisesti koottu askel lisääntyy (`composition.steps`), tai pisteet, palkki tai ulos kannetut muuttuvat saman heiton aikana | yksi pehmeä isku, 0,16 s |
 | Kuution käsittely | painettu `Double`, `Accept`, `Beaver!` tai `Accept Beaver` | ontto kaksoisisku, 0,34 s |
 | Ohi-napautus (6.10.2026) | sormi nousee sarakkeen sisällä pisteeltä jolla ei ole siirtolinkkiä, kytkin `Show which point I'm pressing` päällä ja laudalla siirtoja (`BoardTouch.onMiss`) | kaksi laskevaa naputusta, 0,22 s (Tommin valinta kolmesta tabletilla) |
+| Uusi ottelu (10.10.2026) | saman lautaruudun aikana `matchId` vaihtuu, esimerkiksi kun `Next` tai `Next Game` toi seuraavan ottelun | oopperan iso gongi, sävel laskee iskun jälkeen, 2,2 s (`match_gong.ogg`, Tommin valinta tabletilla: kaksi kolmen ehdokkaan kierrosta puuta ja gongia, sitten kolme kung-fu-versiota). WAV vaihtui Ogg Vorbisiksi 14.10.2026 koon takia (194 kt → 17 kt, `tyokalut/puuaanet.py`). |
 
-Ottelun ensimmäinen lauta ja toisen ottelun lauta ovat hiljaisia, koska mikään ei liikkunut
-pelaajan silmien edessä. Uudet nopat voittavat nappulat, jos molemmat muuttuvat samalla
+Luettelosta avatun ottelun ensimmäinen lauta on hiljainen, koska mikään ei liikkunut pelaajan
+silmien edessä. Toisen ottelun lauta oli hiljainen 10.10.2026 asti, ja nyt se soittaa gongin
+(Tommi pelaa äänet päällä ja toivoi lisää ääniä: *"kung-fu-ottelun tunnelmaa luova gongi"*). Uudet nopat voittavat nappulat, jos molemmat muuttuvat samalla
 sivulla. Sääntö on puhdas funktio `woodSoundFor`, testit `WoodSoundTest`.
 
 **Rajat seitsemännen arvon mukaan.** Kytkin `Game sounds` on teemakorttien alla; se kulkee
@@ -724,6 +731,19 @@ samalla muotoon `Wood: dark walnut` ja `Wood: honey maple` (Tommin valinta), kos
 valinta ei enää tuo ääntä. Ääni soi vain soittoäänitilan ollessa normaali, koska
 pelin ääni kulkee mediavoimakkuudella jota äänetön tila ei vaimenna. TalkBackin ollessa päällä
 (`isTouchExplorationEnabled`) ääni vaikenee kokonaan, jotta se ei peitä puhetta.
+
+**Ääni kerrallaan pois (14.10.2026, Tommin tilaus).** Kytkimen alla on viisi sisennettyä
+ruutua, yksi kutakin `WoodSound`ia kohti: `Dice`, `Checkers`, `Doubling cube`, `Tap on a point
+you can't move from` ja `Gong for the next match`. Ruudut ovat aina näkyvissä ja harmaita kun
+`Game sounds` on pois (Tommin valinta näkyvän ja piilotetun välillä). Ohi-napautuksen ruutu on
+harmaa myös silloin kun painalluskytkin on pois, koska ääni ei silloin soi muutenkaan.
+Tallennus on joukko poisjätettyjä nimiä samassa tiedostossa (`dg_app_theme`, avain
+`wood_sound_muted`), joten oletus on kaikki valittuina ja valinta kulkee asetusten siirrossa.
+Suodatus tehdään lautaruudulla soittokohdassa (`BoardScreen`), ei `woodSoundFor`issa: pois
+jätetty ääni ei anna vuoroa toiselle äänelle, eli uudet nopat ilman noppaääntä ovat hiljaiset
+eivätkä kolahda nappulana. Todennettu tabletilla 14.10.2026: ruudut kytkimen ollessa päällä ja pois
+(`docs/kuvat/aanet-ruudut-paalla.png`, `-harmaa.png`), ja `Dice`-ruudun poisto kirjoitti
+`wood_sound_muted`-joukkoon nimen `DICE`. Äänen hiljeneminen pelissä jää Tommin kuultavaksi.
 
 **Todennettu tabletilla 5.10.2026 klo 0.02** (Galaxy Tab S7 FE, asennettu debug-APK). Teema
 vaihdettiin Decosta Woodiin: asetusruutu ja otteluluettelo saivat tumman pähkinän ja

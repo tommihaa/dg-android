@@ -212,7 +212,7 @@ class AppContainer(context: Context) {
     /** Rarity-värit nimissä ja Inboxin määrässä, oletus päällä. Ks. [RarityStore]. */
     val rarity: RarityStore by lazy { SharedPrefsRarity(appContext) }
 
-    /** Lukuruutujen pystylukko, oletus päällä. Laudan suunnan ratkaisee [boardRotation]. */
+    /** Lukuruutujen pystylukko, oletus pois. Laudan suunnan ratkaisee [boardRotation]. */
     val portraitLock: PortraitLockStore by lazy { SharedPrefsPortraitLock(appContext) }
 
     /** Palkit piiloon koko sovelluksesta, oletus pois. Ks. [FullScreenStore]. */
@@ -222,7 +222,7 @@ class AppContainer(context: Context) {
     /** Laiteasetusten ryhmien taitto, oletus kaikki auki. Ks. [SettingsFoldStore]. */
     val settingsFold: SettingsFoldStore by lazy { SharedPrefsSettingsFold(appContext) }
 
-    /** Lauta seuraa laitteen asentoa, oletus pois eli vaaka. Ks. [BoardRotationStore]. */
+    /** Lauta seuraa laitteen asentoa, oletus päällä. Ks. [BoardRotationStore]. */
     val boardRotation: BoardRotationStore by lazy { SharedPrefsBoardRotation(appContext) }
 
     /** Kätisyys, oletus oikea. Sivupaneeli menee vastakkaiselle puolelle, ks. [HandednessStore]. */

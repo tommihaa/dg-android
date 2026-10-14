@@ -46,10 +46,16 @@ data class Seat(val color: CheckerColor, val homeIsLow: Boolean)
  * ristiriidan ratkaisijaksi juuri siellä missä pip-vahti ei osaa valita, eivätkä ne kanna
  * skeeman väripalettia mukanaan niin kuin nimisolun `BGCOLOR` kantaisi
  * (`docs/KOHDE.md`).
+ *
+ * **Piilotetut pip-luvut ratkaistaan omalla reitillään ([seatWithoutPips]).** Sivuston
+ * asetus `Hide pip counts` poistaa paneelista pip-rivin, ja ennen 10.10.2026 istuin jäi
+ * silloin aina nulliksi: kokoaminen, nuolet ja noppien painallus putosivat pois ilman
+ * ilmoitusta (testaajapalaute, `docs/AVOIMET.md`).
  */
 fun BoardState.resolveSeat(): Seat? {
-    val selfPips = players.lastOrNull()?.pips ?: return null
     if (points.isEmpty()) return null
+    if (players.isNotEmpty() && players.all { it.pips == null }) return seatWithoutPips()
+    val selfPips = players.lastOrNull()?.pips ?: return null
     val panel = players.mapNotNull { it.pips }
     if (panel.size < 2) return null
     val panelSet = panel.toSet()
@@ -92,6 +98,28 @@ private fun BoardState.ownDiceColor(): CheckerColor? {
     val ownStepOffered = moves.isNotEmpty() || bar.any { it.href != null }
     if (!ownStepOffered) return null
     return dice.map { it.owner }.distinct().singleOrNull()
+}
+
+/**
+ * Istuin laudalta jolla kummankaan pip-lukua ei ole (`Hide pip counts`).
+ *
+ * **Molemmat lähteet on mitattu korpuksesta 10.10.2026** (9587 eri lautaa, joilla pip-vahti
+ * ratkaisi istuimen): oman paneelin väri ([PlayerPanel.checkerColor]) oli istuimen väri
+ * joka laudalla, ja vastustajan paneelin väri oli joka laudalla vastakkainen. Kotikenttä oli
+ * pienissä numeroissa joka laudalla molemmilla väreillä ja molemmilla skeemoilla, koska sivu
+ * numeroi pisteet katsojan puolelta. Siksi suuntaa ei kokeilla.
+ *
+ * Ristiriita palauttaa nullin. Väri luetaan nopista kun paneelista ei saa sitä ([ownDiceColor],
+ * sama mittaus kuin tasapelissä). [LocalComposition.begin] vertaa tämänkin istuimen sivun omiin
+ * linkkeihin, joten väärä istuin pudottaisi laudan vanhaan reittiin eikä tuottaisi väärää siirtoa.
+ */
+private fun BoardState.seatWithoutPips(): Seat? {
+    val panel = players.lastOrNull()?.checkerColor
+    val dice = ownDiceColor()
+    val color = panel ?: dice ?: return null
+    if (dice != null && dice != color) return null
+    if (players.size >= 2 && players.first().checkerColor == color) return null
+    return Seat(color, homeIsLow = true)
 }
 
 /** Muurin pistenumero tässä moduulissa. Sivulla muurilla ei ole numeroa, kirjain on `y`. */

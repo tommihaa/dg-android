@@ -3520,8 +3520,9 @@ koska teko on julkaisu.
 
 **Luonnos ei katoa virheeseen.** Otsikko ja teksti asuvat näkymämallissa eivätkä ruudussa,
 joten ne selviävät kierrosta; ja epäonnistunut tai vahvistamaton lähetys jättää lomakkeen
-auki tekstiineen. Vain onnistunut lähetys tyhjentää sen. Sivuston `Preview`-nappia ei tuoda
-sovellukseen: sen vastaussivua ei ole mitattu, ja vahvistusdialogi tekee saman työn.
+auki tekstiineen. Vain onnistunut lähetys tyhjentää sen. ~~Sivuston `Preview`-nappia ei tuoda
+sovellukseen: sen vastaussivua ei ole mitattu, ja vahvistusdialogi tekee saman työn.~~
+**Purettu 14.10.2026** (Tommin tilaus), ks. *Palstan Preview omana näkymänä*.
 
 **Onnistuminen luetaan sisällöstä eikä vastaussivusta**, koska vastaussivua ei ole mitattu.
 Kommentin jälkeen ketju haetaan uudelleen (vastaus kelpaa jos se on ketjusivu) ja lähetetyn
@@ -7854,6 +7855,19 @@ Android 13) session scratchpadissa, kehykset 8–10/s. Molemmissa kuutio käänt
 Tabletilla ruutu pysyy 2 päällä noin 1,4 s pidempään, koska sovelluksen ensimmäinen ruutu
 valmistuu hitaammin; se on järjestelmän käytös eikä vika.
 
+**Kehykset kevennettiin 14.10.2026** (Tommin valinta: kokoa kevennetään resursseista eikä
+R8:lla, `docs/JULKAISU.md` › *Sovelluksen koko ja R8*). Järjestelmä näyttää 240 dp:n
+kankaasta vain keskimmäisen 160 dp:n alueen, joten sen ulkopuoli on nyt läpinäkyvä ja kuvat
+ovat häviöttömiä WebP-kuvia. 15 kuvaa veivät ennen 1 011 kt ja nyt 458 kt. Ympyrän sisällä
+uudet poikkeavat piirroksesta enintään 4/255, vanhat 87/255 pakkausjäljen takia.
+**Maski on neliö eikä ympyrä. Syy näkyi vasta laitteella.** Ensimmäinen versio leikkasi
+ympyrän, mutta tabletin nauhalla (`splash-kevennys.mp4`, nauhat session väliaikaiskansiossa)
+käynnistysruutu leikkaa kuvakkeen
+Samsungin pyöristetyksi neliöksi. Sen kulmat ulottuvat ympyrän ulkopuolelle ja jäivät ilman
+säteitä. Kaikki valmistajien maskit mahtuvat 160 dp:n neliöön, joten neliömaski on turvallinen.
+Toisella nauhalla (`splash-nelio.mp4`, SM-T970, Android 13) säteet ulottuvat kulmiin asti.
+Pixel 8a:lla (ympyrämaski) ajoa ei tehty, koska se ei ollut kiinni.
+
 **Liike vaihtui 3.10.2026 heitoksi** (Tommin tilaus: *"tuplauskuutio -> 2 sijaan tuplauskuutio
 pyörivän ja asemaan androidin pää"*). Neljästä luonnoksesta (takaisinkierto 2:sta päähän, täysi
 kierros etu-taka-akselin ympäri, hyrrä pystyakselin ympäri, heitto) Tommi valitsi heiton: kuutio
@@ -8239,6 +8253,43 @@ pystylukko asetetaan nyt `MainActivity.onCreate`ssa ennen ensimmäistä ruutua. 
 `freeWindow`), koska pyyntö muuttaisi ikkunan muotoa eikä käännä laitetta. Todentamatta:
 Chromebookia ei ole, joten korjaus on päätelty eikä mitattu. Vahvistus tulee testaajalta.
 
+**Testaajan vahvistus 10.10.2026** (Michael R, `docs/TESTIKUTSUT.md` › *Ryhmän tilanne
+11.10.2026*). Ikkunan oma kokovalikko ratkaisee: pysty- ja vaakavalinnalla ikkuna pysyy
+puhelimen kokoisena, mutta muutettavalla koolla (*"changeable"*, ChromeOS:n valikossa
+luultavasti *Resizable*) se suurenee ja näyttää hänen sanoin täydelliseltä. Sovelluksen oma
+osuus siis toimii versiosta 1.2 alkaen. Avoimeksi jää ensimmäinen avaus: ChromeOS valitsee
+yhä puhelimen koon, ja käyttäjän on löydettävä valikko itse. Valikon tarkka nimi on
+testaajan sanaa eikä mitattu.
+
+**Kaksi korjausta ensimmäiseen avaukseen (Tommin valinta 11.10.2026: molemmat). Molemmat
+odottavat Michaelin vastausta** (Tommin päätös samana päivänä). Manifestin toive tehtiin
+(`7fcc1fc3`) ja peruttiin ennen pushia, ja se palaa samassa muutoksessa App Helpin lauseen
+kanssa. Alla on toive sellaisena kuin se tehtiin. Manifestin
+aktiviteetti sai ChromeOS:n ikkunatoiveen `WindowManagerPreference:FreeformWindowSize` arvolla
+`tablet` (ChromeOS:n ikkunanhallinnan ohje, developer.android.com/topic/arc/screen-size-comp).
+Arvo `maximize` jäi pois, koska koko näytön ikkuna peittäisi muut ikkunat ja tabletin koko on
+lähempänä sitä mitä Michael itse valitsi. Suuntatoive (`FreeformWindowOrientation`) jäi pois,
+koska testaajan mukaan pysty- ja vaakavalinta pitivät ikkunan pienenä. Muut alustat eivät lue
+toivetta, joten tabletilla ja puhelimella ei ole todennettavaa. Todentamatta Chromebookilla:
+ChromeOS voi muistaa käyttäjän jo valitseman koon, joten Michaelin laite ei välttämättä kerro
+vaikutusta. Toinen korjaus on App Helpin lause kokovalikosta, ja se odottaa valikon nimeä
+Michaelilta (`docs/TESTIKUTSUT.md` › *Kysymys Michaelille valikon nimestä*).
+
+**Michael vastasi 13.10.2026, ja molemmat korjaukset tehtiin** (`docs/TESTIKUTSUT.md` ›
+*Ryhmän tilanne 13.10.2026*). Valikko on ChromeOS:n *Game Dashboard*, siinä *Screen Size* ja
+sen alla *Resizable*, minkä jälkeen ikkunan voi viedä koko näytölle. Manifestin toive palasi
+commitin `7fcc1fc3` muodossa. App Helpin `settings`-vastaus kertoo reitin. Kahden
+suuntakytkimen selitteet viittaavat siihen. Aiempi lause *"the app is a window you can
+resize"* oli totta vasta Resizable-valinnan jälkeen, koska Michaelin ensimmäisen raportin
+mukaan reunan vetäminen ei aluksi onnistunut. Nimet ovat testaajan kirjoittamia: hänen
+kaappauksensa ei tullut perille, joten kirjoitusasua (*Screen Size* vai *Screen size*) ei ole
+nähty. Valikon paikkaa ikkunassa vastaus ei kertonut, joten Help ei nimeä sitä. Google kutsuu
+ominaisuutta blogissaan nimellä *Game dashboard*, mutta virallista ohjesivua valikon nimistä
+ei löytynyt (haku 13.10.2026). Nimet ovat `HelpConsistencyTest`in poikkeuslistassa ChromeOS:n
+niminä. Todennettu tabletilla samana iltana: App Helpin G.3 näyttää kappaleen kolme nimeä
+lihavoituina (kaappaus `raakasivut/testaajapalaute-13-10/k01.png`). Manifestin toivetta
+tabletti ei lue, joten sille ei ole laitteella todennettavaa.
+
 **Päällekkäisyys.** `CenteredOverStack` sijoitti lisät negatiiviseen y:hyn, kun lisät,
 ottelukortti ja sivun napit eivät mahtuneet lohkoon. Nyt ottelukortti tiivistyy ensin
 (nimi yhdelle riville, kierros hännälle) ja vasta viimeisenä jää pois, koska se on lohkoista
@@ -8262,3 +8313,219 @@ sekä napautus joka lähetti `?submit=Roll+Dice` (kuori vastasi tallennetulla si
 **Rikottu sääntö samassa ajossa.** `docs/TESTAUS.md`:n sääntö 2 rikkoutui ennen kuorta:
 `wm size` asetettiin elävällä tilillä, ja sen jälkeen otteluluettelossa tehtiin pyyhkäisyjä ja
 yksi napautus. Lautaa ei avattu eikä mitään lähtenyt, ja koko palautettiin ennen kuorta.
+
+### Suunta on oletuksena vapaa, pakotukset kytkimiä (Tommin päätös 10.10.2026)
+
+**Tämä kumoaa kahden oletuksen muodon muttei niiden mittauksia.** *Suunta lukittiin*
+(24.8.2026) teki vaakalaudasta ja pystylistoista kaikkien oletuksen. Nyt molemmat ovat
+valittavia: `board_follows_device` on oletuksena päällä ja `portrait_lock` pois. Lauta ja
+lukuruudut seuraavat siis laitteen asentoa, kunnes käyttäjä kytkee pakotuksen päälle.
+Kirjoitushetken ja kirjautumisruudun pystyasento (19.9. ja 1.10.2026) säilyvät ennallaan,
+koska ne korjaavat mitatun vian eivätkä ole makua.
+
+**Tommin perustelu:** *"omissa peleissä omilla laitteilla tykkään että pakotukset säilyvät,
+mutta testaajat ovat osoittaneet sen tuoneen toisilla android-laitteille
+toimimattomuutta"*. Valinta neljästä: oletus vapaa ja kytkimet (valittu), ennallaan kunnes
+Michael vastaa, kaikki pois kaikilta tai pakotus vain puhelimille. Kuudes arvo
+(`docs/ARVOT.md`) puhuu samaan suuntaan. Tekijän mieltymys on valittava eikä oletus.
+
+**Mitä testaajat näyttivät, rajattuna siihen mikä on kirjattu.** Suuntaan liittyvä raportti on
+Chromebookin puhelimen kokoinen ikkuna (Fred S. ja Michael R, `docs/TESTIKUTSUT.md`). Sitä
+tämä ei välttämättä korjaa, koska ChromeOS on ollut versiosta 1.2 alkaen pyynnötön
+(`freeWindow`) ja ikkuna oli silti pieni. Päätös ei nojaa siihen että syy olisi löytynyt.
+Se nojaa siihen että oletus ei saa olla tekijän laitteiden makua.
+
+**Mitä mittauksista seuraa uudelle oletukselle.** Puhelimella vaakana pidetty luettelo saa
+noin 90 pikseliä 1080:stä (16.9.2026), ja pystyssä pidetty lauta saa 19,8 dp:n nappulan
+vaakalaudan 29,2 dp:n sijaan (23.9.2026). Ne ovat nyt käyttäjän valintoja: puhelin
+käännetään kuten muissakin sovelluksissa, ja kytkimien selitteet sanovat hinnan.
+
+**Mitä ei muutu.** Tallennettu valinta pysyy, koska säilö palauttaa oletuksen vain kun
+avainta ei ole. Tommin tabletilla molemmat on jo tallennettu (pystylukko pois, lauta seuraa
+laitetta), joten siihen muutos ei osu. Laite jolla kytkintä ei ole koskaan koskettu siirtyy
+vapaaseen asentoon. Android 16 -tabletin ja Chromebookin rajaukset jäävät ennalleen.
+
+**Laitekohtainen suositus App Helpissä (Tommin ehdotus ja valinta samana iltana).** Kun oletus
+ei enää valitse käyttäjän puolesta, ohje kertoo mitä kannattaa valita. Puhelimelle pystylukko
+päälle (luettelolle jää vaakana noin 90 pikseliä) ja laudan kääntö pois (nappula 29 dp eikä
+20 dp). Tabletille oletukset, koska luettelo mahtuu vaakana ja nappula on pystyssäkin noin
+40 dp. Paikaksi valittiin asetusvastauksen *Screen and lock* -kohta. Kytkinten selitteet
+jäivät ennalleen, koska ne ovat jo pitkiä. Vaihtoehdot olivat App Help (valittu), selitteet,
+molemmat tai pelkkä dokumentti.
+
+**Laukaisija ei ollut pakotus.** Ehdotus syntyi kauppavideon koeajon pystyheilahduksesta,
+ja sen teki `monkey`-käynnistys eikä sovellus. Koeajon tapahtumalokissa
+(`logcat -b events`) sovellus pyysi aina `UNSPECIFIED`, ja `monkey` jäädytti kierron pystyyn
+(`wm_user_rotation_changed: [0,…]`) juuri ennen sovelluksen prosessia. Toisto kuoren alla
+samana iltana: `monkey` käänsi vaakaan lukitun tabletin pystyyn, `am start` ei kolmessa ajossa.
+
+### Versiorivi ja foorumin New-merkki (testaajapalaute 9.10.2026 illalla)
+
+**Toinen kierros samalta Chromebook-testaajalta.** Ikkuna ei hänen mukaansa vieläkään
+suurentunut päivityksen jälkeen, mutta sovellus ei näyttänyt versiota missään, joten ei
+tiedetty, oliko 1.2 jo perillä. Tommi valitsi paikaksi asetusten alalaidan, koska testaaja
+etsi versiota sieltä: *This device* -segmentin viimeinen rivi on `Version 1.2 (3)`, luettuna
+paketista (`AppVersionLine`). Ikkunan koko jää testaajan vastauksen varaan.
+
+**New-merkki jäi luetulle ketjulle.** Ketjun sulkeminen palasi listaan, joka oli haettu ennen
+lukemista. Sivusto oli jo poistanut merkin, mutta näkyvää listaa ei luettu uudelleen; palstan
+vaihto korjasi sen, koska vaihto hakee. Tommi valitsi uuden haun eikä merkin paikallista
+poistoa, koska haku kertoo sivuston oman tilan eikä kuluta mitään. `closeThread` hakee
+indeksin, jos ketju ehti latautua, ja epäonnistunut haku jättää näkyvän listan paikalleen.
+
+**Todennettu tabletilla 9.10.2026 illalla** (SM-T970, Tommin lupa yhden New-merkin hintaan):
+*Stratified sevens* oli listalla New-merkittynä, se avattiin ja Back palasi listaan, jossa merkki
+oli poissa ilman palstan vaihtoa. Versiorivi `Version 1.2 (3)` näkyi *This device* -segmentin
+alimpana. Kaappaukset `raakasivut/testaajapalaute-9-10/`. Samalla *Turn the board with the
+device* -kytkimen selitteeseen lisättiin sama Chromebook-lause kuin pystylukon selitteessä,
+koska testaaja kokeili juuri sitä.
+
+**Versio myös Top Pagelle ja arkistorivistä haarukka (Tommin tilaus 9.10.2026 illalla).**
+Versiorivi on nyt kahdessa paikassa: asetusten alalaidassa ja Top Pagella omana rivinään
+arkistorivin alla (Tommin valinta neljästä vaihtoehdosta). Arkistorivi sanoi ennen vain
+loppupäivän (`Message archive reaches 9 Oct 2026`); nyt se näyttää alun ja lopun, esimerkiksi
+`Message archive 1 Sep 2026 – 9 Oct 2026`. Alku on tilin vanhimman näkyvän viestin
+tallennushetki (`observeOldestStoredAt`) samasta syystä kuin loppu: sivuston oma aika on
+tulkitsematonta tekstiä. Saman päivän haarukka sanotaan vanhalla muodolla yhtenä päivänä.
+Todennettu tabletilla, kaappaus `raakasivut/testaajapalaute-9-10/toppage-versio-haarukka.png`.
+
+**DailyGammon Players map Infoon (Tommin tilaus ja valinta 9.10.2026 illalla).** Pelaajien
+ylläpitämä kartta (yhteisön lyhytosoite `tiny.cc/DG_map`, Googlen My Maps -kartta) on Infon rivi
+DailyGammon Linksin jälkeen ja avautuu selaimeen. Vaihtoehdot rakennettiin laitteelle ja
+kaapattiin: A Infon rivi, B alleviivattu linkki Loungen Players-jakson alussa. Tommi valitsi A:n.
+Profiilisivu jätettiin pois, koska kartta ei tiedä kenen profiili on auki. **Lyhytosoite ei
+toiminut laitteella:** se ohjaa polkuun `/maps/d/viewer`, jonka Maps-sovellus kaappaa, ja Maps
+vastasi *Kartan avaaminen epäonnistui*. Sovellus avaa siksi polun `/maps/d/embed`, jota Maps ei
+kaappaa; se aukesi Bravessa koko karttana. Hinta on se, että ylläpitäjän uusi kartta samassa
+lyhytosoitteessa ei päivity tänne itsestään. Kaappaukset
+`raakasivut/testaajapalaute-9-10/kartta-*.png`.
+
+**Kartta kohdistuu pelaajaan (Tommin tilaus ja valinnat 9.10.2026 illalla).** Infon rivi avaa
+kartan kirjautuneen tilin merkille ja profiilin uusi rivi *DailyGammon Players map* profiilin
+pelaajan merkille. Merkki etsitään kartan julkisesta KML-viennistä (`/maps/d/kml`, 79 kt,
+235 merkkiä), jossa merkin nimi on DG-nimi (`PlayersMapParser`, kirjainkoosta välittämättä).
+Upotettu kartta ottaa vastaan `ll` ja `z` (zoom 8). **Haku vasta painalluksesta** (Tommin valinta
+kolmesta): App Help lupaa, että sovellus lukee vain avatut sivut, joten profiilin linkki on aina
+näkyvissä eikä kerro ennalta, onko pelaaja kartalla. Kartan ulkopuolinen saa koko kartan ja
+ilmoituksen, samoin epäonnistunut haku. Tiedosto pidetään prosessin muistissa. Pyyntö menee
+Googlelle eikä DailyGammonille, eikä siinä ole pelaajan nimeä; nimi etsitään laitteella.
+Todennettu tabletilla: Info avasi tommihin kohdalle, Navakingin profiili antoi ilmoituksen.
+
+### Ketju avautuu lukukohdasta (testaajapalaute 13.10.2026)
+
+*tigerjerry* kirjoitti palstalle 13.10.2026 klo 16.46, että sovellus avaa ketjun joka kerta
+alusta, kun hänen mukaansa DG Mobile palaa siihen mihin lukija jäi. Isossa ketjussa (hänellä
+5-point ladderin ketju) se on hänen sanoillaan *"very frustrating"*.
+
+**Sivusto pitää lukukohdan itse ja sovellus heitti sen pois.** Indeksin linkin fragmentti on
+viimeinen luettu viesti (`docs/KOHDE.md` › palstan rakenne, korjattu samana päivänä: aiempi
+kirjaus sanoi ensimmäisen lukemattoman). Malli säilytti fragmentin polussa, mutta ketjun lista
+avautui aina ensimmäisestä viestistä, koska fragmentti ei kulje verkon yli eikä mikään lukenut
+sitä. Nyt `ForumThread.lastReadOrdinal` lukee sen ja `ThreadUiState.Loaded.startIndex` avaa
+listan sen viestin kohdalta ylimpänä, kuten selain. Avaamaton ketju alkaa alusta, samoin
+lukukohta jota sivulla ei ole. Lukukohtaa ei pidetä kirjaa itse: sivusto tuntee myös
+selaimessa ja muissa sovelluksissa luetun.
+
+**Kommentin jälkeen ketju avautuu omasta viestistä.** Koodin mukaan lomakkeelta palattiin ennen
+ketjun alkuun, koska lomake korvasi ketjunäkymän ja vieritystila katosi sen mukana (ei mitattu). Kuittauksen `Review your
+message.` nimeää oman viestin (`postOrdinalOf`). Ilman linkkiä se on viimeinen viesti.
+Linkin numero on kuitenkin omaa viestiä edeltävä viesti (korjattu 14.10.2026, ks. alempi
+*Oikea lähetys esikatselun kautta*), joten oma viesti on numero plus yksi.
+Vieritystila asuu nyt `DiscussionScreen`issä ketjunäkymän yläpuolella, joten lomakkeen
+peruminen palauttaa lukijan siihen mihin hän jäi.
+
+**`New From Here` näytetään 14.10.2026 alkaen** (Tommin tilaus kuvan kanssa: selaimessa
+otsake erotti tigerjerryn viestin, sovelluksessa se puuttui; valinta: sivuston punainen
+kaikissa teemoissa). Aiemmin rajattiin, ettei uutta ruudun osaa lisätä ilman valintaa. Paikka
+luetaan sivun omasta `<H3><FONT COLOR=#FF0000>`-otsakkeesta (`ForumThreadPage.newFromOrdinal`)
+eikä lasketa lukukohdasta. Otsake on ensimmäisen uuden viestin rivin sisällä, jotta
+`startIndex` osuu yhä viimeksi luettuun viestiin.
+
+**Todennettu tabletilla 14.10.2026 klo 3.51–3.55** (Tommi avasi kuusi ketjua, proxy ja nauha
+`raakasivut/palsta-14-10c/`, versioimatta). Neljässä avauksessa oli uutta, ja joka kerta sivun
+otsake oli lukukohdan perässä: `64289#2` ennen viestiä 3, `64287#9` ennen viestiä 10, `64264#19`
+ennen viestiä 20 ja `64282#3` ennen viestiä 4. Kolmella uudelleenavauksella (`#7`, `#12`, `#45`)
+otsaketta ei ollut. Nauhalla punainen otsake piirtyi oikeaan väliin, ja Tommi näki saman
+(*"vaikuttaa olevan oikeassa kohdassa"*). Lukukohta on siis viimeinen luettu viesti, nyt
+viidellä ketjulla. **Keskeltä avautuminen jäi yhä todentamatta:** jokainen avattu ketju mahtui
+ruudulle, joten lista alkoi ensimmäisestä viestistä. Turkin ketjun merkkikoodi
+`Be&#351;ikta&#351;` ruudulla on sivuston oma: sivu lähettää sen muodossa `&amp;#351;`, ja
+kirjoittaja huomautti siitä itse seuraavassa viestissä.
+
+**Todennettu tabletilla 14.10.2026 yöllä** (SM-T970, debug-asennus versiokoodilla 6). Luettu
+ketju *DailyGammon 8x8 Tournament 2026 - Kickoff* (160 viestiä, ei New-merkkiä, joten avaus ei
+kuluttanut mitään) avautui lopusta: viimeinen viesti ja `Add a Comment` näkyivät heti. Lista ei
+voi vierittää viimeistä viestiä ylimmäksi, joten näkymä on ketjun loppu, kuten selaimessakin.
+`Add a Comment` ja Back palasivat samaan kohtaan. Kesken luettua ketjua ei avattu, koska se
+kuluttaisi New-merkin; sen kattaa testi `ketju avautuu sivuston omasta lukukohdasta`.
+Kaappaukset `raakasivut/testaajapalaute-13-10/` (`ketju-avautuu-lukukohdasta-tabletti.png`,
+`lomakkeelta-paluu-samaan-kohtaan-tabletti.png`).
+
+**Toinen avaus 14.10.2026 klo 2.40, Tommin tilillä.** *IOS App 3.0* oli etusivulla klo 2.24
+osoitteella `read/64273#43`, 45 viestiä ja New-merkki (`raakasivut/palsta-14-10/0002_…`).
+Tommi avasi sen ennen kuin proxy oli päällä eikä vierittänyt. Ruudulla oli ketjun loppu
+(*tamandua* 12.10. klo 12.06, *iRob* ja *Softlad*) ja `Add a Comment`. Lukukohdan perässä oli vain
+kaksi viestiä, joten lista pysähtyy loppuun avautuipa se viestistä 43 tai lopusta. Avaus
+todentaa siis vain sen, ettei ketju avaudu alusta. Keskeltä avautuminen odottaa ketjua jossa
+lukukohdan perässä on ruudullinen viestejä (`docs/KYSYMYKSET.md` kohta 3).
+
+### Palstan Preview omana näkymänä (Tommin tilaus ja valinnat 14.10.2026)
+
+**Kaanonimuutos.** 3.9.2026 rajattiin, että sivuston `Preview`-nappia ei tuoda, koska
+vastaussivua ei ollut mitattu ja vahvistusdialogi tekee saman työn. Tommi tilasi toiminnon
+14.10.2026 (*"tee tässä sessiossa myös preview-toiminto"*) ja valitsi kolmesta kysymyksestä:
+
+- **Sivuston oma Preview eikä sovelluksen arvaus.** Teksti lähetetään lomakkeen omalla
+  `Preview`-napilla ja ruutu näyttää sivuston palauttaman muodon. Peruste on mitattu: sivusto
+  hylkää yksittäisen rivinvaihdon ja näyttää HTML:n merkkeinä (`docs/KOHDE.md` › *Palstan
+  viesti: tyhjä rivi säilyy, rivinvaihto ei*), joten sovelluksen oma muotoilu olisi väite
+  sivuston säännöistä. Vahvistusdialogi ei tee samaa työtä: se kertoo teon painon, ei muotoa.
+- **Yksi mittaus Tommin tilillä.** Vastaussivun HTML:ää ei ole tallessa (5.9.2026 skripti
+  poistettiin lukemisen jälkeen), joten jäsennin rakennetaan yhdestä `Preview`-lähetyksestä
+  luetun ketjun kommenttilomakkeelle.
+- **Oma näkymä lomakkeen tilalle**, kuten sivustolla: `Preview` lähetysnapin vieressä, ja
+  esikatselussa `Edit` palaa lomakkeelle ja lähetysnappi avaa nykyisen vahvistusdialogin.
+
+**Toteutus.** Lomake lukee sivun oman esikatselunapin (`ForumComposePage.previewLabel`, sama
+kenttänimi `submit` kuin lähetyksellä). `preview()` lähettää lomakkeen sillä arvolla. Napit
+ovat sivun järjestyksessä ja sanoin: `Preview` ääriviivanappina ja lähetysnappi täytettynä.
+Vastaus luetaan `ForumParser.parsePreview`llä sisarsolmuina otsakkeen `Preview Comment`
+jälkeisten kahden `<HR>`:n välistä. Runko piirretään samalla funktiolla kuin ketjun viesti
+(`forumBodyText`), joten esikatselu näyttää samalta kuin julkaistu viesti. Ensimmäinen versio
+haki rungon raakatekstistä säännöllisellä lausekkeella ja osui fixturen HTML-kommenttiin;
+sisarsolmuhaku ei näe kommentteja eikä lomakkeen tekstiä.
+
+**Lähetys kulkee aina kommenttisivun omalla lomakkeella**, myös esikatselusta. Esikatselusivun
+oma nappi on `Post Message` eikä `Submit Comment`. Sitä ei ole mitattu. Vahvistusdialogi siirtyi
+lomakkeesta `ComposeView`hun, jotta lomake ja esikatselu jakavat sen. `Edit`, otsikkorivin
+`Back` ja järjestelmä-back palaavat esikatselusta lomakkeelle luonnoksineen; vasta toinen back
+sulkee lomakkeen.
+
+**Todennettu tabletilla 14.10.2026 yöllä Tommin luvalla** (SM-T970, yksi `Preview`-painallus
+luetun ketjun *Jacoby rule and beaver in money games?* kommenttilomakkeella). Lomakkeella oli
+`Preview` lähetysnapin vasemmalla puolella. Esikatselu näytti otsikon `Preview`, rivin *This is
+how DailyGammon shows your text*, kaksi riviä yhdistettyinä välilyönnillä ja tyhjän rivin
+kappaleena. `Edit` palasi lomakkeelle teksti ennallaan. Tyhjällä kentällä molemmat napit
+olivat harmaita. Paluun jälkeen haettu lista näytti ketjussa yhä kaksi viestiä. Kaappaukset
+`raakasivut/preview-14-10/`. **Oikea lähetys esikatselun kautta odottaa vastausta
+tigerjerrylle** (Tommin päätökset 14.10.2026: vastaus lähetetään sovelluksesta ja on samalla
+lähetyksen ja omaan viestiin avautumisen todennus; ensin julkistetaan uusi versio kauppaan, ja
+vastaus tehdään vasta uudessa sessiossa).
+
+**Oikea lähetys esikatselun kautta todennettu 14.10.2026 klo 2.26** (SM-T970, debug-asennus
+versiokoodilla 7, proxy ja nauha `raakasivut/palsta-14-10/`, versioimatta). Tommi lähetti
+vastauksen tigerjerrylle ketjuun 64276. Loki: ketju haettiin osoitteella `read/64276#11`, sitten
+lomake (`add`), `submitadd` esikatseluna (sivu `Preview Comment`, kolme kappaletta) ja toinen
+`submitadd` kommenttilomakkeen omalla lomakkeella. Kuittaus oli *Thank you for your comments.*
+ja linkki *Review your message.* osoitteeseen `read/64276/11#11`. Uudelleen haettu ketju
+näytti 12 viestiä, ja ruudulla oli kuittaus *Comment posted. It is in the thread below.* ja
+ketjun loppu omine viesteineen (kaappaus klo 2.28). **Omaan viestiin avautuminen ei
+todentunut, vaan paljasti vian:** linkin numero 11 on omaa viestiä edeltävä viesti, ja
+sovellus avasi listan siitä. Ero ei näkynyt, koska oma viesti oli viimeinen eikä lista vieritä
+pidemmälle. Sama ero oli jo 4.9.2026 kuittauksessa (`#54`, oma viesti 55). Korjattu samana
+yönä: oma viesti on linkin numero plus yksi (`DiscussionViewModel.confirmComment`), kirjaus
+`docs/KOHDE.md` › palstakommentti. Nauha näytti ennen lähetystä esikatselun `Edit`- ja
+`Submit Comment` -napit, vahvistusdialogin *Post to the forum?* ja tilan *Sending to
+DailyGammon.* Ketju oli luettu ennen avausta (ei New-merkkiä), joten se avautui lopusta
+lukukohdan #11 mukaisesti. **Rajaus ennallaan:** kesken luetun ketjun avaus keskeltä ja oma
+viesti joka ei ole viimeinen ovat yhä vain testien varassa.

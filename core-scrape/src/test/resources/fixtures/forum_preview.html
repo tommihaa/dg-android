@@ -1,0 +1,43 @@
+<!--
+  Kopio AIDOSTA palstan esikatseluvastauksesta (Tommin luvalla 14.10.2026,
+  ForumPreviewCaptureLiveTest: POST /bg/forum2/main/submitadd/<id> kentillä comment ja
+  submit=Preview). Ketjun tunnus vaihdettu 60001:ksi, muu sellaisenaan. Sivulla ei ole
+  käyttäjänimiä: teksti on testin oma, eikä esikatselulla ole allekirjoitusta.
+
+  Neljä piirrettä:
+  1. Runko on <H2>Preview Comment</H2><HR> ja seuraavan <HR>:n välissä.
+  2. Yksittäinen rivinvaihto jää raa'aksi rivinvaihdoksi (selain näyttää välilyönnin),
+     tyhjä rivi tulee <P>:nä.
+  3. http:// -osoite on linkki, https:// ei ole.
+  4. Lomakkeen lähetysnappi on Post Message eikä kommenttisivun Submit Comment.
+-->
+<HTML><HEAD>
+<TITLE>DailyGammon Forum: General</TITLE></HEAD>
+<BODY BGCOLOR=#CCCCCC>
+<H1>DailyGammon Forum: General</H1>
+<TABLE border=0 cellpadding=0 cellspacing=0 BGCOLOR=#006600><TR><TD VALIGN=top>&nbsp;<IMG SRC=/images/die.gif ALT=DG WIDTH=16 HEIGHT=16 BORDER=0 ALIGN=middle>&nbsp;
+<TD align=center>&nbsp;<A HREF=/bg/top><B><FONT COLOR=#FFFFFF SIZE=-1>Top Page</FONT></B></A>
+<TD width=20 align=center><FONT COLOR=#99FF99>|</FONT><TD align=center><A HREF=/bg/lounge><B><FONT COLOR=#FFFFFF SIZE=-1>Game Lounge</FONT></B></A>
+<TD width=20 align=center><FONT COLOR=#99FF99>|</FONT><TD align=center><A HREF=/bg/forum2><B><FONT COLOR=#FFFFFF SIZE=-1>Discussion</FONT></B></A>
+<TD width=20 align=center><FONT COLOR=#99FF99>|</FONT><TD align=center><A HREF=/links.html><B><FONT COLOR=#FFFFFF SIZE=-1>Links</FONT></B></A>
+<TD width=20 align=center><FONT COLOR=#99FF99>|</FONT><TD align=center><A HREF=/bg/logout><B><FONT COLOR=#FFFFFF SIZE=-1>Log Out</FONT></B></A>
+<TD width=20 align=center><FONT COLOR=#99FF99>|</FONT><TD align=center><A HREF=/help><B><FONT COLOR=#FFFFFF SIZE=-1>Help</FONT></B></A>&nbsp;&nbsp;
+</TD></TR></TABLE>
+<P><b>General</b>&nbsp;|&nbsp;<A HREF=/bg/forum2/politics>Politics</A>
+<BR>
+<H2>Preview Comment</H2><HR>
+Preview measurement 14.10.2026, line one
+line two after a single line break
+<P>Second paragraph: <A HREF=http://example.com>http://example.com</A> and https://example.com
+<P>a &lt; b &amp; c &quot;quoted&quot; &lt;b&gt;bold?&lt;/b&gt; ääkköset<HR>
+<FORM ACTION=/bg/forum2/main/submitadd/60001 METHOD=POST>
+<P>Edit Comment:<BR>
+<TEXTAREA NAME=comment ROWS=10 COLS=80 WRAP=physical>Preview measurement 14.10.2026, line one
+line two after a single line break
+
+Second paragraph: http://example.com and https://example.com
+
+a &lt; b &amp; c &quot;quoted&quot; &lt;b&gt;bold?&lt;/b&gt; ääkköset</TEXTAREA><BR>
+<INPUT TYPE=SUBMIT NAME=submit VALUE="Preview">
+<INPUT TYPE=SUBMIT NAME=submit VALUE="Post Message"><BR>
+</FORM></BODY></HTML>
