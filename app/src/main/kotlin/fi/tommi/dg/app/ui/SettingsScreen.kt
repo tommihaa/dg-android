@@ -1,6 +1,8 @@
 package fi.tommi.dg.app.ui
 
+import android.content.Intent
 import androidx.annotation.StringRes
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material3.SegmentedButton
@@ -48,8 +50,11 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import fi.tommi.dg.app.R
+import fi.tommi.dg.app.session.Gesture
 import fi.tommi.dg.app.session.AppTheme
 import fi.tommi.dg.app.session.enter
 import fi.tommi.dg.app.session.BoardStyle
@@ -164,6 +169,8 @@ fun SettingsScreen(
     onDiceSwapTapChange: (Boolean) -> Unit,
     diceRollTap: Boolean,
     onDiceRollTapChange: (Boolean) -> Unit,
+    nextOnDice: Boolean,
+    onNextOnDiceChange: (Boolean) -> Unit,
     boardExtras: Boolean,
     onBoardExtrasChange: (Boolean) -> Unit,
     /** Lukuruutujen pystylukko (Tommi 2.9.2026), lauta on vaakaan aina. Ks. [DeviceSection]. */
@@ -187,6 +194,11 @@ fun SettingsScreen(
     /** Rarity-värit nimissä ja Inboxin määrässä (Tommin tilaus 26.9.2026), oletus päällä. */
     rarity: Boolean,
     onRarityChange: (Boolean) -> Unit,
+    /** Eleiden pääkytkin ja pois kytketyt eleet (Tommin tilaus 20.10.2026), pääkytkin oletus pois. */
+    gestures: Boolean = false,
+    onGesturesChange: (Boolean) -> Unit = {},
+    gesturesOff: Set<Gesture> = emptySet(),
+    onGesturesOffChange: (Set<Gesture>) -> Unit = {},
     /**
      * Sovelluslukko käynnistyksessä (Tommin tilaus 27.9.2026), oletus pois. [appLockAvailable]
      * on väärin kun laitteella ei ole mitään millä lukon avaisi, ja kytkin on silloin harmaa.
@@ -386,6 +398,8 @@ fun SettingsScreen(
                                 onDiceSwapTapChange = onDiceSwapTapChange,
                                 diceRollTap = diceRollTap,
                                 onDiceRollTapChange = onDiceRollTapChange,
+                                nextOnDice = nextOnDice,
+                                onNextOnDiceChange = onNextOnDiceChange,
                                 boardExtras = boardExtras,
                                 onBoardExtrasChange = onBoardExtrasChange,
                                 portraitLock = portraitLock,
@@ -401,6 +415,10 @@ fun SettingsScreen(
                                 onClearWallpaperFolder = onClearWallpaperFolder,
                                 rarity = rarity,
                                 onRarityChange = onRarityChange,
+                                gestures = gestures,
+                                onGesturesChange = onGesturesChange,
+                                gesturesOff = gesturesOff,
+                                onGesturesOffChange = onGesturesOffChange,
                                 appLock = appLock,
                                 appLockAvailable = appLockAvailable,
                                 onAppLockChange = onAppLockChange,
@@ -514,6 +532,8 @@ private fun DeviceSection(
     onDiceSwapTapChange: (Boolean) -> Unit,
     diceRollTap: Boolean,
     onDiceRollTapChange: (Boolean) -> Unit,
+    nextOnDice: Boolean,
+    onNextOnDiceChange: (Boolean) -> Unit,
     boardExtras: Boolean,
     onBoardExtrasChange: (Boolean) -> Unit,
     portraitLock: Boolean,
@@ -530,6 +550,11 @@ private fun DeviceSection(
     /** Rarity-värit nimissä ja Inboxin määrässä (Tommin tilaus 26.9.2026), oletus päällä. */
     rarity: Boolean,
     onRarityChange: (Boolean) -> Unit,
+    /** Eleiden pääkytkin ja pois kytketyt eleet (Tommin tilaus 20.10.2026), pääkytkin oletus pois. */
+    gestures: Boolean = false,
+    onGesturesChange: (Boolean) -> Unit = {},
+    gesturesOff: Set<Gesture> = emptySet(),
+    onGesturesOffChange: (Set<Gesture>) -> Unit = {},
     /**
      * Sovelluslukko käynnistyksessä (Tommin tilaus 27.9.2026), oletus pois. [appLockAvailable]
      * on väärin kun laitteella ei ole mitään millä lukon avaisi, ja kytkin on silloin harmaa.
@@ -575,44 +600,64 @@ private fun DeviceSection(
         // Iso kuva on kortin oma (`OptionCard`, 6.10.2026): kuvan napautus avaa sen, ja sama
         // piirto kuin kortissa tehdään isossa koossa. Kätisyyden iso kuva on Tommin tilaus
         // 24.9.2026 (*"handedness kuvat tarvitsevat suurennuslasi-toiminnon"*).
-        DeviceGroup(title = stringResource(R.string.settings_theme), striped = true) {
-            OptionCards {
-                AppTheme.entries.map { it to themeLabel(it) }.forEach { (theme, label) ->
-                    val themeStyle = themeBoardStyle(theme, boardStyle)
-                    OptionCard(
-                        label = stringResource(label),
-                        selected = appTheme == theme,
-                        onSelect = { onAppThemeChange(theme) },
-                        width = WIDE_CARD,
-                        large = board?.let { b ->
-                            { height -> ThemePreview(theme, themeStyle, b, siteBoard, height, scaleUp = 1f) }
-                        },
-                    ) {
-                        if (board != null) {
-                            ThemePreview(theme, themeStyle, board, siteBoard, BOARD_PREVIEW_HEIGHT - 16.dp)
+        // Theme taittuu kuten ryhmät sen alla (Tommin tilaus 20.10.2026). Taiton otsikko on
+        // ryhmän nimi, joten ryhmä ei toista sitä.
+        DeviceFold(DeviceSettingsGroup.THEME, R.string.settings_theme, folds, onToggleFold) {
+            DeviceGroup(title = null, striped = true) {
+                OptionCards {
+                    AppTheme.entries.map { it to themeLabel(it) }.forEach { (theme, label) ->
+                        val themeStyle = themeBoardStyle(theme, boardStyle)
+                        OptionCard(
+                            label = stringResource(label),
+                            selected = appTheme == theme,
+                            onSelect = { onAppThemeChange(theme) },
+                            width = WIDE_CARD,
+                            large = board?.let { b ->
+                                { height -> ThemePreview(theme, themeStyle, b, siteBoard, height, scaleUp = 1f) }
+                            },
+                        ) {
+                            if (board != null) {
+                                ThemePreview(theme, themeStyle, board, siteBoard, BOARD_PREVIEW_HEIGHT - 16.dp)
+                            }
                         }
                     }
                 }
-            }
-            // Pelin äänet omana kytkimenään (kaanoni 4.10.2026, `docs/AVOIMET.md`). Käytössä
-            // kaikissa teemoissa 6.10.2026 alkaen, kun äänet irtosivat Woodista.
-            DeviceToggle(
-                label = stringResource(R.string.settings_wood_sound_toggle),
-                explain = stringResource(R.string.settings_wood_sound_explain),
-                checked = woodSound,
-                onChange = onWoodSoundChange,
-            )
-            // Ääni kerrallaan pois (Tommin tilaus 14.10.2026). Ruudut ovat aina näkyvissä ja
-            // harmaita kun kytkin on pois (Tommin valinta), jotta pelaaja näkee mitä ääniä on
-            // ennen kuin kytkee ne päälle. Ohi-napautus soi vain painalluskytkimen kanssa, joten
-            // sen ruutu on harmaa myös silloin kun painalluskytkin on pois.
-            WoodSound.entries.forEach { sound ->
-                SoundToggle(
-                    label = stringResource(soundLabel(sound)),
-                    checked = sound !in mutedSounds,
-                    onChange = { on -> onMutedSoundsChange(if (on) mutedSounds - sound else mutedSounds + sound) },
-                    enabled = woodSound && (sound != WoodSound.MISS || pointPress),
+                // Pelin äänet omana kytkimenään (kaanoni 4.10.2026, `docs/AVOIMET.md`). Käytössä
+                // kaikissa teemoissa 6.10.2026 alkaen, kun äänet irtosivat Woodista.
+                DeviceToggle(
+                    label = stringResource(R.string.settings_wood_sound_toggle),
+                    explain = stringResource(R.string.settings_wood_sound_explain),
+                    checked = woodSound,
+                    onChange = onWoodSoundChange,
                 )
+                // Ääni kerrallaan pois (Tommin tilaus 14.10.2026). Ruudut ovat aina näkyvissä ja
+                // harmaita kun kytkin on pois (Tommin valinta), jotta pelaaja näkee mitä ääniä on
+                // ennen kuin kytkee ne päälle. Ohi-napautus soi vain painalluskytkimen kanssa, joten
+                // sen ruutu on harmaa myös silloin kun painalluskytkin on pois.
+                //
+                // Rivin `Play` soittaa äänen kuunneltavaksi (Tommin valinta A 2.11.2026 kahdesta
+                // mockupista), myös harmaalla rivillä: kuuntelu on se tapa jolla päätetään.
+                val preview = rememberWoodSounds(enabled = true)
+                var silentNote by remember { mutableStateOf(false) }
+                WoodSound.entries.forEach { sound ->
+                    val label = stringResource(soundLabel(sound))
+                    SoundToggle(
+                        label = label,
+                        checked = sound !in mutedSounds,
+                        onChange = { on -> onMutedSoundsChange(if (on) mutedSounds - sound else mutedSounds + sound) },
+                        enabled = woodSound && (sound != WoodSound.MISS || pointPress),
+                        onPlay = { silentNote = preview?.preview(sound) == false },
+                        playDescription = stringResource(R.string.settings_sound_play_description, label),
+                    )
+                }
+                if (silentNote) {
+                    Text(
+                        text = stringResource(R.string.settings_sound_play_silent),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(start = 48.dp, end = 16.dp, bottom = 4.dp),
+                    )
+                }
             }
         }
 
@@ -852,6 +897,15 @@ private fun DeviceSection(
                     checked = diceRollTap,
                     onChange = onDiceRollTapChange,
                 )
+                // Neljäs rivi (Tommin havainto ja Fredericin huomio 17.10.2026): ei noppien
+                // painallus vaan sen jatko. Noppakytkimien kanssa vuoro kulkee keskikaistalla,
+                // ja tämä tuo `Next Game`n samaan kohtaan, jossa nopat juuri napautettiin.
+                DeviceToggle(
+                    label = stringResource(R.string.settings_next_on_dice_toggle),
+                    explain = stringResource(R.string.settings_next_on_dice_explain),
+                    checked = nextOnDice,
+                    onChange = onNextOnDiceChange,
+                )
             }
             // **Beaverin vahvistus** (Tommin tilaus 27.9.2026, `BeaverConfirmStore`). Yksi kytkin:
             // Acceptin ja Declinen vahvistukset hoitaa sivun oma asetus (Tommin karsinta samana
@@ -919,6 +973,27 @@ private fun DeviceSection(
                     onChange = onRarityChange,
                 )
             }
+            // Eleet yhden kytkimen alle, sama muoto kuin `Game sounds` (Tommin tilaus 20.10.2026,
+            // pääkytkin oletus pois, `GestureStore`). Ruudut näkyvät aina ja harmaantuvat kun
+            // pääkytkin on pois, jotta pelaaja näkee mitä eleitä on.
+            DeviceGroup(title = stringResource(R.string.settings_gestures), striped = true) {
+                DeviceToggle(
+                    label = stringResource(R.string.settings_gestures_toggle),
+                    explain = stringResource(R.string.settings_gestures_explain),
+                    checked = gestures,
+                    onChange = onGesturesChange,
+                )
+                Gesture.entries.forEach { gesture ->
+                    SoundToggle(
+                        label = stringResource(gestureLabel(gesture)),
+                        checked = gesture !in gesturesOff,
+                        onChange = { on ->
+                            onGesturesOffChange(if (on) gesturesOff - gesture else gesturesOff + gesture)
+                        },
+                        enabled = gestures,
+                    )
+                }
+            }
             // Odotuksen ilmaisin (Tommin tilaus 18.9.2026). Viisi muotoa laudan väreissä ja kaksi
             // kultaista seppelettä omissa väreissään (4.10.2026);
             // vaihtoehtojen sanat kuvaavat kuvaa eivätkä koodin nimeä. Esikatselu pyörii
@@ -982,6 +1057,7 @@ private fun DeviceSection(
                     checked = boardRotates,
                     onChange = onBoardRotatesChange,
                 )
+                AutoRotateLink()
             }
             // Koko näyttö on oma ryhmänsä eikä suunnan kolmas rivi, koska se ei käännä mitään
             // (Tommin tilaus 30.9.2026, oletus pois, ks. `FullScreenStore`).
@@ -1040,17 +1116,41 @@ private fun DeviceFold(
  * raidoitusta"*): raita kattaa otsikon ja kaikki sen rivit, ja joka toinen ryhmä on raidalla.
  */
 @Composable
-private fun DeviceGroup(title: String, striped: Boolean, content: @Composable () -> Unit) {
+private fun DeviceGroup(title: String?, striped: Boolean, content: @Composable () -> Unit) {
     Column(modifier = Modifier.fillMaxWidth().dgStripe(striped).padding(vertical = 4.dp)) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-        )
+        // Null kun taiton otsikko on jo ryhmän nimi (Theme 20.10.2026).
+        if (title != null) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+            )
+        }
         content()
     }
 }
+
+/**
+ * Linkki Androidin kääntöasetukseen, jolla kasvojentunnistuksen kytkin on (Tommin hyväksyntä
+ * 18.10.2026). Sovellus ei voi kytkeä sitä itse, joten se vie sivulle. Näkyy vain jos laite
+ * tuntee sivun: Pixel 8a tunsi (`SmartAutoRotateSettingsActivity`).
+ */
+@Composable
+private fun AutoRotateLink() {
+    val context = LocalContext.current
+    val intent = remember { Intent(AUTO_ROTATE_SETTINGS) }
+    val available = remember(context) { intent.resolveActivity(context.packageManager) != null }
+    if (!available) return
+    TextButton(
+        onClick = { runCatching { context.startActivity(intent) } },
+        modifier = Modifier.padding(horizontal = 8.dp),
+    ) {
+        Text(stringResource(R.string.settings_auto_rotate_link))
+    }
+}
+
+private const val AUTO_ROTATE_SETTINGS = "android.settings.AUTO_ROTATE_SETTINGS"
 
 /** Laiteosion kytkin selitteineen yhtenä rivinä. Selite kuuluu kytkimeen eikä ole oma kohtansa. */
 @Composable
@@ -1085,29 +1185,58 @@ private fun DeviceToggle(
     }
 }
 
-/** Yhden pelin äänen ruutu `Game sounds` -kytkimen alla, sisennettynä ja ilman selitettä. */
+/**
+ * Yhden pelin äänen ruutu `Game sounds` -kytkimen alla, sisennettynä ja ilman selitettä.
+ * Sama ruutu käy eleille `Gestures`-kytkimen alla (20.10.2026).
+ */
 @Composable
 private fun SoundToggle(
     label: String,
     checked: Boolean,
     onChange: (Boolean) -> Unit,
     enabled: Boolean,
+    /** Äänen kuuntelu rivin lopussa, tai null kun rivillä ei ole kuunneltavaa (eleet). */
+    onPlay: (() -> Unit)? = null,
+    playDescription: String? = null,
 ) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .toggleable(value = checked, onValueChange = onChange, role = Role.Checkbox, enabled = enabled)
-            .padding(start = 48.dp, end = 16.dp, top = 2.dp, bottom = 2.dp),
+        modifier = Modifier.fillMaxWidth().padding(start = 48.dp, end = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Checkbox(checked = checked, onCheckedChange = null, enabled = enabled)
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyMedium,
-            color = if (enabled) Color.Unspecified else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
-            modifier = Modifier.padding(start = 12.dp),
-        )
+        // Ruutu ja nimi ovat yksi kosketusalue, `Play` oma: rivin napautus ei soita, eikä
+        // `Play` vaihda ruutua.
+        Row(
+            modifier = Modifier
+                .weight(1f)
+                .toggleable(value = checked, onValueChange = onChange, role = Role.Checkbox, enabled = enabled)
+                .padding(vertical = 2.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Checkbox(checked = checked, onCheckedChange = null, enabled = enabled)
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (enabled) Color.Unspecified else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+                modifier = Modifier.padding(start = 12.dp),
+            )
+        }
+        if (onPlay != null) {
+            TextButton(
+                onClick = onPlay,
+                modifier = Modifier.semantics { if (playDescription != null) contentDescription = playDescription },
+            ) {
+                Text(stringResource(R.string.settings_sound_play))
+            }
+        }
     }
+}
+
+private fun gestureLabel(gesture: Gesture): Int = when (gesture) {
+    Gesture.PULL_TO_REFRESH -> R.string.settings_gesture_pull
+    Gesture.SWIPE_TABS -> R.string.settings_gesture_swipe
+    Gesture.TAP_TAB_TOP -> R.string.settings_gesture_tap_top
+    Gesture.HOLD_PLAYER_MENU -> R.string.settings_gesture_hold
+    Gesture.BUZZ -> R.string.settings_gesture_buzz
 }
 
 private fun soundLabel(sound: WoodSound): Int = when (sound) {
@@ -1247,7 +1376,7 @@ private fun SettingsForm(
 
         page.player.name?.let { name ->
             Text(
-                text = stringResource(R.string.settings_owner, name),
+                text = textWithPlayerColor(stringResource(R.string.settings_owner, name), name, page.player.userId),
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),

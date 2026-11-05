@@ -29,6 +29,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -200,64 +201,81 @@ fun LoungeScreen(
                 // sen sijaan että vilautettaisiin väärää tilaa.
                 LoungeUiState.SessionExpired -> Unit
 
-                is LoungeUiState.Loaded -> LoungeContent(
-                    page = state.page,
-                    join = join,
-                    signup = signup,
-                    refreshing = state.refreshing,
-                    onAskJoin = { confirming = it },
-                    onDismissJoinResult = onDismissJoinResult,
-                    onAskSignUp = { confirmingSignup = it },
-                    onCancelSignup = onCancelSignup,
-                    onDismissSignupResult = onDismissSignupResult,
-                    onOpenPage = onOpenPage,
-                    folds = folds,
-                    onToggleInvitations = onToggleInvitations,
-                    onToggleTournaments = onToggleTournaments,
-                    listState = listState,
-                    playersSection = {
-                        item {
-                            FoldHeading(
-                                text = stringResource(R.string.lounge_players_heading),
-                                folded = folds.playersFolded,
-                                onToggle = onTogglePlayers,
-                                modifier = Modifier.padding(vertical = 8.dp),
-                            )
-                        }
-                        if (!folds.playersFolded) {
-                            playersItems(
-                                state = players,
-                                onRefresh = onRefreshPlayers,
-                                onOpenLink = onOpenPlayerListLink,
-                                onOpenLinkBelow = { link ->
-                                    pageTurnFromBottom = true
-                                    onOpenPlayerListLink(link)
-                                },
-                                onOpenPage = onOpenPage,
-                                searchAvailable = searchAvailable,
-                                search = search,
-                                onSearch = onSearch,
-                                onClearSearch = onClearSearch,
-                            )
-                        }
-                    },
-                    hallSection = {
-                        item {
-                            FoldHeading(
-                                text = stringResource(
-                                    R.string.lounge_hall_heading,
-                                    hallCount?.toString() ?: stringResource(R.string.lounge_count_unknown),
-                                ),
-                                folded = folds.hallFolded,
-                                onToggle = onToggleHall,
-                                modifier = Modifier.padding(top = 16.dp, bottom = 8.dp),
-                            )
-                        }
-                        if (!folds.hallFolded) {
-                            hallItems(state = hall, onRefresh = onRefreshHall, onOpenPage = onOpenPage)
-                        }
-                    },
-                )
+                is LoungeUiState.Loaded -> CompositionLocalProvider(LocalListPull provides onRefresh) {
+                    LoungeContent(
+                        page = state.page,
+                        join = join,
+                        signup = signup,
+                        refreshing = state.refreshing,
+                        onAskJoin = { confirming = it },
+                        onDismissJoinResult = onDismissJoinResult,
+                        onAskSignUp = { confirmingSignup = it },
+                        onCancelSignup = onCancelSignup,
+                        onDismissSignupResult = onDismissSignupResult,
+                        onOpenPage = onOpenPage,
+                        folds = folds,
+                        onToggleInvitations = onToggleInvitations,
+                        onToggleTournaments = onToggleTournaments,
+                        listState = listState,
+                        playersSection = {
+                            // Hakukenttä on Players-otsikon yläpuolella eikä taiton takana
+                            // (Tommin tilaus 2.11.2026): pelaajan voi hakea listan ollessa
+                            // kiinni, ja haku avaa listan tuloksille. Kenttä näkyy jokaisessa
+                            // tilassa jossa lounge on luettu, myös virhetilassa. Kentän teksti
+                            // on ruudun oma, ja lähetetty hakusana tulee näkymämallilta
+                            // (`search`), jotta tulosrivi sanoo mitä haettiin.
+                            if (searchAvailable) {
+                                item {
+                                    PlayerSearchRow(
+                                        search = search,
+                                        onSearch = { query ->
+                                            if (folds.playersFolded) onTogglePlayers()
+                                            onSearch(query)
+                                        },
+                                        onClearSearch = onClearSearch,
+                                    )
+                                }
+                            }
+                            item {
+                                FoldHeading(
+                                    text = stringResource(R.string.lounge_players_heading),
+                                    folded = folds.playersFolded,
+                                    onToggle = onTogglePlayers,
+                                    modifier = Modifier.padding(vertical = 8.dp),
+                                )
+                            }
+                            if (!folds.playersFolded) {
+                                playersItems(
+                                    state = players,
+                                    onRefresh = onRefreshPlayers,
+                                    onOpenLink = onOpenPlayerListLink,
+                                    onOpenLinkBelow = { link ->
+                                        pageTurnFromBottom = true
+                                        onOpenPlayerListLink(link)
+                                    },
+                                    onOpenPage = onOpenPage,
+                                    search = search,
+                                )
+                            }
+                        },
+                        hallSection = {
+                            item {
+                                FoldHeading(
+                                    text = stringResource(
+                                        R.string.lounge_hall_heading,
+                                        hallCount?.toString() ?: stringResource(R.string.lounge_count_unknown),
+                                    ),
+                                    folded = folds.hallFolded,
+                                    onToggle = onToggleHall,
+                                    modifier = Modifier.padding(top = 16.dp, bottom = 8.dp),
+                                )
+                            }
+                            if (!folds.hallFolded) {
+                                hallItems(state = hall, onRefresh = onRefreshHall, onOpenPage = onOpenPage)
+                            }
+                        },
+                    )
+                }
             }
         }
     }
@@ -302,18 +320,8 @@ private fun LazyListScope.playersItems(
     /** Listan alapuolinen sivuttaja; kutsuja vierittää uuden sivun alkuun. */
     onOpenLinkBelow: (PlayerListLink) -> Unit,
     onOpenPage: (String) -> Unit,
-    searchAvailable: Boolean,
     search: String?,
-    onSearch: (String) -> Unit,
-    onClearSearch: () -> Unit,
 ) {
-    // Hakukenttä on listan yläpuolella jokaisessa tilassa jossa lounge on luettu, myös
-    // virhetilassa: epäonnistunut haku ei saa viedä kenttää mukanaan. Kentän teksti on
-    // ruudun oma, ja lähetetty hakusana tulee näkymämallilta (`search`), jotta tulosrivi
-    // sanoo mitä haettiin eikä mitä kenttään on sen jälkeen kirjoitettu.
-    if (searchAvailable) {
-        item { PlayerSearchRow(search = search, onSearch = onSearch, onClearSearch = onClearSearch) }
-    }
     when (state) {
         PlayerListUiState.NoPath -> item { SectionNote(stringResource(R.string.players_no_path)) }
 
@@ -559,10 +567,15 @@ private fun PlayerSearchRow(
 @Composable
 private fun PlayerRowView(player: PlayerRow, onOpenPage: (String) -> Unit) {
     val path = player.player.profilePath
+    PlayerMenuBox(
+        name = player.player.name,
+        profilePath = path,
+        onClick = path?.let { { onOpenPage(it) } },
+        modifier = Modifier.fillMaxWidth(),
+    ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .then(if (path != null) Modifier.clickable { onOpenPage(path) } else Modifier)
             .padding(horizontal = 16.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -591,6 +604,7 @@ private fun PlayerRowView(player: PlayerRow, onOpenPage: (String) -> Unit) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+    }
     }
 }
 

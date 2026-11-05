@@ -39,4 +39,29 @@ interface MarkedPositionDao {
 
     @Query("SELECT COUNT(*) FROM marked_positions")
     suspend fun count(): Int
+
+    /** Kaikki merkit otteluittain, viennin lähde (`ArchiveFile.marks`, 20.10.2026). */
+    @Query("SELECT * FROM marked_positions ORDER BY matchId ASC, createdAtEpochMillis ASC, id ASC")
+    suspend fun all(): List<MarkedPositionEntity>
+
+    /**
+     * Onko sama merkki jo kannassa. Samuus on peli, siirtonumero, sana ja hetki yhdessä, sama
+     * periaate kuin muistutuksella (`ReminderDao.countSame`). Asema ei ole mukana: se on
+     * johdettu laudasta eikä kerro mitään mitä hetki ja siirtonumero eivät jo kerro.
+     */
+    @Query(
+        """
+        SELECT COUNT(*) FROM marked_positions
+        WHERE matchId = :matchId AND opponentScore = :opponentScore AND selfScore = :selfScore
+          AND moveNumber = :moveNumber AND note = :note AND createdAtEpochMillis = :createdAtEpochMillis
+        """
+    )
+    suspend fun countSame(
+        matchId: String,
+        opponentScore: Int,
+        selfScore: Int,
+        moveNumber: Int,
+        note: String,
+        createdAtEpochMillis: Long,
+    ): Int
 }

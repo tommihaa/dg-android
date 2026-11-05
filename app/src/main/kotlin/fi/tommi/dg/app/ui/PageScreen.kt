@@ -25,6 +25,7 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -34,6 +35,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -46,6 +50,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.buildAnnotatedString
@@ -128,6 +133,11 @@ fun PageScreen(
     // Vienti on samalla perusteella oletusarvollinen: vain profiili kantaa päättyneitä.
     export: ExportUiState = ExportUiState.Idle,
     onExport: (Match, ExportFormat) -> Unit = { _, _ -> },
+    /** Päättyneiden päiväraja, ks. [PageViewModel.finishedDays]. Null piilottaa painikkeet. */
+    finishedDays: Int? = null,
+    onFinishedDays: (Int) -> Unit = {},
+    /** Merkittyjen asemien määrä otteluittain, ks. [PageViewModel.markCounts]. */
+    markCounts: Map<MatchId, Int> = emptyMap(),
     /**
      * Fraasinapit viestikentän alle, sama lista kuin muualla (Tommin havainto ensimmäisen
      * profiililta lähetetyn viestin jälkeen 3.9.2026: *"fraasit puuttui lähetys-näytöltä"*).
@@ -136,6 +146,9 @@ fun PageScreen(
     phrases: List<String> = emptyList(),
     onAddPhrase: (String) -> Unit = {},
     onRemovePhrase: (String) -> Unit = {},
+    /** Profiilin avautuvat osiot, ks. [PageViewModel.sections]. */
+    sections: Map<String, SectionUiState> = emptyMap(),
+    onOpenSection: (String) -> Unit = {},
 ) {
     Scaffold(
         modifier = modifier,
@@ -193,39 +206,47 @@ fun PageScreen(
 
                 is PageUiState.Loaded -> {
                     ProgressSlot(active = state.refreshing)
-                    when (val content = state.content) {
-                        is PageContent.Profile -> ProfileContent(
-                            page = content.page,
-                            onOpenPath = onOpenPath,
-                            ownTournamentCount = ownTournamentCount,
-                            versus = versus,
-                            draft = draft,
-                            send = send,
-                            onDraftChange = onDraftChange,
-                            onSend = onSend,
-                            action = action,
-                            onInvite = onInvite,
-                            onIgnore = onIgnore,
-                            onDismissAction = onDismissAction,
-                            export = export,
-                            onExport = onExport,
-                            phrases = phrases,
-                            onAddPhrase = onAddPhrase,
-                            onRemovePhrase = onRemovePhrase,
-                        )
-                        is PageContent.Event -> EventContent(content.page, selfName, onOpenPath)
-                        is PageContent.Tournaments -> TournamentsContent(content.page, onOpenPath)
-                        is PageContent.SiteHelp -> SiteHelpContent(content.page)
-                        is PageContent.SiteLinks -> SiteLinksContent(content.page)
-                        is PageContent.MatchLog -> MatchLogContent(content.page)
-                        is PageContent.Hall -> HallContent(content.page, onOpenPath)
-                        is PageContent.Resign -> ResignContent(
-                            page = content.page,
-                            resign = resign,
-                            onResign = onResign,
-                            onDismiss = onDismissResign,
-                            onOpenPath = onOpenPath,
-                        )
+                    // Ele vain ladatulle sisällölle, kuten `Refresh` yläpalkissa.
+                    CompositionLocalProvider(LocalListPull provides onRefresh) {
+                        when (val content = state.content) {
+                            is PageContent.Profile -> ProfileContent(
+                                page = content.page,
+                                onOpenPath = onOpenPath,
+                                ownTournamentCount = ownTournamentCount,
+                                versus = versus,
+                                draft = draft,
+                                send = send,
+                                onDraftChange = onDraftChange,
+                                onSend = onSend,
+                                action = action,
+                                onInvite = onInvite,
+                                onIgnore = onIgnore,
+                                onDismissAction = onDismissAction,
+                                export = export,
+                                onExport = onExport,
+                                finishedDays = finishedDays,
+                                onFinishedDays = onFinishedDays,
+                                markCounts = markCounts,
+                                phrases = phrases,
+                                onAddPhrase = onAddPhrase,
+                                onRemovePhrase = onRemovePhrase,
+                                sections = sections,
+                                onOpenSection = onOpenSection,
+                            )
+                            is PageContent.Event -> EventContent(content.page, selfName, onOpenPath)
+                            is PageContent.Tournaments -> TournamentsContent(content.page, onOpenPath)
+                            is PageContent.SiteHelp -> SiteHelpContent(content.page)
+                            is PageContent.SiteLinks -> SiteLinksContent(content.page)
+                            is PageContent.MatchLog -> MatchLogContent(content.page)
+                            is PageContent.Hall -> HallContent(content.page, onOpenPath)
+                            is PageContent.Resign -> ResignContent(
+                                page = content.page,
+                                resign = resign,
+                                onResign = onResign,
+                                onDismiss = onDismissResign,
+                                onOpenPath = onOpenPath,
+                            )
+                        }
                     }
                 }
             }
@@ -275,9 +296,14 @@ private fun ProfileContent(
     onDismissAction: () -> Unit,
     export: ExportUiState,
     onExport: (Match, ExportFormat) -> Unit,
+    finishedDays: Int?,
+    onFinishedDays: (Int) -> Unit,
+    markCounts: Map<MatchId, Int>,
     phrases: List<String>,
     onAddPhrase: (String) -> Unit,
     onRemovePhrase: (String) -> Unit,
+    sections: Map<String, SectionUiState>,
+    onOpenSection: (String) -> Unit,
 ) {
     // Avain on lomakeosoite eikä pelaajan nimi: osoite on se joka kertoo kenelle viesti
     // menee, ja se on myös ainoa osa joka ei voi olla kahdella pelaajalla sama.
@@ -291,6 +317,58 @@ private fun ProfileContent(
     // Resurssit luetaan LazyColumnin ulkopuolella, koska sen rakennuslohko ei ole composable.
     val exportNote = exportText(export)
     val actionNote = actionText(action)
+    // Lukema vain kun muistissa on juuri tämän polun lista, eli omalla profiililla
+    // Tournaments-välilehden avaamisen jälkeen. Muuten otsikko on ennallaan ilman
+    // selitystä: avaaminen antaa lukeman, ja selitys kertoisi sovelluksen tilasta
+    // eikä pelaajasta (Tommin päätös 10.9.2026).
+    //
+    // Avattu osio antaa lukeman samoin (Tommin tilaus 2.11.2026: luku otsikkoon kuten
+    // Loungessa). Osio haetaan yhä vasta avattaessa, joten avaamaton otsikko on ilman lukua.
+    val activeTournamentsTitle = (
+        sectionCount(sections, page.activeTournamentsPath)
+            ?: ownTournamentCount?.takeIf { it.path == page.activeTournamentsPath }?.count
+        )
+        ?.let { stringResource(R.string.page_active_tournaments_counted, it) }
+        ?: stringResource(R.string.page_active_tournaments)
+    val tournamentWinsTitle = sectionCount(sections, page.tournamentWinsPath)
+        ?.let { stringResource(R.string.page_tournament_wins_counted, it) }
+        ?: stringResource(R.string.page_tournament_wins)
+    val showGamesTitle = stringResource(R.string.page_show_games)
+    // Otsikko kantaa keskinäisen saldon heti kun se on luettu (21.9.2026). Ilman saldoa
+    // otsikko on pelkkä nimi kuten ennen, ei "0 won". Saldo luetaan samalta sivulta kuin
+    // osio, joten ottelujen lukumäärä on tavallisesti tiedossa saldon kanssa.
+    val versusCount = sectionCount(sections, page.versusPath)
+    val versusTitle = when {
+        versus != null && versusCount != null ->
+            stringResource(R.string.page_versus_you_record_counted, versusCount, versus.won, versus.lost)
+        versus != null -> stringResource(R.string.page_versus_you_record, versus.won, versus.lost)
+        versusCount != null -> stringResource(R.string.page_versus_you_counted, versusCount)
+        else -> stringResource(R.string.page_versus_you)
+    }
+    // Profiilin omat ottelulistat taittuvat kuten osiot (Tommin tilaus 2.11.2026). Auki
+    // oletuksena, koska ne ovat sivun pääsisältö; tila ei säily profiilin sulkemisen yli.
+    var activeFolded by rememberSaveable(page.player.name) { mutableStateOf(false) }
+    var finishedFolded by rememberSaveable(page.player.name) { mutableStateOf(false) }
+    // Avoimet osiot polkuina; lista eikä joukko, koska lista on valmiiksi tallennettava.
+    var openSections by rememberSaveable(page.player.name) { mutableStateOf(listOf<String>()) }
+    val toggle: (String) -> Unit = { path ->
+        if (path in openSections) {
+            openSections = openSections - path
+        } else {
+            openSections = openSections + path
+            onOpenSection(path)
+        }
+    }
+    // Päivitys tyhjentää haetut osiot, ja auki jäänyt osio haetaan silloin uudelleen.
+    LaunchedEffect(openSections, sections) {
+        openSections.filter { sections[it] == null }.forEach(onOpenSection)
+    }
+    // Arkistoitu keskustelu tämän pelaajan kanssa (Tommin tilaus 2.11.2026). Sama reitti kuin
+    // nimen pitkän painalluksen valikossa, ja linkki näkyy vain kun keskustelu on olemassa.
+    val playerMenu = LocalPlayerMenu.current
+    val savedMessages = page.player.name
+        .takeIf { name -> playerMenu?.archived?.contains(name) == true }
+        ?.let { name -> stringResource(R.string.player_menu_messages, name) to name }
 
     page.ignoreForm?.let { form ->
         if (confirmingIgnore) {
@@ -335,6 +413,9 @@ private fun ProfileContent(
                     style = MaterialTheme.typography.bodyLarge,
                 )
             }
+        }
+        savedMessages?.let { (text, name) ->
+            item { LinkRow(text) { playerMenu?.openConversation?.invoke(name) } }
         }
         // Viestilomake on vain toisen pelaajan profiililla; omalta se puuttuu sivulta
         // itseltään, joten ehto on lomakkeen olemassaolo eikä päättely siitä kenen sivu on.
@@ -443,58 +524,113 @@ private fun ProfileContent(
                 Text(text = field.text, style = MaterialTheme.typography.bodyMedium)
             }
         }
+        // Pelaajien kartta tämän pelaajan kohdalle (Tommin valinta 9.10.2026). Kenttien alla
+        // eli Commentin alla, kun pelaaja on kirjoittanut sen (Tommin tilaus 2.11.2026):
+        // Comment on sivulla aina viimeinen kenttä. Linkki on aina, koska kartan nimilista
+        // haetaan vasta painalluksesta: App Help lupaa ettei sovellus lue mitään avaamatonta.
+        // Kartalta puuttuvasta kertoo ikkuna ennen karttaa.
+        item { LinkRow(stringResource(R.string.players_map_label), openMap) }
         item { HorizontalDivider() }
+        // Sisäiset linkit avautuvat paikalleen otsikkona (Tommin tilaus 2.11.2026), Loungen
+        // +/−-otsikolla ja lukumäärällä kun osio on haettu. Napit
+        // (Message, Invite, Ignore) pysyvät ennallaan, ja kartta on kenttien alla.
         page.activeTournamentsPath?.let { path ->
-            // Lukema vain kun muistissa on juuri tämän polun lista, eli omalla profiililla
-            // Tournaments-välilehden avaamisen jälkeen. Muuten rivi on ennallaan ilman
-            // selitystä: avaaminen antaa lukeman, ja selitys kertoisi sovelluksen tilasta
-            // eikä pelaajasta (Tommin päätös 10.9.2026).
-            val count = ownTournamentCount?.takeIf { it.path == path }?.count
-            item {
-                LinkRow(
-                    if (count == null) stringResource(R.string.page_active_tournaments)
-                    else stringResource(R.string.page_active_tournaments_counted, count),
-                ) { onOpenPath(path) }
-            }
+            expandableSection(
+                path = path,
+                title = activeTournamentsTitle,
+                open = path in openSections,
+                onToggle = { toggle(path) },
+                state = sections[path],
+                onOpenSection = onOpenSection,
+                onOpenPath = onOpenPath,
+                onExport = onExport,
+                markCounts = markCounts,
+            )
         }
         page.tournamentWinsPath?.let { path ->
-            item { LinkRow(stringResource(R.string.page_tournament_wins)) { onOpenPath(path) } }
+            expandableSection(
+                path = path,
+                title = tournamentWinsTitle,
+                open = path in openSections,
+                onToggle = { toggle(path) },
+                state = sections[path],
+                onOpenSection = onOpenSection,
+                onOpenPath = onOpenPath,
+                onExport = onExport,
+                markCounts = markCounts,
+            )
         }
-        // Pelilista näytetään linkkinä vain kun taulukot puuttuvat, eli toisen pelaajan
+        // Pelilista näytetään vain kun taulukot puuttuvat, eli toisen pelaajan
         // parametrittomalla profiililla. Omalla profiililla ottelut ovat jo alla, ja
-        // linkki tarjoaisi saman sisällön toiseen kertaan eri järjestyksessä.
+        // osio tarjoaisi saman sisällön toiseen kertaan eri järjestyksessä.
         if (page.activeMatches.isEmpty() && page.finishedMatches.isEmpty()) {
             page.gamesPath?.let { path ->
-                item { LinkRow(stringResource(R.string.page_show_games)) { onOpenPath(path) } }
+                expandableSection(
+                    path = path,
+                    title = showGamesTitle,
+                    open = path in openSections,
+                    onToggle = { toggle(path) },
+                    state = sections[path],
+                    onOpenSection = onOpenSection,
+                    onOpenPath = onOpenPath,
+                    onExport = onExport,
+                    markCounts = markCounts,
+                )
             }
         }
-        // Rivi kantaa keskinäisen saldon heti kun se on luettu (21.9.2026), ja pysyy
-        // linkkinä otteluihin. Ilman saldoa rivi on pelkkä linkki kuten ennen, ei "0 won".
         page.versusPath?.let { path ->
-            item {
-                LinkRow(
-                    if (versus == null) stringResource(R.string.page_versus_you)
-                    else stringResource(R.string.page_versus_you_record, versus.won, versus.lost),
-                ) { onOpenPath(path) }
-            }
+            expandableSection(
+                path = path,
+                title = versusTitle,
+                open = path in openSections,
+                onToggle = { toggle(path) },
+                state = sections[path],
+                onOpenSection = onOpenSection,
+                onOpenPath = onOpenPath,
+                onExport = onExport,
+                markCounts = markCounts,
+            )
         }
-        // Pelaajien kartta tämän pelaajan kohdalle (Tommin valinta 9.10.2026). Linkki on aina,
-        // koska kartan nimilista haetaan vasta painalluksesta: App Help lupaa ettei sovellus
-        // lue mitään avaamatonta. Ilman merkkiä kartta avautuu alusta ja ilmoitus kertoo sen.
-        item { LinkRow(stringResource(R.string.players_map_label), openMap) }
         if (page.activeMatches.isNotEmpty()) {
             item {
-                PageHeading(
-                    stringResource(R.string.page_active_matches, page.activeMatches.size)
+                FoldHeading(
+                    text = stringResource(R.string.page_active_matches, page.activeMatches.size),
+                    folded = activeFolded,
+                    onToggle = { activeFolded = !activeFolded },
+                    modifier = Modifier.padding(vertical = 8.dp),
                 )
             }
-            items(page.activeMatches, contentType = { DgStripedRow }) { match -> MatchRow(match, onOpenPath) }
+            if (!activeFolded) {
+                items(page.activeMatches, contentType = { DgStripedRow }) { match -> MatchRow(match, onOpenPath) }
+            }
         }
-        if (page.finishedMatches.isNotEmpty()) {
+        // Otsikko ja painikkeet näkyvät myös tyhjällä listalla, kun polussa on päiväraja:
+        // muuten liian lyhyt raja jättäisi ruudun ilman tietä takaisin pidempään.
+        if (page.finishedMatches.isNotEmpty() || finishedDays != null) {
             item {
-                PageHeading(
-                    stringResource(R.string.page_finished_matches, page.finishedMatches.size)
+                FoldHeading(
+                    text = stringResource(R.string.page_finished_matches, page.finishedMatches.size),
+                    folded = finishedFolded,
+                    onToggle = { finishedFolded = !finishedFolded },
+                    modifier = Modifier.padding(vertical = 8.dp),
                 )
+            }
+            finishedDays?.takeIf { !finishedFolded }?.let { days ->
+                item { FinishedDaysRow(days, onFinishedDays) }
+                if (page.finishedMatches.isEmpty()) {
+                    item {
+                        Text(
+                            text = if (days > 0) {
+                                stringResource(R.string.page_finished_none, days)
+                            } else {
+                                stringResource(R.string.page_finished_none_all)
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                        )
+                    }
+                }
             }
             // Haun tila yhtenä rivinä otsikon alla, vain kun jotain on tekeillä tai meni
             // pieleen. Onnistuminen ei näy tässä vaan jakovalikkona.
@@ -508,10 +644,17 @@ private fun ProfileContent(
                     )
                 }
             }
-            items(page.finishedMatches, contentType = { DgStripedRow }) { match -> MatchRow(match, onOpenPath, onExport) }
+            // Uusin ensin (Tommin valinta 31.10.2026). Sivu järjestää ottelunumeron mukaan
+            // nousevasti, eli vanhin aloitettu ensin; numero ei kerro päättymisjärjestystä,
+            // joten tämä on aloitusjärjestys käännettynä eikä päättymispäivä.
+            if (!finishedFolded) {
+                items(newestFirst(page.finishedMatches), contentType = { DgStripedRow }) { match ->
+                    MatchRow(match, onOpenPath, onExport, marked = markCounts[match.id] ?: 0)
+                }
+            }
         }
         if (page.activeMatches.isEmpty() && page.finishedMatches.isEmpty() &&
-            page.gamesPath == null
+            page.gamesPath == null && finishedDays == null
         ) {
             // Toisen pelaajan parametriton profiili ei kanna ottelutaulukoita (mitattu
             // 27.8.2026), mutta tavallisesti sillä on lajittelulinkki joka kantaa ne;
@@ -529,6 +672,66 @@ private fun ProfileContent(
 }
 
 /**
+ * Haetun osion rivimäärä otsikkoon, tai null kun osiota ei ole vielä haettu. Profiilisivun
+ * osiossa luetaan ottelut (käynnissä ja päättyneet), turnaussivun osiossa turnausrivit.
+ */
+internal fun sectionCount(sections: Map<String, SectionUiState>, path: String?): Int? {
+    val loaded = path?.let { sections[it] } as? SectionUiState.Loaded ?: return null
+    return when (val content = loaded.content) {
+        is PageContent.Profile -> content.page.activeMatches.size + content.page.finishedMatches.size
+        is PageContent.Tournaments -> content.page.rows.size
+        else -> null
+    }
+}
+
+/** Päättyneet suurimmasta ottelunumerosta pienimpään, ks. kutsupaikan kommentti. */
+internal fun newestFirst(matches: List<Match>): List<Match> =
+    matches.sortedByDescending { it.id.value.toLongOrNull() ?: Long.MIN_VALUE }
+
+/**
+ * Päättyneiden päiväraja painikkeina otsikon alla (Pascalin toive, Tommin valinta A
+ * 31.10.2026). Sama muoto kuin Top Pagen *Sort by* -rivi: selite ja valintasirut.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun FinishedDaysRow(days: Int, onSelect: (Int) -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp, vertical = 2.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = stringResource(R.string.page_finished_last),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        // Muistettu luku joka ei ole painikkeissa (vanha valinta tai sivun oma) näkyy
+        // omana valittuna painikkeenaan, ettei mikään painike väitä olevansa voimassa.
+        // ALL ja SITE eivät ole päivälukuja: ALL on oma painikkeensa ja SITE ei valitse mitään.
+        (FinishedDays.CHOICES + days).filter { it > 0 }.distinct().sorted().forEach { choice ->
+            FilterChip(
+                selected = choice == days,
+                onClick = { onSelect(choice) },
+                label = { Text(choice.toString(), maxLines = 1) },
+            )
+        }
+        Text(
+            text = stringResource(R.string.page_finished_days),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        FilterChip(
+            selected = days == FinishedDays.ALL,
+            onClick = { onSelect(FinishedDays.ALL) },
+            label = { Text(stringResource(R.string.page_finished_all), maxLines = 1) },
+        )
+    }
+}
+
+/**
  * Ottelurivi profiililla. Tapahtumasta porautuu turnaussivulle ja vastustajasta profiiliin,
  * eli molemmat ovat sivun omia linkkejä; rivi itse ei avaa lautaa, koska tämä ruutu voi
  * olla myös toisen pelaajan profiili.
@@ -538,6 +741,8 @@ private fun MatchRow(
     match: Match,
     onOpenPath: (String) -> Unit,
     onExport: ((Match, ExportFormat) -> Unit)? = null,
+    /** Ottelun merkityt asemat tällä laitteella, ks. [PageViewModel.markCounts]. */
+    marked: Int = 0,
 ) {
     Column(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
@@ -561,6 +766,14 @@ private fun MatchRow(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            // Pitkä painallus vastustajan nimellä avaa pelaajavalikon (`PlayerMenu.kt`).
+            PlayerMenuBox(
+                name = match.opponent.name,
+                profilePath = profilePath,
+                eventPath = eventPath,
+                onClick = profilePath?.let { path -> { onOpenPath(path) } },
+                modifier = Modifier.weight(1f, fill = false),
+            ) {
             Text(
                 text = textWithPlayerColor(
                     listOfNotNull(
@@ -573,13 +786,8 @@ private fun MatchRow(
                 ),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier
-                    .weight(1f, fill = false)
-                    .then(
-                        profilePath?.let { path -> Modifier.clickable { onOpenPath(path) } }
-                            ?: Modifier
-                    ),
             )
+            }
             // Vain päättyneillä, koska vain niillä on sivun oma `Export`-linkki
             // (`docs/KOHDE.md`). Ehto luetaan rivistä eikä listasta, kuten muutkin rivin
             // teot. Vastustajan rivillä eikä omalla (Tommin pyyntö 3.9.2026), koska omalla
@@ -606,6 +814,15 @@ private fun MatchRow(
                 // ja vastaanottaja valitaan vasta jakovalikossa.
                 ShareButton(stringResource(R.string.page_export_share_sgf)) { onExport(match, ExportFormat.SGF) }
             }
+        }
+        // Merkityt asemat kulkevat vain `.sgf`:ssä, joten rivi kertoo niistä ennen jakoa
+        // (Tommin pyyntö ja valinta A 31.10.2026). Ilman merkintöjä rivi on ennallaan.
+        if (onExport != null && match.exportPath != null && marked > 0) {
+            Text(
+                text = pluralStringResource(R.plurals.page_finished_marked, marked, marked),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.primary,
+            )
         }
     }
 }
@@ -639,6 +856,19 @@ private fun exportText(export: ExportUiState): String? = when (export) {
 @Composable
 private fun EventContent(page: EventPage, selfName: String?, onOpenPath: (String) -> Unit) {
     DgLazyColumn(modifier = Modifier.fillMaxSize()) {
+        // Ilmoittautuneiden määrä sivun omasta rivistä, vain kun sivulla on sellainen
+        // (Michael R 19.10.2026). Sääntökohtien yläpuolella, koska se on se luku jonka perään
+        // kysytään ennen kuin ilmoittaudutaan.
+        page.registered?.let { count ->
+            item {
+                Text(
+                    text = page.invited?.let { stringResource(R.string.page_registered_of_invited, count, it) }
+                        ?: pluralStringResource(R.plurals.page_registered_players, count, count),
+                    style = MaterialTheme.typography.titleSmall,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                )
+            }
+        }
         items(page.conditions, contentType = { DgStripedRow }) { condition ->
             Column(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
@@ -1615,6 +1845,75 @@ private fun sendOutcome(send: ReplyUiState): String? = when (send) {
     ReplyUiState.NoForm -> stringResource(R.string.match_over_reply_no_form)
     ReplyUiState.SessionExpired -> stringResource(R.string.error_auth)
     is ReplyUiState.Failed -> send.reason.text()
+}
+
+/**
+ * Profiilin sisäinen linkki avautuvana osiona (Tommin tilaus 2.11.2026): otsikko avaa ja
+ * sulkee, ja sisältö on sama sivu kuin linkin takana, piirrettynä paikalleen. Sivu haetaan
+ * vasta ensimmäisellä avauksella ([PageViewModel.openSection]).
+ */
+private fun LazyListScope.expandableSection(
+    path: String,
+    title: String,
+    open: Boolean,
+    onToggle: () -> Unit,
+    state: SectionUiState?,
+    onOpenSection: (String) -> Unit,
+    onOpenPath: (String) -> Unit,
+    onExport: (Match, ExportFormat) -> Unit,
+    markCounts: Map<MatchId, Int>,
+) {
+    item(key = "osio:$path") {
+        FoldHeading(text = title, folded = !open, onToggle = onToggle, modifier = Modifier.padding(vertical = 8.dp))
+    }
+    if (!open) return
+    when (state) {
+        null, SectionUiState.Loading -> item(key = "osio:$path:haku") {
+            ProgressSlot(active = true)
+        }
+        is SectionUiState.Failed -> item(key = "osio:$path:vika") {
+            RetryNote(
+                text = state.reason?.text() ?: stringResource(R.string.page_not_known),
+                onRetry = { onOpenSection(path) },
+            )
+        }
+        is SectionUiState.Loaded -> when (val content = state.content) {
+            is PageContent.Profile -> {
+                val page = content.page
+                if (page.activeMatches.isEmpty() && page.finishedMatches.isEmpty()) {
+                    item(key = "osio:$path:tyhja") { SectionEmpty(stringResource(R.string.page_no_matches)) }
+                }
+                items(page.activeMatches, contentType = { DgStripedRow }) { match ->
+                    MatchRow(match, onOpenPath)
+                }
+                items(newestFirst(page.finishedMatches), contentType = { DgStripedRow }) { match ->
+                    MatchRow(match, onOpenPath, onExport, marked = markCounts[match.id] ?: 0)
+                }
+            }
+            is PageContent.Tournaments -> {
+                if (content.page.rows.isEmpty()) {
+                    item(key = "osio:$path:tyhja") { SectionEmpty(stringResource(R.string.page_no_tournaments)) }
+                }
+                items(content.page.rows, contentType = { DgStripedRow }) { row ->
+                    PlayerTournamentRowView(row, onOpenPath)
+                    HorizontalDivider()
+                }
+            }
+            else -> item(key = "osio:$path:outo") {
+                SectionEmpty(stringResource(R.string.page_not_known))
+            }
+        }
+    }
+}
+
+@Composable
+private fun SectionEmpty(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+    )
 }
 
 @Composable

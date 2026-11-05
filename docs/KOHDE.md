@@ -754,6 +754,14 @@ Viesteistä ja siirroista (Tommin havainnot ja kuvakaappaukset 29.7.2026):
   aikakontrolli). Profiilikenttiin voi kirjoittaa mitä tahansa: kaapatulla sivulla `Real
   Name` oli lista YouTube-linkkejä.
 
+  **31.10.2026 paljas `/bg/user/<id>` näytti ottelutaulukot** (Tommin tunnuksilla, yksi
+  pelaaja): päättyneitä oli kymmenen, eli määrä eikä päiväraja, koska luvuilla 7, 10 ja 14
+  samoja oli viisi. Ottelurivin vastustajalinkki on tätä muotoa. Ilman `days_to_view`-lukua
+  mutta `finished=1`:llä sivu näyttää koko historian (tällä pelaajalla 2366, omalla
+  profiililla 1930, lajittelulinkillä toisella pelaajalla 7409). Luku rajaa päättymispäivän
+  mukaan. Ristiriitaa 27.8. lukemaan ei ole selitetty: ero voi olla linkin lähteessä tai
+  sivuston muutoksessa. Sovellus käsittelee kummankin (`FinishedDays`).
+
 - **Turnaussivu `/bg/event/<id>`, mitattu 27.8.2026 kaappauksesta `raakasivut/event_page.html`.**
   Sivulla on `<h2>`-nimi, `<h3>Conditions of Contest</h3>` ja sen alla `<h4>`-otsikot
   `Game`, `Size` ja `Time control`, joiden teksti on rungon suoraa sisältöä ilman
@@ -968,6 +976,23 @@ Viesteistä ja siirroista (Tommin havainnot ja kuvakaappaukset 29.7.2026):
   `MessageArchive` enää leimaa mitään. Leiman antaa se joka muuntaa sivun viestiksi.
   Kannan sarake `storedAtEpochMillis` säilytti nimensä, jottei skeema muutu tarpeettomasti;
   sen merkitys on nyt "milloin laite näki viestin", ja se on osa tunnistetta.
+
+  **Tarkennus 2.11.2026 (Tommin kuittaus): ottelun chat-viesti tallennetaan kerran sivua
+  kohden.** Yllä oleva peruste *"sama viesti voidaan noutaa vain kerran"* pätee pikaviestiin,
+  jonka Inboxin nouto kuluttaa. Laudan ja päättymissivun chat-viesti on sivulla, jonka voi
+  lukea uudelleen, ja jokainen uusi luku antoi viestille uuden saapumishetken ja siksi uuden
+  tunnisteen. Mitattu kuorella 2.11.2026: LTB:n *Congrats* arkistoitui kolmesti saman
+  päättymissivun kolmesta luvusta. Oikeassa arkistossa yhden vastustajan *vgg glnr* on 11 kertaa
+  3.10.2026, jolloin samana iltana ajettiin kuorta, joten oikean käytön osuutta ei tiedetä.
+
+  *Mikä muuttuu:* `GAME_MESSAGE` kirjoitetaan arkistoon vain kun pari (sivun oma
+  lomakeosoite, viestin teksti) on uusi, ja muisti tästä säilyy laitteella sovelluksen
+  uudelleenkäynnistyksen yli (`ArchivedChatStore`). Lomakeosoite kantaa siirron numeron
+  (`/bg/move/5310551/3682`), joten saman ottelun eri siirroilla lähetetty sama *gl* on yhä
+  eri viesti. Lomakkeettomalla päättymissivulla avain on ottelu, koska ottelulla on yksi
+  päättymissivu. *Mikä ei muutu:* tunnisteen kaava, joten tallennettujen viestien
+  pääavaimet pysyvät, eikä skeema muutu. Pikaviestit noudetaan yhä kerran, ja kahdesti
+  lähetetty *Great match!* tallentuu kahdesti kuten 1.8.2026 päätettiin.
 - **Merkistö on `windows-1252` lukusuunnassa. Mitattu 4.8.2026, ja kaksi aiempaa oletusta
   kaatui kerralla.** Toinen pelisessio proxyn läpi kävi ensi kertaa keskustelupalstalla
   (`/bg/forum2`), ja siellä olivat korpuksen ensimmäiset ei-ASCII-tavut: kolme sivua 421:stä,
@@ -2075,20 +2100,31 @@ muodossa `Match length 0`. Tommin päätökset samana aamuna: pituus näytetää
 beaver-napit kehystetään peruuttamattomiksi, ja laitteen `Confirm Beaver` kysyy ennen niitä
 (`docs/ASETUKSET.md` luku 3).
 
-## Käyttökatkoilmoitus: oma sivu, vain kirjautuneelle, alle kymmenen minuuttia (mitattu 11.9.2026)
+## Käyttökatkoilmoitus: oma sivu, kesto 10–20 minuuttia (mitattu 11.9. ja 28.10.2026)
 
 Päivittäisen varmuuskopion aikana `GET /bg/top` kirjautuneena antaa HTTP 200 ja seitsemän
 rivin sivun: otsikko `DailyGammon Backups`, logo `dglogo.gif`, `DailyGammon is sleeping --
 SHH!!` ja kehotus palata puolen tunnin päästä. Ei lomaketta, taulukkoa eikä linkkejä.
 Raakasivu `raakasivut/kayttokatko.html`, fixture `site_sleeping.html`.
 
-Kolme mittausta jotka eivät ole pääteltävissä sivusta:
+Mittaukset jotka eivät ole pääteltävissä sivusta:
 
-- **Kirjautumaton haku ei saa ilmoitusta** vaan tavallisen login-lomakkeen (`path=top/`),
-  curl samalla minuutilla. Ilmoitus tulee siis vasta istunnon tarkistuksen jälkeen, eikä se
-  ole login-sivun muunnelma.
-- **Kesto oli alle kymmenen minuuttia**, ei sivun lupaama puoli tuntia: 0.16 nukkui, 0.26
-  sovellus haki otteluluettelon tavallisesti. Yksi mittaus, ei jakauma.
+- **Kirjautumaton haku sai ilmoituksen 28.10.2026.** Kirjautumaton curl sai klo 23.11 saman
+  `DailyGammon Backups` -sivun, ja herättyään se sai tavallisen `DailyGammon -- Please Login`
+  -sivun. Tämä kumoaa 11.9. havainnon, jonka mukaan kirjautumaton sai login-lomakkeen
+  (`path=top/`) samalla minuutilla. Ero voi selittyä katkon vaiheella (11.9. curl osui ehkä
+  alkuun tai loppuun), mutta syytä ei ole mitattu. Koodi ei nojaa kumpaankaan, koska
+  `DgClient.readBody` tunnistaa sivun ennen login-tulkintaa.
+- **Kesto ei ole sivun lupaama puoli tuntia.** 11.9.2026: 0.16 nukkui, 0.26 sovellus haki
+  otteluluettelon tavallisesti, eli kesto alle kymmenen minuuttia. 28.10.2026: ensimmäinen
+  havainto Tommin kuvakaappauksessa 23.11.28, kirjautumaton haku 30 s välein nukkui viimeksi
+  23.30.58 ja oli hereillä 23.31.29. Kesto havainnosta heräämiseen oli siis vähintään
+  19,5 minuuttia, ja alku voi olla aiemmin. Kaksi mittausta, ei jakauma.
+- **Herääminen osui samaan UTC-aikaan.** 0.26 kesäaikaa (UTC+3) on 21.26 UTC, ja 23.31
+  talviaikaa (UTC+2, Suomi siirtyi 25.10.) on 21.31 UTC. Paikallisesti katko siis siirtyi
+  tunnilla aiemmaksi kellojen kääntyessä. Mittaus ei erota UTC:tä Yhdysvaltain itäisestä
+  ajasta, koska siellä kesäaika päättyy vasta 1.11.2026. Marraskuun mittaus ratkaisee sen:
+  jos katko herää yhä noin 21.30 UTC, niin ajastin on UTC:ssä.
 - **Otsakkeet ovat tavalliset**: `Content-Type: text/html` ilman charsetia, `Pragma:
   no-cache`, ei statuskoodia joka erottaisi katkon. Erottelu on rungossa.
 

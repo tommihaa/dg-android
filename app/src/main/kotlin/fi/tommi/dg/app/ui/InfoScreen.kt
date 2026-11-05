@@ -61,6 +61,12 @@ enum class InfoSection(@StringRes val labelRes: Int, @StringRes val summaryRes: 
     SiteHelp(R.string.info_site_help_label, R.string.info_site_help_summary),
     SiteLinks(R.string.info_site_links_label, R.string.info_site_links_summary),
     /**
+     * Pelaajien ylläpitämät linkit (Tommin tilaus 15.10.2026). Oma rivi erillään sivuston
+     * Linksistä, koska lähde on pelaajat eikä DailyGammon; Players mapin rivi piirtyy
+     * Linksin ja tämän väliin, joten pelaajien kohteet ovat peräkkäin.
+     */
+    PlayersLinks(R.string.players_links_label, R.string.players_links_summary),
+    /**
      * Sivuston luovutussivu `/bg/resign` (3.9.2026, Tommin tilaus). Info-välilehden rivi
      * eikä otteluluettelon nappi, koska luovutus on sivustolla tavallinen valikkotoiminto
      * (`SUBSTANSSI.md` kohta 36) ja Top Pagen oma linkki on navigointipalkissa.
@@ -123,10 +129,13 @@ fun InfoScreen(
         // jolloin lukupinta loppuu viimeiseen riviin ja tyhjä tila sen alla saa kuvion täytenä.
         // Kehys mittaa saman korkeuden täytekuvalle (7.9.2026, `DgFill.kt`).
         DgFillFrame(modifier = Modifier.padding(insets)) {
+        val scroll = rememberScrollState()
+        // Välilehden uusi napautus vie alkuun (`TabSwipe.kt`).
+        ScrollToTopOnTabTap { scroll.animateScrollTo(0) }
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(scroll)
                 .dgReadingSurface(),
         ) {
             // Hakukenttä listan yläpuolella (Tommin valinta 24.9.2026, mockupin vaihtoehto A):

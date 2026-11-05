@@ -3,6 +3,7 @@ package fi.tommi.dg.app.ui
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import fi.tommi.dg.app.session.AppTheme
 import fi.tommi.dg.app.session.BoardStyle
 import fi.tommi.dg.domain.BoardScheme
@@ -324,6 +325,12 @@ internal data class PanelLook(
     val outlineButton: Color = DgBoard.Palette.CheckerSelf,
     /** Onko ympäristö vaalea: järjestelmäpalkin ikonit ja Rarity-värin sävy. */
     val light: Boolean = false,
+    /**
+     * Linkkitekstin alle piirrettävä tausta, tai `Unspecified`. Vain kaistalla, jonka värit
+     * [forBand] vaihtoi: muuri kulkee kaistan läpi, ja sen päälle osuva tumma teksti katosi
+     * tummaan muuriin (kaappaus 20.10.2026).
+     */
+    val textBacking: Color = Color.Unspecified,
 ) {
     companion object {
         val DEFAULT = PanelLook(
@@ -417,6 +424,61 @@ internal data class PanelLook(
             muted = DgBoard.MonteCarloVariant.PanelMuted,
             cubeOutline = DgBoard.Palette.CubeSoft,
         )
+
+        /**
+         * Keskikaistan värit kaistan omaa taustaa vasten (20.10.2026, `docs/UI.md` › Kaistan
+         * kontrasti). Paneelin värit on valittu paneelin taustaa vasten, mutta kapealla
+         * ruudulla napit ja linkit ovat kaistalla, joka on laudan huopaa. Tummassa tilassa
+         * vaahtera- ja oliivihuovalla `Skip Game`, `Verify Double` ja linkit olivat vaaleaa
+         * vaalealla, ja vaaleassa tilassa X-22:n mustalla huovalla tummaa tummalla.
+         *
+         * Vain teksti ja ääriviivat vaihtuvat, ja vain ne jotka eivät erotu. Täytetyt napit
+         * kantavat oman taustansa. Paneeli jonka kaikki värit erottuvat palautuu sellaisenaan,
+         * kuten X-22 omalla mustalla huovallaan ja vaalea Deco omalla norsunluullaan. Kun
+         * jokin väri vaihtuu, linkkien ja vahvistusruudun alle tulee kaistan värinen tausta
+         * ([textBacking]), koska muuri kulkee kaistan läpi.
+         */
+        fun forBand(panel: PanelLook, band: Color): PanelLook {
+            // Kukin väri pidetään, jos se erottuu kaistasta WCAG:n 4,5:llä, ja muuten tilalle
+            // tulee ensimmäinen varaväri joka erottuu. Vaalealla kaistalla varavärit ovat
+            // vaalean puuteeman ruskeat, tummalla paneelin kerma ja viimeisenä valkoinen,
+            // koska Monte Carlo variantin vihreällä huovalla vain valkoinen ylittää rajan.
+            val light = band.luminance() > 0.35f
+            val fallbacks = if (light) {
+                listOf(DgBoard.PanelLight.WoodMuted, DgBoard.PanelLight.WoodText, Color.Black)
+            } else {
+                listOf(DEFAULT.secondary, DEFAULT.text, Color.White)
+            }
+            fun legible(color: Color): Color =
+                if (contrast(color, band) >= MIN_BAND_CONTRAST) color
+                else fallbacks.first { contrast(it, band) >= MIN_BAND_CONTRAST || it == fallbacks.last() }
+            val text = legible(panel.text)
+            val secondary = legible(panel.secondary)
+            val faint = legible(panel.faint)
+            val outlineButton = legible(panel.outlineButton)
+            if (text == panel.text && secondary == panel.secondary && faint == panel.faint &&
+                outlineButton == panel.outlineButton
+            ) return panel
+            return panel.copy(
+                text = text,
+                secondary = secondary,
+                faint = faint,
+                muted = legible(panel.muted),
+                outlineButton = outlineButton,
+                background = band,
+                textBacking = band,
+            )
+        }
+
+        /** WCAG AA leipätekstille. */
+        private const val MIN_BAND_CONTRAST = 4.5f
+
+        /** WCAG-kontrastisuhde kahden värin välillä. */
+        private fun contrast(a: Color, b: Color): Float {
+            val la = a.luminance() + 0.05f
+            val lb = b.luminance() + 0.05f
+            return maxOf(la, lb) / minOf(la, lb)
+        }
 
         /** Tumman tilan paneeli lautatyylistä. */
         fun of(style: BoardStyle): PanelLook = when (style) {

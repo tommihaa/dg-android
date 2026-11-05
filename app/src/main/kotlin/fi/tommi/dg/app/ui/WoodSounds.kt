@@ -93,6 +93,19 @@ internal class WoodSoundPlayer(context: Context) {
         ids[sound]?.let { pool.play(it, VOLUME, VOLUME, 1, 0, 1f) }
     }
 
+    /**
+     * Asetusruudun `Play` (Tommin tilaus 2.11.2026: ääni kuunneltavaksi ennen kuin sen ottaa
+     * käyttöön). Soi myös kun `Game sounds` tai äänen ruutu on pois, koska painallus on pyyntö.
+     * **Äänetön tila voittaa tässäkin** (Tommin valinta samana päivänä: *"en pidä pyytämättä ja
+     * yllättäen soivista äänistä"*). TalkBackin raja ei koske kuuntelua: painettu ääni ei peitä
+     * puhetta yllättäen. Palauttaa epätoden kun äänetön tila esti, jotta ruutu voi kertoa syyn.
+     */
+    fun preview(sound: WoodSound): Boolean {
+        if (audio?.ringerMode != AudioManager.RINGER_MODE_NORMAL) return false
+        ids[sound]?.let { pool.play(it, VOLUME, VOLUME, 1, 0, 1f) }
+        return true
+    }
+
     fun release() = pool.release()
 
     private companion object {

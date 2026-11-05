@@ -27,6 +27,67 @@ class EventParserTest {
         assertTrue(event.conditions.last().text.startsWith("Initial pool of 150:00"))
     }
 
+    /**
+     * Ilmoittautuneiden määrä (Michael R 19.10.2026). Rivin muoto on mitattu kahdelta kaapatulta
+     * ilmoittautumisvaiheen sivulta (58 ja 335 pelaajaa, `raakasivut/sessio-3-9-signup` ja
+     * `sessio-5-10-ilta`), jotka sisältävät oikeita nimiä, joten testi käyttää niistä
+     * poimittua riviä pienessä keksityssä sivussa eikä itse sivuja.
+     */
+    private fun registrationPage(line: String) = """
+        <HTML><HEAD><TITLE>DailyGammon -- Sample Signup</TITLE></HEAD><BODY>
+        <h2>Sample Signup</h2>
+        <h3>Conditions of Contest</h3>
+        <h4>Size</h4>
+        9 rounds, up to 512 players
+        <hr>
+        $line
+        </BODY></HTML>
+    """.trimIndent()
+
+    @Test
+    fun `ilmoittautuneiden maara luetaan sivun rivilta`() {
+        val page = EventParser.parse(registrationPage("Play has not yet begun.  Currently there are 335 players registered."))!!
+        assertEquals(335, page.registered)
+    }
+
+    @Test
+    fun `kutsuturnauksella luetaan kutsuttujen maara taulukon linkeista`() {
+        // Muoto mitattu Knack of Nack Champs #27 -sivulta (568 kutsuttua, 58 ilmoittautunutta);
+        // testi käyttää kolmen keksityn nimen taulukkoa eikä oikeaa listaa.
+        val page = EventParser.parse(
+            """
+            <HTML><HEAD><TITLE>DailyGammon -- Sample Champs</TITLE></HEAD><BODY>
+            <h2>Sample Champs</h2>
+            <h3>Conditions of Contest</h3>
+            <h4>Size</h4>
+            10 rounds, up to 1024 players
+            <hr>
+            <h4>Invitational</h4>Entry in this tournament is by invitation only.
+            The following players have been invited:<BR>
+            <TABLE>
+            <TR><TD><A HREF=/bg/user/1>Alpha</A>
+            <TD><A HREF=/bg/user/2>Beta</A>
+            <TR><TD><A HREF=/bg/user/3>Gamma</A>
+            </TABLE>
+            Play has not yet begun.  Currently there are 2 players registered.
+            </BODY></HTML>
+            """.trimIndent(),
+        )!!
+        assertEquals(3, page.invited)
+        assertEquals(2, page.registered)
+    }
+
+    @Test
+    fun `ilman kutsulistaa kutsuttujen maara on null`() {
+        assertNull(EventParser.parse(registrationPage("Currently there are 5 players registered."))!!.invited)
+    }
+
+    @Test
+    fun `ilman riviä maara on null eika nolla`() {
+        assertNull(EventParser.parse(registrationPage("Play is under way."))!!.registered)
+        assertNull(event.registered)
+    }
+
     @Test
     fun `muunnelma luetaan Game-ehdosta`() {
         // `.sgf`-viennin `RU[Crawford]` nojaa tähän: double repeat luopuu Crawfordista.

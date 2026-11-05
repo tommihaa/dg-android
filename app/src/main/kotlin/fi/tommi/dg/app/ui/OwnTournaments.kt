@@ -582,13 +582,8 @@ private fun activeGameLine(
     }
     val rating = userId?.let(LocalPlayerRating.current)
     val color = rating?.let { Rarity.color(ratingTier(it), dgDark()) }
-    val styled = buildAnnotatedString {
-        append(text)
-        val at = opponent?.let { text.lastIndexOf(it) } ?: -1
-        if (color != null && at >= 0) {
-            addStyle(SpanStyle(color = color), at, at + opponent!!.length)
-        }
-    }
+    // Nimi on linkki profiiliin (2.11.2026, `PlayerLink.kt`); rivin muu osa avaa turnauksen.
+    val styled = nameSpan(text, opponent, color, playerProfilePath(opponent, userId), playerOpener())
     return ActiveGameLine(text = styled, hasRound = round != null)
 }
 

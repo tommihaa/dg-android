@@ -40,6 +40,18 @@ interface MarkBook {
     suspend fun remove(id: Long)
 
     suspend fun count(): Int
+
+    /** Kaikki merkit, viennin lähde (`ArchiveFile.marks`). */
+    suspend fun all(): List<MarkedPosition>
+
+    /**
+     * Tuonti: kirjoittaa ne merkit joita kannassa ei vielä ole, eikä koske muihin. **Vain
+     * lisää** (Tommin päätös 16.9.2026 koskee koko arkistotiedostoa), joten poistettu merkki
+     * palaa vain jos tuotava tiedosto on tehty ennen poistoa.
+     *
+     * @return kuinka monta riviä kirjoitettiin.
+     */
+    suspend fun addMissing(marks: List<MarkedPosition>): Int
 }
 
 class RoomMarkBook(
@@ -68,4 +80,21 @@ class RoomMarkBook(
     override suspend fun remove(id: Long) = dao.delete(id)
 
     override suspend fun count(): Int = dao.count()
+
+    override suspend fun all(): List<MarkedPosition> = dao.all().map { it.toDomain() }
+
+    override suspend fun addMissing(marks: List<MarkedPosition>): Int {
+        var added = 0
+        for (mark in marks) {
+            val note = mark.note.trim()
+            val game = mark.game
+            val same = dao.countSame(
+                game.matchId.value, game.opponentScore, game.selfScore, mark.moveNumber, note, mark.createdAtEpochMillis,
+            )
+            if (same > 0) continue
+            dao.insert(mark.copy(id = 0, note = note).toEntity())
+            added++
+        }
+        return added
+    }
 }

@@ -293,6 +293,12 @@ fun MessagesScreen(
                     Column {
                         ConversationHeader(
                             name = filter,
+                            // Lähettäjättömän keskustelun nimi on viestin laji, sama sääntö kuin
+                            // listarivillä ja roskakorissa. Ennen 20.10.2026 otsikko sanoi aina
+                            // Unrecognised message ja vahvistus "with ?" (laiteajo, ilmoitus).
+                            title = filter.ifBlank {
+                                stringResource(sourceLabel(visible.firstOrNull()?.source ?: MessageSource.UNKNOWN))
+                            },
                             count = visible.size,
                             onBack = { onFilterChange(null) },
                             onDelete = { onDeleteConversation(filter) },
@@ -545,10 +551,10 @@ private fun ImportLine(state: ImportUiState, onDismiss: () -> Unit) {
         ImportUiState.Idle -> return
         ImportUiState.NotAnArchive -> stringResource(R.string.import_not_archive)
         is ImportUiState.Done -> buildList {
-            if (state.messages == 0 && state.reminders == 0 && state.phrases == 0) {
+            if (state.messages == 0 && state.reminders == 0 && state.phrases == 0 && state.marks == 0) {
                 add(stringResource(R.string.import_nothing_new))
             } else {
-                add(stringResource(R.string.import_done, state.messages, state.reminders, state.phrases))
+                add(stringResource(R.string.import_done, state.messages, state.reminders, state.phrases, state.marks))
                 if (state.alreadyHere > 0) add(stringResource(R.string.import_already_here, state.alreadyHere))
             }
             if (state.unreadable > 0) add(stringResource(R.string.import_unreadable, state.unreadable))
@@ -860,7 +866,7 @@ private val LIST_DATE_WIDTH = 76.dp
  * listaa selatessa ja ruudunlukija löytää sen tavallisena nappina (Tommin valinta).
  */
 @Composable
-private fun ConversationHeader(name: String, count: Int, onBack: () -> Unit, onDelete: () -> Unit) {
+private fun ConversationHeader(name: String, title: String, count: Int, onBack: () -> Unit, onDelete: () -> Unit) {
     var confirming by rememberSaveable { mutableStateOf(false) }
     Row(
         modifier = Modifier.inboxColumn().padding(horizontal = 8.dp, vertical = 4.dp),
@@ -870,8 +876,9 @@ private fun ConversationHeader(name: String, count: Int, onBack: () -> Unit, onD
         TextButton(onClick = onBack) {
             Text(stringResource(R.string.messages_list_back))
         }
+        // Keskustelun otsikon nimi on linkki profiiliin (2.11.2026, `PlayerLink.kt`).
         Text(
-            text = name.ifBlank { stringResource(R.string.messages_source_unknown) },
+            text = nameSpan(title, name, null, playerProfilePath(name), playerOpener()),
             style = MaterialTheme.typography.titleSmall,
             color = inboxNameColor(name, dgDark()) ?: Color.Unspecified,
             modifier = Modifier.weight(1f),
@@ -884,7 +891,7 @@ private fun ConversationHeader(name: String, count: Int, onBack: () -> Unit, onD
     }
     if (confirming) {
         DeleteConversationDialog(
-            name = name,
+            name = title,
             count = count,
             onConfirm = {
                 confirming = false
@@ -1224,7 +1231,14 @@ private fun InvitationSection(
 
     HorizontalDivider()
     Text(
-        text = stringResource(R.string.messages_invitation_sentence, from, invitation.description),
+        // Kutsujan nimi on linkki profiiliin (2.11.2026, `PlayerLink.kt`): rating on se mitä
+        // kutsusta haluaa tietää ennen vastausta.
+        text = textWithPlayerColor(
+            stringResource(R.string.messages_invitation_sentence, from, invitation.description),
+            from,
+            invitation.from.userId,
+            invitation.from.profilePath,
+        ),
         style = MaterialTheme.typography.bodyLarge,
     )
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1500,6 +1514,8 @@ private fun MessageRow(
                     // rungossa: sisältö pysyy teeman perusvärissä, eli tummalla taustalla
                     // vaaleana. Lähettäjätön rivi jää teeman väriin.
                     color = inboxNameColor(message.sender, dgDark()) ?: Color.Unspecified,
+                    // Lähettäjän nimi on linkki profiiliin (2.11.2026, `PlayerLink.kt`).
+                    modifier = Modifier.playerLink(message.sender),
                 )
                 // Laji nimen perässä (Tommin pyyntö 30.8.2026): pikaviesti ja ottelun
                 // mukana tullut ovat eri reittiä saapuneita, ja ero luetaan tästä eikä
@@ -1518,7 +1534,13 @@ private fun MessageRow(
                 val recipient = message.opponent?.takeIf { it.isNotBlank() && it != message.sender }
                 if (recipient != null) {
                     Text(
-                        text = stringResource(R.string.messages_to, recipient),
+                        text = nameSpan(
+                            stringResource(R.string.messages_to, recipient),
+                            recipient,
+                            null,
+                            playerProfilePath(recipient),
+                            playerOpener(),
+                        ),
                         style = MaterialTheme.typography.titleSmall,
                         color = inboxNameColor(recipient, dgDark()) ?: Color.Unspecified,
                     )

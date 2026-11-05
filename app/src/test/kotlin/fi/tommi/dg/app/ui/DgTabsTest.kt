@@ -30,6 +30,16 @@ class DgTabsTest {
         assertEquals(5, DgTab.entries.size)
     }
 
+    /** Pyyhkäisyn järjestys ja kiertävät päädyt (Tommin päätös 20.10.2026). */
+    @Test
+    fun `pyyhkaisy kulkee palkin jarjestyksessa ja kiertaa paadyissa`() {
+        assertEquals(DgTab.Lounge, swipeTarget(DgTab.Matches, 1))
+        assertEquals(DgTab.Messages, swipeTarget(DgTab.Discussion, 1))
+        assertEquals(DgTab.Discussion, swipeTarget(DgTab.Messages, -1))
+        assertEquals(DgTab.Matches, swipeTarget(DgTab.Info, 1))
+        assertEquals(DgTab.Info, swipeTarget(DgTab.Matches, -1))
+    }
+
     @Test
     fun `lauta ei ole valilehti`() {
         assertNull(tabFor(BoardRoute.PATTERN))

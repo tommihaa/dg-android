@@ -2,7 +2,9 @@ package fi.tommi.dg.app
 
 import android.content.Context
 import fi.tommi.dg.app.session.BackupStore
+import fi.tommi.dg.app.session.ArchivedChatStore
 import fi.tommi.dg.app.session.PlayerRatingStore
+import fi.tommi.dg.app.session.SharedPrefsArchivedChats
 import fi.tommi.dg.app.session.SharedPrefsPlayerRatings
 import fi.tommi.dg.app.session.SharedPrefsTournamentRounds
 import fi.tommi.dg.app.session.SharedPrefsTournamentWaits
@@ -24,6 +26,8 @@ import fi.tommi.dg.app.session.SharedPrefsDiceSubmit
 import fi.tommi.dg.app.session.SharedPrefsDiceRoll
 import fi.tommi.dg.app.session.SharedPrefsBoardExtras
 import fi.tommi.dg.app.session.DiceRollStore
+import fi.tommi.dg.app.session.NextOnDiceStore
+import fi.tommi.dg.app.session.SharedPrefsNextOnDice
 import fi.tommi.dg.app.session.BoardExtrasStore
 import fi.tommi.dg.app.ui.OwnTournamentCount
 import fi.tommi.dg.app.session.SharedPrefsDiceSwap
@@ -45,10 +49,14 @@ import fi.tommi.dg.app.session.SharedPrefsHandedness
 import fi.tommi.dg.app.session.SharedPrefsAppLock
 import fi.tommi.dg.app.session.SharedPrefsPortraitLock
 import fi.tommi.dg.app.session.RarityStore
+import fi.tommi.dg.app.session.GestureStore
+import fi.tommi.dg.app.session.SharedPrefsGestures
 import fi.tommi.dg.app.session.SharedPrefsRarity
 import fi.tommi.dg.app.session.WallpaperStore
 import fi.tommi.dg.app.session.SharedPrefsWallpaper
 import fi.tommi.dg.app.session.MatchOrderStore
+import fi.tommi.dg.app.session.FinishedDaysStore
+import fi.tommi.dg.app.session.SharedPrefsFinishedDays
 import fi.tommi.dg.app.session.LoungeFoldStore
 import fi.tommi.dg.app.session.MessageFilterStore
 import fi.tommi.dg.app.session.PhraseBook
@@ -200,6 +208,9 @@ class AppContainer(context: Context) {
     /** Vastustajan noppien painallus heittää, samaa lajia kuin [diceSubmit]. Oletus pois. */
     val diceRoll: DiceRollStore by lazy { SharedPrefsDiceRoll(appContext) }
 
+    /** `Next Game` ja `To Top` omien noppien paikalle, samassa ryhmässä. Oletus pois. */
+    val nextOnDice: NextOnDiceStore by lazy { SharedPrefsNextOnDice(appContext) }
+
     /** Laudan omat lisälinkit näkyvissä, oletus päällä. Ks. [BoardExtrasStore]. */
     val boardExtras: BoardExtrasStore by lazy { SharedPrefsBoardExtras(appContext) }
 
@@ -211,6 +222,9 @@ class AppContainer(context: Context) {
 
     /** Rarity-värit nimissä ja Inboxin määrässä, oletus päällä. Ks. [RarityStore]. */
     val rarity: RarityStore by lazy { SharedPrefsRarity(appContext) }
+
+    /** Eleiden pääkytkin ja pois kytketyt eleet, oletus kaikki päällä. Ks. [GestureStore]. */
+    val gestures: GestureStore by lazy { SharedPrefsGestures(appContext) }
 
     /** Lukuruutujen pystylukko, oletus pois. Laudan suunnan ratkaisee [boardRotation]. */
     val portraitLock: PortraitLockStore by lazy { SharedPrefsPortraitLock(appContext) }
@@ -234,6 +248,9 @@ class AppContainer(context: Context) {
     /** Otteluluettelon järjestysvalinta, samaa lajia kuin [boardStyle]. */
     val matchOrder: MatchOrderStore by lazy { SharedPrefsMatchOrder(appContext) }
 
+    /** Profiilin päättyneiden päiväraja, samaa lajia kuin [matchOrder]. */
+    val finishedDays: FinishedDaysStore by lazy { SharedPrefsFinishedDays(appContext) }
+
     /** Viestiruudun pelaajasuodatin, samaa lajia kuin [matchOrder]. */
     val messageFilter: MessageFilterStore by lazy { SharedPrefsMessageFilter(appContext) }
 
@@ -242,6 +259,9 @@ class AppContainer(context: Context) {
 
     /** Nähtyjen pelaajien ratingit laudan korttia varten (25.9.2026), ks. [PlayerRatingStore]. */
     val playerRatings: PlayerRatingStore by lazy { SharedPrefsPlayerRatings(appContext) }
+
+    /** Jo arkistoidut chat-viestit sivun mukaan (2.11.2026), ks. [ArchivedChatStore]. */
+    val archivedChats: ArchivedChatStore by lazy { SharedPrefsArchivedChats(appContext) }
 
     /** Omien turnausten odotukset Refreshistä (25.9.2026), ks. [TournamentWaitStore]. */
     val tournamentWaits: TournamentWaitStore by lazy { SharedPrefsTournamentWaits(appContext) }

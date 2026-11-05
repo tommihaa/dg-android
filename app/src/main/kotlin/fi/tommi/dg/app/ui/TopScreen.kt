@@ -33,6 +33,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -205,17 +206,19 @@ fun TopScreen(
                 val listed = remember(state) {
                     (state as? TopUiState.Loaded)?.page?.matches?.associateBy { it.id }
                 }
-                OwnTournamentsSection(
-                    state = tournaments,
-                    onRefresh = onRefresh,
-                    onOpenPage = onOpenPage,
-                    listed = listed,
-                    remembered = remembered,
-                    opponentsRefresh = opponentsRefresh,
-                    waits = tournamentWaits,
-                    ratingsRevision = ratingsRevision,
-                    extrasRunning = tournamentExtrasRunning,
-                )
+                CompositionLocalProvider(LocalListPull provides onRefresh) {
+                    OwnTournamentsSection(
+                        state = tournaments,
+                        onRefresh = onRefresh,
+                        onOpenPage = onOpenPage,
+                        listed = listed,
+                        remembered = remembered,
+                        opponentsRefresh = opponentsRefresh,
+                        waits = tournamentWaits,
+                        ratingsRevision = ratingsRevision,
+                        extrasRunning = tournamentExtrasRunning,
+                    )
+                }
                 return@Column
             }
 
@@ -249,19 +252,21 @@ fun TopScreen(
                 is TopUiState.Loaded -> if (state.matchesStale) {
                     WaitingForPage()
                 } else {
-                    MatchList(
-                        page = state.page,
-                        order = order,
-                        onSort = onSort,
-                        refreshing = state.refreshing,
-                        contentPadding = PaddingValues(0.dp),
-                        onOpenMatch = onOpenMatch,
-                        onOpenMessages = onOpenMessages,
-                        onOpenPage = onOpenPage,
-                        archiveEdge = archiveEdge,
-                        markCount = markCount,
-                        onOpenMarks = onOpenMarks,
-                    )
+                    CompositionLocalProvider(LocalListPull provides onRefresh) {
+                        MatchList(
+                            page = state.page,
+                            order = order,
+                            onSort = onSort,
+                            refreshing = state.refreshing,
+                            contentPadding = PaddingValues(0.dp),
+                            onOpenMatch = onOpenMatch,
+                            onOpenMessages = onOpenMessages,
+                            onOpenPage = onOpenPage,
+                            archiveEdge = archiveEdge,
+                            markCount = markCount,
+                            onOpenMarks = onOpenMarks,
+                        )
+                    }
                 }
             }
         }
@@ -652,10 +657,17 @@ private fun MatchSortRow(order: MatchOrder, onSort: (MatchSortKey) -> Unit) {
  */
 @Composable
 private fun MatchRow(match: Match, onOpen: (() -> Unit)?) {
+    // Pitkä painallus: vastustajan profiili, turnaus ja viestit avaamatta ottelua (`PlayerMenu.kt`).
+    PlayerMenuBox(
+        name = match.opponent.name,
+        profilePath = match.opponent.profilePath,
+        eventPath = match.eventPath,
+        onClick = onOpen,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .then(if (onOpen != null) Modifier.clickable(onClick = onOpen) else Modifier)
             .padding(horizontal = 16.dp, vertical = 10.dp)
     ) {
         Row(
@@ -691,6 +703,7 @@ private fun MatchRow(match: Match, onOpen: (() -> Unit)?) {
                 stringResource(R.string.top_versus, match.opponent.displayName),
                 match.opponent.name,
                 match.opponent.userId,
+                match.opponent.profilePath,
             ),
             style = MaterialTheme.typography.bodyMedium,
             maxLines = 1,
@@ -743,6 +756,7 @@ private fun MatchRow(match: Match, onOpen: (() -> Unit)?) {
                 )
             }
         }
+    }
     }
 }
 

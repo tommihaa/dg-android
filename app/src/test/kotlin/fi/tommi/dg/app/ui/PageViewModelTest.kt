@@ -11,6 +11,7 @@ import fi.tommi.dg.domain.MessageSource
 import fi.tommi.dg.net.DgResponse
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -627,7 +628,198 @@ class PageViewModelTest {
         assertEquals(1, sender.sent.size)
     }
 
+    /** Muistava varasto päivärajalle, kuten `SharedPrefsFinishedDays` ilman laitetta. */
+    private class MuistavaRaja(var arvo: Int? = null) : fi.tommi.dg.app.session.FinishedDaysStore {
+        override fun get(): Int? = arvo
+        override fun save(days: Int) {
+            arvo = days
+        }
+    }
+
+    private fun rajallinen(fetcher: RecordingFetcher, path: String, raja: MuistavaRaja) = PageViewModel(
+        pages = fetcher,
+        forms = RecordingSender { DgResponse.Ok(KUITTAUS) },
+        archive = dao,
+        path = path,
+        self = { OMA_NIMI },
+        marks = merkit,
+        io = dispatcher,
+        now = { HETKI },
+        finishedDaysStore = raja,
+    )
+
+    @Test
+    fun `muistettu paivaraja vaihdetaan sivun linkin lukuun ja muut parametrit sailyvat`() {
+        val fetcher = RecordingFetcher { DgResponse.Ok(PROFIILI_PAATTYNYT) }
+        val malli = rajallinen(fetcher, RAJAPOLKU, MuistavaRaja(10))
+
+        runTest(dispatcher) { advanceUntilIdle() }
+
+        assertEquals(listOf("/bg/user/90001?days_to_view=10&active=1&finished=1"), fetcher.requested)
+        assertEquals(10, malli.finishedDays.value)
+    }
+
+    @Test
+    fun `painike hakee profiilin uudelleen toisella rajalla ja muistaa sen`() {
+        val fetcher = RecordingFetcher { DgResponse.Ok(PROFIILI_PAATTYNYT) }
+        val raja = MuistavaRaja()
+        val malli = rajallinen(fetcher, RAJAPOLKU, raja)
+
+        runTest(dispatcher) {
+            advanceUntilIdle()
+            malli.showFinishedDays(90)
+            advanceUntilIdle()
+            // Sama raja uudelleen ei hae mitään.
+            malli.showFinishedDays(90)
+            advanceUntilIdle()
+        }
+
+        assertEquals(
+            listOf(RAJAPOLKU, "/bg/user/90001?days_to_view=90&active=1&finished=1"),
+            fetcher.requested,
+        )
+        assertEquals(90, raja.arvo)
+        assertEquals(90, malli.finishedDays.value)
+    }
+
+    @Test
+    fun `polku joka ei kanna paattyneita ei saa painikkeita eika rajaa`() {
+        val fetcher = RecordingFetcher { DgResponse.Ok(TURNAUS_BACKGAMMON) }
+        val raja = MuistavaRaja(10)
+        val malli = rajallinen(fetcher, TURNAUSPOLKU, raja)
+
+        runTest(dispatcher) {
+            advanceUntilIdle()
+            malli.showFinishedDays(3)
+            advanceUntilIdle()
+        }
+
+        assertEquals(listOf(TURNAUSPOLKU), fetcher.requested)
+        assertNull(malli.finishedDays.value)
+        assertEquals(10, raja.arvo)
+    }
+
+    @Test
+    fun `lajittelulinkki ilman lukua on koko historia ja saa muistetun rajan`() {
+        // Toisen pelaajan ottelut avautuvat tästä linkistä (mitattu 31.10.2026: ilman lukua
+        // 7409 ottelua, luvulla 10 kuusi).
+        val lajittelu = "/bg/user/92001?sort_name=1&active=1&finished=1"
+        val fetcher = RecordingFetcher { DgResponse.Ok(PROFIILI_PAATTYNYT) }
+        val malli = rajallinen(fetcher, lajittelu, MuistavaRaja(10))
+
+        runTest(dispatcher) {
+            advanceUntilIdle()
+            malli.showFinishedDays(FinishedDays.ALL)
+            advanceUntilIdle()
+        }
+
+        assertEquals(listOf("$lajittelu&days_to_view=10", lajittelu), fetcher.requested)
+        assertEquals(FinishedDays.ALL, malli.finishedDays.value)
+    }
+
+    @Test
+    fun `paljas profiililinkki on sivun oletus ja saa muistetun rajan kyselyna`() {
+        // Ottelurivin vastustajalinkki: sivu näytti 31.10.2026 kymmenen viimeisintä.
+        assertEquals(FinishedDays.SITE, FinishedDays.of(POLKU))
+        assertEquals(
+            "/bg/user/90001?days_to_view=10&active=1&finished=1",
+            FinishedDays.withDays(POLKU, 10),
+        )
+        assertEquals("/bg/user/90001?active=1&finished=1", FinishedDays.withDays(POLKU, FinishedDays.ALL))
+        assertNull(FinishedDays.of("/bg/event/900027"))
+    }
+
+    @Test
+    fun `koko historia poistaa luvun myos linkin alusta`() {
+        assertEquals(
+            "/bg/user/90001?active=1&finished=1",
+            FinishedDays.withDays(RAJAPOLKU, FinishedDays.ALL),
+        )
+        assertEquals(FinishedDays.ALL, FinishedDays.of("/bg/user/90001?active=1&finished=1"))
+        assertEquals(
+            "/bg/user/90001?active=1&finished=1&days_to_view=30",
+            FinishedDays.withDays("/bg/user/90001?active=1&finished=1", 30),
+        )
+    }
+
+    @Test
+    fun `merkityt asemat lasketaan otteluittain rivia varten`() {
+        val (malli, _) = malli(PROFIILI_PAATTYNYT)
+        runTest(dispatcher) {
+            merkit.add(GameKey(MatchId("7000034"), opponentScore = 0, selfScore = 0), 12, "", HETKI)
+            merkit.add(GameKey(MatchId("7000034"), opponentScore = 1, selfScore = 0), 4, "", HETKI)
+            merkit.add(GameKey(MatchId("999"), opponentScore = 0, selfScore = 0), 3, "", HETKI)
+            advanceUntilIdle()
+            assertEquals(
+                mapOf(MatchId("7000034") to 2, MatchId("999") to 1),
+                malli.markCounts.first { it.isNotEmpty() },
+            )
+        }
+    }
+
+    @Test
+    fun `paattyneet uusin ensin ottelunumeron mukaan`() {
+        val (malli, _) = malli(PROFIILI_PAATTYNYT)
+        runTest(dispatcher) { advanceUntilIdle() }
+        val ottelu = paattynyt(malli)
+        val vanha = ottelu.copy(id = MatchId("5306854"))
+        val uusi = ottelu.copy(id = MatchId("5338385"))
+        val keski = ottelu.copy(id = MatchId("5321390"))
+
+        assertEquals(
+            listOf("5338385", "5321390", "5306854"),
+            newestFirst(listOf(vanha, keski, uusi)).map { it.id.value },
+        )
+    }
+
+    @Test
+    fun `osio haetaan vasta avattaessa ja vain kerran`() {
+        // Tommin tilaus 2.11.2026: sisäiset linkit avautuvat paikalleen.
+        val osio = "/bg/user/90001?sort_name=1&active=1&finished=1"
+        val fetcher = RecordingFetcher { path ->
+            if (path == osio) DgResponse.Ok(PROFIILI_PAATTYNYT) else DgResponse.Ok(PROFIILI)
+        }
+        val malli = malli(fetcher)
+
+        runTest(dispatcher) {
+            advanceUntilIdle()
+            assertEquals(listOf(POLKU), fetcher.requested)
+            malli.openSection(osio)
+            advanceUntilIdle()
+            malli.openSection(osio)
+            advanceUntilIdle()
+        }
+
+        assertEquals(listOf(POLKU, osio), fetcher.requested)
+        val sisalto = (malli.sections.value[osio] as SectionUiState.Loaded).content as PageContent.Profile
+        assertEquals("7000034", sisalto.page.finishedMatches.single().id.value)
+
+        // Päivitys tyhjentää osiot, jotta auki jäänyt haetaan uudelleen.
+        malli.refresh()
+        assertEquals(emptyMap<String, SectionUiState>(), malli.sections.value)
+    }
+
+    @Test
+    fun `osion otsikon luku vasta haetusta osiosta`() {
+        // Tommin tilaus 2.11.2026: luku otsikkoon kuten Loungessa, mutta haku yhä avauksesta.
+        val osio = "/bg/user/90001?sort_name=1&active=1&finished=1"
+        val malli = malli(RecordingFetcher { path ->
+            if (path == osio) DgResponse.Ok(PROFIILI_PAATTYNYT) else DgResponse.Ok(PROFIILI)
+        })
+
+        runTest(dispatcher) {
+            advanceUntilIdle()
+            assertNull(sectionCount(malli.sections.value, osio))
+            malli.openSection(osio)
+            advanceUntilIdle()
+        }
+
+        assertEquals(1, sectionCount(malli.sections.value, osio))
+        assertNull(sectionCount(malli.sections.value, null))
+    }
+
     private companion object {
+        const val RAJAPOLKU ="/bg/user/90001?days_to_view=30&active=1&finished=1"
         const val POLKU = "/bg/user/90001"
         const val OMA_NIMI = "omanimi"
         const val HETKI = 1_724_000_000_000L

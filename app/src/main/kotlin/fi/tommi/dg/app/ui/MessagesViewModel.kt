@@ -10,6 +10,7 @@ import fi.tommi.dg.app.session.PhraseBook
 import fi.tommi.dg.app.session.PhraseStore
 import fi.tommi.dg.data.DELETED_KEPT_MILLIS
 import fi.tommi.dg.data.DeletedMessage
+import fi.tommi.dg.data.MarkBook
 import fi.tommi.dg.data.MessageArchive
 import fi.tommi.dg.data.ReminderBook
 import fi.tommi.dg.domain.ArchiveImport
@@ -20,6 +21,7 @@ import fi.tommi.dg.domain.Message
 import fi.tommi.dg.domain.MessageSource
 import fi.tommi.dg.domain.ReceivedInvitation
 import fi.tommi.dg.domain.write
+import fi.tommi.dg.domain.Phrase
 import fi.tommi.dg.domain.toArchiveJson
 import fi.tommi.dg.net.DgResponse
 import fi.tommi.dg.scrape.DgPages
@@ -281,6 +283,7 @@ sealed interface ImportUiState {
         val messages: Int,
         val reminders: Int,
         val phrases: Int,
+        val marks: Int,
         val alreadyHere: Int,
         val unreadable: Int,
         val otherAccount: String?,
@@ -352,6 +355,8 @@ class MessagesViewModel(
      * puuttuvat hiljaa.
      */
     private val reminders: ReminderBook,
+    /** Merkityt asemat, viennin ja tuonnin osana 20.10.2026 alkaen. Pakollinen samasta syystä. */
+    private val marks: MarkBook,
     private val io: CoroutineDispatcher = Dispatchers.IO,
 ) : ViewModel() {
 
@@ -361,9 +366,9 @@ class MessagesViewModel(
     }
 
     private class MemoryPhrases : PhraseStore {
-        private var stored: List<String> = PhraseStore.DEFAULT
-        override fun get(): List<String> = stored
-        override fun save(phrases: List<String>) {
+        private var stored: List<Phrase> = Phrase.fromPositions(PhraseStore.DEFAULT)
+        override fun get(): List<Phrase> = stored
+        override fun save(phrases: List<Phrase>) {
             stored = phrases
         }
     }
@@ -550,7 +555,9 @@ class MessagesViewModel(
             // Muistutukset ja fraasit ovat laitteen yhteiset eivätkä tilin (`docs/AVOIMET.md`
             // › Useampi tili samalla laitteella), joten ne menevät mukaan kokonaisina.
             reminders = reminders.all(),
-            phrases = phraseBook.phrases.value,
+            phrases = phraseBook.entries.value,
+            // Merkit ovat laitteen yhteiset kuten muistutukset (20.10.2026).
+            marks = marks.all(),
         )
 
     private val _import = MutableStateFlow<ImportUiState>(ImportUiState.Idle)
@@ -580,10 +587,12 @@ class MessagesViewModel(
                 val messages = withContext(io) { archive.addMissing(file.messages, account) }
                 val reminderCount = withContext(io) { reminders.addMissing(file.reminders) }
                 val phrases = phraseBook.addMissing(file.phrases)
+                val markCount = withContext(io) { marks.addMissing(file.marks) }
                 ImportUiState.Done(
                     messages = messages,
                     reminders = reminderCount,
                     phrases = phrases,
+                    marks = markCount,
                     alreadyHere = file.messages.size - messages,
                     unreadable = read.unreadable,
                     // Toisen tilin arkisto: viestit menivät kantaan mutta eivät näy tälle
@@ -943,6 +952,7 @@ class MessagesViewModel(
         private val filterStore: MessageFilterStore,
         private val phraseBook: PhraseBook,
         private val reminders: ReminderBook,
+        private val marks: MarkBook,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
@@ -956,6 +966,7 @@ class MessagesViewModel(
                 filterStore = filterStore,
                 phraseBook = phraseBook,
                 reminders = reminders,
+                marks = marks,
             ) as T
     }
 }

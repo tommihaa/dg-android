@@ -7,10 +7,12 @@ import fi.tommi.dg.app.session.PhraseBook
 import fi.tommi.dg.app.session.PhraseStore
 import fi.tommi.dg.data.DELETED_KEPT_MILLIS
 import fi.tommi.dg.data.DeletedMessage
+import fi.tommi.dg.data.MarkBook
 import fi.tommi.dg.data.ReminderBook
 import fi.tommi.dg.domain.FormMethod
 import fi.tommi.dg.domain.Message
 import fi.tommi.dg.domain.MessageSource
+import fi.tommi.dg.domain.Phrase
 import fi.tommi.dg.domain.FormSubmission
 import fi.tommi.dg.domain.ReplyForm
 import fi.tommi.dg.net.DgResponse
@@ -89,10 +91,10 @@ class MessagesViewModelTest {
     }
 
     /** Fraasien säilö muistissa. Alkaa oletuksesta kuten uusi asennus. */
-    private class FakePhraseStore(var stored: List<String> = PhraseStore.DEFAULT) : PhraseStore {
+    private class FakePhraseStore(var stored: List<Phrase> = Phrase.fromPositions(PhraseStore.DEFAULT)) : PhraseStore {
         var saves = 0
-        override fun get(): List<String> = stored
-        override fun save(phrases: List<String>) {
+        override fun get(): List<Phrase> = stored
+        override fun save(phrases: List<Phrase>) {
             stored = phrases
             saves++
         }
@@ -105,6 +107,7 @@ class MessagesViewModelTest {
         filterStore: MessageFilterStore = FakeFilterStore(),
         phraseStore: PhraseStore = FakePhraseStore(),
         reminders: ReminderBook = FakeReminders(),
+        marks: MarkBook = FakeMarks(),
     ) = MessagesViewModel(
         pages = fetcher,
         forms = sender,
@@ -115,6 +118,7 @@ class MessagesViewModelTest {
         filterStore = filterStore,
         phraseBook = PhraseBook(phraseStore),
         reminders = reminders,
+        marks = marks,
         io = dispatcher,
     )
 
@@ -283,6 +287,34 @@ class MessagesViewModelTest {
     // --- Tuonti (Tommin tilaus 16.9.2026: laajennus muistutuksiin ja fraaseihin, vain lisää) ---
 
     @Test
+    fun `vienti kantaa merkityt asemat ja tuonti lisaa vain puuttuvat`() {
+        // Tommin valinta 20.10.2026: merkit arkistotiedostoon muistutusten rinnalle.
+        val merkit = FakeMarks()
+        val malli = malli(RecordingFetcher { DgResponse.Ok(PIKAVIESTI) }, marks = merkit)
+        val peli = fi.tommi.dg.domain.GameKey(fi.tommi.dg.domain.MatchId("5302842"), 8, 7)
+
+        runTest(dispatcher) {
+            merkit.add(peli, 377, "recube?", 2_000, fi.tommi.dg.domain.CheckerPosition.START)
+            val json = malli.exportJson(HETKI)
+            assertTrue(json.contains("recube?"))
+
+            malli.importJson(json)
+            assertEquals(0, (malli.import.value as ImportUiState.Done).marks)
+            assertEquals(1, merkit.count())
+
+            // Toinen laite: tyhjä kirja saa merkin asemineen.
+            val toinenLaite = FakeMarks()
+            val toinen = malli(RecordingFetcher { DgResponse.Ok(PIKAVIESTI) }, marks = toinenLaite)
+            toinen.importJson(json)
+            assertEquals(1, (toinen.import.value as ImportUiState.Done).marks)
+            val tuotu = toinenLaite.all().single()
+            assertEquals(377, tuotu.moveNumber)
+            assertEquals("recube?", tuotu.note)
+            assertEquals(fi.tommi.dg.domain.CheckerPosition.START, tuotu.position)
+        }
+    }
+
+    @Test
     fun `vienti kantaa muistutukset ja fraasit ja tuonti lisaa vain puuttuvat`() {
         val muistutukset = FakeReminders()
         val fraasit = FakePhraseStore()
@@ -421,6 +453,7 @@ class MessagesViewModelTest {
             filterStore = FakeFilterStore(),
             phraseBook = PhraseBook(FakePhraseStore()),
             reminders = FakeReminders(),
+            marks = FakeMarks(),
             io = dispatcher,
         )
 
@@ -949,6 +982,30 @@ class MessagesViewModelTest {
     }
 
     // --- Fraasinapit: lisäys ja poisto (3.9.2026) ---
+
+    @Test
+    fun `ristiintuonti jarjestaa kummankin laitteen fraasit samaan jarjestykseen`() {
+        // Tommin vahvistus 20.10.2026: järjestys lisäyshetken mukaan vanhin ensin, ja tuonnissa
+        // aikaisempi hetki voittaa. Laitteilla on yhteinen vanha fraasi eri paikassa ja kummallakin
+        // oma uusi. Saman hetken fraasit menevät tekstin mukaan, joten kumpikin saa gg:n ensin.
+        val pixel = FakePhraseStore(listOf(Phrase("hi", 1), Phrase("gg", 2), Phrase("gl", 5_000)))
+        val tabletti = FakePhraseStore(listOf(Phrase("gg", 1), Phrase("hi", 2), Phrase("nice", 4_000)))
+        val p = malli(RecordingFetcher { DgResponse.Ok(PIKAVIESTI) }, phraseStore = pixel)
+        val t = malli(RecordingFetcher { DgResponse.Ok(PIKAVIESTI) }, phraseStore = tabletti)
+
+        runTest(dispatcher) {
+            t.importJson(p.exportJson(HETKI))
+            assertEquals(1, (t.import.value as ImportUiState.Done).phrases)
+            p.importJson(t.exportJson(HETKI))
+            assertEquals(1, (p.import.value as ImportUiState.Done).phrases)
+        }
+
+        val odotettu = listOf("gg", "hi", "nice", "gl")
+        assertEquals(odotettu, p.phrases.value)
+        assertEquals(odotettu, t.phrases.value)
+        // Omat napit siirtyivät mutta mitään ei poistettu: tabletin gg sai Pixelin aikaisemman hetken.
+        assertEquals(listOf(1L, 1L, 4_000L, 5_000L), tabletti.stored.map { it.addedAtEpochMillis })
+    }
 
     @Test
     fun `fraasi lisataan listan loppuun ja talletetaan`() {

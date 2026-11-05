@@ -57,6 +57,9 @@ if '--nuku' in ARGS:
     del ARGS[ARGS.index('--nuku'):ARGS.index('--nuku') + 2]
 if '--submit' in ARGS:
     del ARGS[ARGS.index('--submit'):ARGS.index('--submit') + 2]
+for _lippu in ('--lounge', '--event'):
+    if _lippu in ARGS:
+        del ARGS[ARGS.index(_lippu):ARGS.index(_lippu) + 2]
 MUU = open(ARGS[2], 'rb').read() if len(ARGS) > 2 else None
 # Neljas sivu on valinnainen: asetussivu `/bg/profile`, jolta sovellus lukee lautaan
 # vaikuttavat sivuston asetukset (`SiteBoardSettings`). Lisatty 9.9.2026, kun `Home boards
@@ -113,6 +116,15 @@ NUKU = None
 if '--nuku' in sys.argv:
     NUKU = open(sys.argv[sys.argv.index('--nuku') + 1], 'rb').read()
     NUKKUU = False
+# Lounge ja turnaussivu, `--lounge lounge.html --event event.html`. Lisätty 20.10.2026
+# turnaussivun `N players registered` -rivin todentamiseen laitteella: `/bg/lounge` saa
+# ensimmäisen ja jokainen `/bg/event/<id>` jälkimmäisen, tunnisteesta riippumatta.
+LOUNGE = None
+EVENT = None
+if '--lounge' in sys.argv:
+    LOUNGE = open(sys.argv[sys.argv.index('--lounge') + 1], 'rb').read()
+if '--event' in sys.argv:
+    EVENT = open(sys.argv[sys.argv.index('--event') + 1], 'rb').read()
 LOG = []
 
 class H(http.server.BaseHTTPRequestHandler):
@@ -168,6 +180,10 @@ class H(http.server.BaseHTTPRequestHandler):
             laji = 'KAYTTAJA'
         elif SENDMSG is not None and self.command == 'POST' and polku.startswith('/bg/sendmsg/'):
             laji = 'VIESTI'
+        elif LOUNGE is not None and polku.startswith('/bg/lounge') and 'action=' not in polku:
+            laji = 'LOUNGE'
+        elif EVENT is not None and polku.startswith('/bg/event/'):
+            laji = 'EVENT'
         elif PROFIILI is not None and polku.startswith('/bg/profile'):
             # Myos POST tanne saa saman sivun: asetuksen tallennus ei mene sivustolle, ja
             # airlock on juuri se syy miksi tama tyokalu on turvallinen asetusten kanssa.
@@ -195,6 +211,10 @@ class H(http.server.BaseHTTPRequestHandler):
             self.vastaa(USER)
         elif laji == 'VIESTI':
             self.vastaa(SENDMSG)
+        elif laji == 'LOUNGE':
+            self.vastaa(LOUNGE)
+        elif laji == 'EVENT':
+            self.vastaa(EVENT)
         elif laji == 'PROFIILI':
             self.vastaa(PROFIILI)
         elif laji == 'RESIGN':

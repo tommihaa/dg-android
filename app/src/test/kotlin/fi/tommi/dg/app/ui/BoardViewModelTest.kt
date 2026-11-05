@@ -2,6 +2,7 @@ package fi.tommi.dg.app.ui
 
 import fi.tommi.dg.app.FormSender
 import fi.tommi.dg.app.PageFetcher
+import fi.tommi.dg.app.session.ArchivedChatStore
 import fi.tommi.dg.domain.FormMethod
 import fi.tommi.dg.domain.FormSubmission
 import fi.tommi.dg.domain.MatchId
@@ -89,6 +90,7 @@ class BoardViewModelTest {
         path: String = PELIPOLKU,
         expected: MatchId? = MatchId(OTTELU),
         listedRound: (MatchId) -> String? = { null },
+        chatStore: ArchivedChatStore = ArchivedChatStore.inMemory(),
     ) = BoardViewModel(
         pages = fetcher,
         forms = sender,
@@ -103,6 +105,7 @@ class BoardViewModelTest {
         listedRound = listedRound,
         now = { HETKI },
         io = dispatcher,
+        chatStore = chatStore,
     )
 
     // --- Portti: mitä ei voi pyytää eikä lähettää ---
@@ -184,6 +187,18 @@ class BoardViewModelTest {
         assertEquals(MessageSource.QUICK_MESSAGE, rivi.source)
         assertEquals("vastapelaaja", rivi.opponent)
         assertEquals("", malli.matchReplyDraft.value)
+        // Kortti näyttää lähetetyn vastauksen ottelunsa kanssa (valinta C 2.11.2026).
+        val ottelu = (malli.state.value as BoardUiState.MatchOver).page.matchId
+        assertEquals(ottelu to "gg, kiitos pelistä", malli.matchReplySent.value)
+    }
+
+    @Test
+    fun `vastauksen oma osa jattaa lainausrivit pois`() {
+        assertEquals(
+            "ty gm, till we meet again",
+            ownPart("> The Marathon #4320, Round 3\n>\n> Congrats\n\nty gm, till we meet again\n"),
+        )
+        assertEquals("rivi yksi\n\nrivi kaksi", ownPart("rivi yksi\n\nrivi kaksi"))
     }
 
     @Test
@@ -1178,6 +1193,40 @@ class BoardViewModelTest {
         }
 
         assertEquals(1, viestiDao.rows.value.size)
+    }
+
+    @Test
+    fun `uudelleen avattu sivu ei kirjoita samaa viestia kahdesti`() {
+        // Kaanonin tarkennus 2.11.2026: muisti säilyy näkymämallin yli. Kuorella sama
+        // päättymissivu avattiin kolmesti ja viesti päätyi arkistoon kolmesti, koska jokainen
+        // avaus loi uuden mallin ja uuden saapumishetken.
+        val varasto = ArchivedChatStore.inMemory()
+        var hetki = HETKI
+
+        runTest(dispatcher) {
+            repeat(2) {
+                BoardViewModel(
+                    pages = RecordingFetcher { DgResponse.Ok(PAATTYNYT_VIESTI) },
+                    forms = RecordingSender(),
+                    queue = queueDao,
+                    dropLog = katkoLoki,
+                    reminderBook = reminderDao,
+                    markBook = markDao,
+                    archive = viestiDao,
+                    self = { OMA_NIMI },
+                    playPath = PELIPOLKU,
+                    expectedMatchId = null,
+                    listedRound = { null },
+                    now = { hetki },
+                    io = dispatcher,
+                    chatStore = varasto,
+                )
+                advanceUntilIdle()
+                hetki += 60_000
+            }
+        }
+
+        assertEquals(listOf("gg, well played"), viestiDao.rows.value.map { it.body })
     }
 
     @Test

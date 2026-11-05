@@ -189,6 +189,7 @@ internal val HELP_GROUPS = listOf(
         listOf(
             HelpItem(R.string.help_q_order, R.string.help_a_order),
             HelpItem(R.string.help_q_open, R.string.help_a_open),
+            HelpItem(R.string.help_q_finished, R.string.help_a_finished),
             HelpItem(R.string.help_q_tournaments, R.string.help_a_tournaments),
         ),
     ),

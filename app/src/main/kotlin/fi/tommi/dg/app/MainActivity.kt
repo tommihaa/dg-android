@@ -18,6 +18,11 @@ import androidx.activity.compose.setContent
 import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.consumeWindowInsets
@@ -89,13 +94,16 @@ import fi.tommi.dg.app.session.leave
 import fi.tommi.dg.app.session.BoardStyle
 import fi.tommi.dg.app.ui.LocalBusyDeco
 import fi.tommi.dg.app.ui.LocalBusyStyle
+import fi.tommi.dg.app.ui.RotationWait
 import fi.tommi.dg.app.ui.LocalPlayerRating
 import fi.tommi.dg.app.ui.LocalPlayerRatingByName
+import fi.tommi.dg.app.ui.LocalPlayerIdByName
 import fi.tommi.dg.app.ui.LocalRarityOn
 import fi.tommi.dg.app.ui.LocalTournamentRounds
 import fi.tommi.dg.app.session.TournamentRoundsStore
 import fi.tommi.dg.app.ui.DiscussionScreen
 import fi.tommi.dg.app.ui.DropsScreen
+import fi.tommi.dg.app.ui.PlayersLinksScreen
 import fi.tommi.dg.app.ui.DiscussionUiState
 import fi.tommi.dg.app.ui.DiscussionViewModel
 import fi.tommi.dg.app.ui.HelpScreen
@@ -117,6 +125,15 @@ import fi.tommi.dg.app.ui.rememberDgWallpaper
 import fi.tommi.dg.app.ui.dgScreenBackground
 import kotlin.random.Random
 import fi.tommi.dg.app.ui.tabFor
+import fi.tommi.dg.app.ui.swipeBetweenTabs
+import fi.tommi.dg.app.ui.swipeTarget
+import fi.tommi.dg.app.ui.LocalScrollToTop
+import fi.tommi.dg.app.ui.LocalGestures
+import fi.tommi.dg.app.session.Gesture
+import fi.tommi.dg.app.session.activeGestures
+import fi.tommi.dg.app.session.gesturesNamed
+import fi.tommi.dg.app.ui.LocalPlayerMenu
+import fi.tommi.dg.app.ui.PlayerMenuActions
 import fi.tommi.dg.app.ui.woodSoundsNamed
 import fi.tommi.dg.app.ui.MESSAGES_ROUTE
 import fi.tommi.dg.app.ui.MARKS_ROUTE
@@ -228,7 +245,10 @@ class MainActivity : FragmentActivity() {
         // kiinteän suunnan sovelluksen puhelimen kokoiseen ikkunaan (kaksi testaajaa
         // Chromebookilla, `docs/UI.md` › Chromebookin ikkuna). Siksi lukko on nyt koodissa.
         val freeWindow = isChromeOs(this)
-        requestedOrientation = if (container.portraitLock.get() && !freeWindow) {
+        // Tabletilla suuntaa ei pakoteta (2.11.2026, ks. [orientationFor]). Luetaan kerran:
+        // pienempi mitta ei muutu laitetta kääntämällä.
+        val largeScreen = resources.configuration.smallestScreenWidthDp >= LARGE_SCREEN_DP
+        requestedOrientation = if (container.portraitLock.get() && !freeWindow && !largeScreen) {
             ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         } else {
             ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
@@ -278,7 +298,12 @@ class MainActivity : FragmentActivity() {
                     // pois kytkettynä rating-haut palauttavat null, joten mikään ruutu ei
                     // tarvitse omaa ehtoaan. Tilana samasta syystä kuin odotuksen ilmaisin.
                     var rarityOn by remember { mutableStateOf(container.rarity.get()) }
+                    // Eleiden kytkin (Tommin tilaus 20.10.2026, `GestureStore`): jokainen ele
+                    // lukee `LocalGestures`ista onko se päällä, laudan veto mukaan lukien.
+                    var gesturesOn by remember { mutableStateOf(container.gestures.enabled()) }
+                    var gesturesOff by remember { mutableStateOf(gesturesNamed(container.gestures.off())) }
                     CompositionLocalProvider(
+                        LocalGestures provides activeGestures(gesturesOn, gesturesOff),
                         LocalBusyStyle provides busyStyle,
                         LocalBusyDeco provides busyDeco,
                         LocalRarityOn provides rarityOn,
@@ -286,6 +311,7 @@ class MainActivity : FragmentActivity() {
                             if (rarityOn) container.playerRatings::rating else { _ -> null },
                         LocalPlayerRatingByName provides
                             if (rarityOn) container.playerRatings::ratingByName else { _ -> null },
+                        LocalPlayerIdByName provides container.playerRatings::userIdByName,
                         LocalTournamentRounds provides
                             if (rarityOn) container.tournamentRounds else TournamentRoundsStore.NONE,
                     ) {
@@ -333,6 +359,9 @@ class MainActivity : FragmentActivity() {
                     // Laudan pystytila on oma kytkimensä 23.9.2026 alkaen (Tommin päätös,
                     // oletus seuraa laitetta 10.10.2026 alkaen). Tilana samasta syystä kuin pystylukko.
                     var boardRotates by remember { mutableStateOf(container.boardRotation.get()) }
+                    // Oma kääntö laudalla, kun Androidin anturi viipyy (Tommin valinta 19.10.2026,
+                    // `RotationWait`). Null antaa Androidin kääntää.
+                    var sensorOrientation by remember { mutableStateOf<Int?>(null) }
                     var leftHanded by remember { mutableStateOf(container.handedness.get()) }
                     // Taustakuvien kansio tilana samasta syystä kuin pystylukko: valinta asetusruudussa
                     // näkyy heti sen omassa tyhjässä tilassa. Ks. `DgWallpaper.kt`.
@@ -383,6 +412,16 @@ class MainActivity : FragmentActivity() {
                     // näppäimistö voi välähtää piiloon kierron aikana, ja ilman viivettä ruutu
                     // kääntyisi edestakaisin.
                     var fieldFocused by remember { mutableStateOf(false) }
+                    var swipeStep by remember { mutableStateOf(0) }
+                    var scrollToTopTick by remember { mutableStateOf(0) }
+                    // Pelaajavalikon "Saved messages" -kohta (`PlayerMenu.kt`): Inboxin
+                    // näkymämalli syntyy vasta Inbox-reitillä, joten rajaus odottaa tässä kunnes
+                    // reitti ottaa sen vastaan.
+                    var pendingConversation by remember { mutableStateOf<String?>(null) }
+                    val menuAccount = container.credentials.get()?.login
+                    val archivedNames by remember(menuAccount) {
+                        container.messages.observeOpponents(menuAccount)
+                    }.collectAsStateWithLifecycle(emptyList())
                     // Dialogin kenttä ilmoittaa itse, koska dialogi on oma ikkunansa (`LocalReportTyping`).
                     var dialogFieldFocused by remember { mutableStateOf(false) }
                     val reportTyping: (Boolean) -> Unit = remember { { dialogFieldFocused = it } }
@@ -404,14 +443,19 @@ class MainActivity : FragmentActivity() {
                         }
                     }
 
-                    LaunchedEffect(onBoard, portraitLock, boardWriting, boardRotates, signingIn, phoneTyping) {
+                    LaunchedEffect(onBoard, boardRotates) {
+                        if (!onBoard || !boardRotates) sensorOrientation = null
+                    }
+                    LaunchedEffect(onBoard, portraitLock, boardWriting, boardRotates, signingIn, phoneTyping, sensorOrientation) {
                         this@MainActivity.requestedOrientation = orientationFor(
                             freeWindow = freeWindow,
+                            largeScreen = largeScreen,
                             onBoard = onBoard,
                             portraitLock = portraitLock,
                             writing = boardWriting || phoneTyping,
                             boardRotates = boardRotates,
                             signingIn = signingIn || phoneTyping,
+                            sensorOrientation = sensorOrientation,
                         )
                     }
 
@@ -425,7 +469,12 @@ class MainActivity : FragmentActivity() {
                     // saveState/restoreState säilyttää välilehden tilan ja näkymämallit
                     // vaihtojen yli, eli paluu välilehdelle ei hae sivua uudestaan;
                     // Refresh on käyttäjän oma valinta kuten otteluluettelossa.
-                    fun openTab(tab: DgTab) {
+                    //
+                    // `swipeStep` kertoo liukumalle mistä suunnasta uusi välilehti tulee: se
+                    // asetetaan vain pyyhkäisyssä ja nollataan napautuksessa, joten napautus
+                    // vaihtaa välilehden entiseen tapaan häivyttäen (20.10.2026).
+                    fun openTab(tab: DgTab, step: Int = 0) {
+                        swipeStep = step
                         navController.navigate(tab.route) {
                             popUpTo(TOP_ROUTE) { saveState = true }
                             launchSingleTop = true
@@ -472,9 +521,23 @@ class MainActivity : FragmentActivity() {
                             wallpaperFolder = null
                         },
                     )
+                    // Uusi olio vain kun arkiston nimet muuttuvat, jottei jokainen lukija
+                    // piirry uudelleen joka kierroksella.
+                    val playerMenu = remember(archivedNames) {
+                        PlayerMenuActions(
+                            openPath = { navController.navigate(PageRoute.of(it)) },
+                            openConversation = { name ->
+                                pendingConversation = name
+                                openTab(DgTab.Messages)
+                            },
+                            archived = archivedNames.toSet(),
+                        )
+                    }
                     CompositionLocalProvider(
                         LocalDgWallpaper provides wallpaper,
                         LocalReportTyping provides reportTyping,
+                        LocalScrollToTop provides scrollToTopTick,
+                        LocalPlayerMenu provides playerMenu,
                     ) {
                     Column(
                         modifier = Modifier.fillMaxSize().dgScreenBackground(),
@@ -482,9 +545,17 @@ class MainActivity : FragmentActivity() {
                         if (!onBoard && !onPage && !onSettings && !onMarks) {
                             DgTabRow(
                                 selected = tabFor(entry?.destination?.route),
-                                onSelect = ::openTab,
+                                // Valitun välilehden uusi napautus vie listan alkuun eikä
+                                // navigoi (20.10.2026, `LocalScrollToTop`).
+                                onSelect = {
+                                    if (it != tabFor(entry?.destination?.route)) openTab(it)
+                                    else if (Gesture.TAP_TAB_TOP in activeGestures(gesturesOn, gesturesOff)) scrollToTopTick++
+                                },
                             )
                         }
+                        val swipeFrom = tabFor(entry?.destination?.route)
+                            ?.takeIf { !onBoard && !onPage && !onSettings && !onMarks }
+                            ?.takeIf { Gesture.SWIPE_TABS in activeGestures(gesturesOn, gesturesOff) }
 
                     NavHost(
                         navController = navController,
@@ -509,7 +580,34 @@ class MainActivity : FragmentActivity() {
                             onBoard -> Modifier.weight(1f)
                             onPage || onSettings || onMarks -> Modifier.weight(1f).imePadding()
                             else -> Modifier.weight(1f).consumeWindowInsets(tabRowInsets()).imePadding()
-                        }.onFocusChanged { fieldFocused = it.hasFocus },
+                        }.onFocusChanged { fieldFocused = it.hasFocus }.then(
+                            // Sivuttaispyyhkäisy välilehdeltä toiselle vain kun palkki näkyy
+                            // (`TabSwipe.kt`).
+                            if (swipeFrom != null) {
+                                Modifier.swipeBetweenTabs { step ->
+                                    openTab(swipeTarget(swipeFrom, step), step)
+                                }
+                            } else Modifier
+                        ),
+                        // Pyyhkäisyn tuoma välilehti liukuu esiin sormen suunnasta. Muut
+                        // siirtymät pitävät NavHostin oletushäivytyksen, myös napautus.
+                        enterTransition = {
+                            if (swipeStep != 0 && tabFor(initialState.destination.route) != null &&
+                                tabFor(targetState.destination.route) != null
+                            ) {
+                                slideInHorizontally(tween(DgTabSlideMillis)) { w -> w * swipeStep }
+                            } else fadeIn(tween(NavFadeMillis))
+                        },
+                        exitTransition = {
+                            if (swipeStep != 0 && tabFor(initialState.destination.route) != null &&
+                                tabFor(targetState.destination.route) != null
+                            ) {
+                                slideOutHorizontally(tween(DgTabSlideMillis)) { w -> -w * swipeStep }
+                            } else fadeOut(tween(NavFadeMillis))
+                        },
+                        // Paluu ei koskaan liu'u, vaikka edellinen vaihto olisi ollut pyyhkäisy.
+                        popEnterTransition = { fadeIn(tween(NavFadeMillis)) },
+                        popExitTransition = { fadeOut(tween(NavFadeMillis)) },
                     ) {
                         composable(TOP_ROUTE) {
                             val state by topModel.state.collectAsStateWithLifecycle()
@@ -707,6 +805,7 @@ class MainActivity : FragmentActivity() {
                                     filterStore = container.messageFilter,
                                     phraseBook = container.phraseBook,
                                     reminders = container.reminders,
+                                    marks = container.marks,
                                 )
                             )
                             val queue by messagesModel.queue.collectAsStateWithLifecycle()
@@ -735,6 +834,12 @@ class MainActivity : FragmentActivity() {
                             }
                             val fresh by messagesModel.fresh.collectAsStateWithLifecycle()
                             val filter by messagesModel.filter.collectAsStateWithLifecycle()
+                            LaunchedEffect(pendingConversation) {
+                                pendingConversation?.let {
+                                    messagesModel.filterChanged(it)
+                                    pendingConversation = null
+                                }
+                            }
                             val replyTarget by messagesModel.replyTarget.collectAsStateWithLifecycle()
                             val quote by messagesModel.quote.collectAsStateWithLifecycle()
 
@@ -1184,6 +1289,12 @@ class MainActivity : FragmentActivity() {
                                     )
                                 }
 
+                                // Pelaajien linkit: kiinteä lista, ei verkkoa eikä
+                                // näkymämallia; rivi avaa selaimen.
+                                InfoSection.PlayersLinks -> PlayersLinksScreen(
+                                    onBack = { openSection = null },
+                                )
+
                                 /*
                                  * Sivuston omat sivut samalla porautumisruudulla kuin
                                  * profiilit ja turnaukset: laji luetaan vastauksesta
@@ -1283,6 +1394,7 @@ class MainActivity : FragmentActivity() {
                             var diceSubmitTap by remember { mutableStateOf(container.diceSubmit.get()) }
                             var diceSwapTap by remember { mutableStateOf(container.diceSwap.get()) }
                             var diceRollTap by remember { mutableStateOf(container.diceRoll.get()) }
+                            var nextOnDice by remember { mutableStateOf(container.nextOnDice.get()) }
                             var boardExtras by remember { mutableStateOf(container.boardExtras.get()) }
                             var moveArrows by remember { mutableStateOf(container.moveArrows.get()) }
                             var opponentArrows by remember { mutableStateOf(container.moveArrows.opponent()) }
@@ -1429,6 +1541,11 @@ class MainActivity : FragmentActivity() {
                                     container.diceRoll.save(enabled)
                                     diceRollTap = enabled
                                 },
+                                nextOnDice = nextOnDice,
+                                onNextOnDiceChange = { enabled ->
+                                    container.nextOnDice.save(enabled)
+                                    nextOnDice = enabled
+                                },
                                 boardExtras = boardExtras,
                                 onBoardExtrasChange = { shown ->
                                     container.boardExtras.save(shown)
@@ -1464,6 +1581,16 @@ class MainActivity : FragmentActivity() {
                                 onRarityChange = { enabled ->
                                     container.rarity.save(enabled)
                                     rarityOn = enabled
+                                },
+                                gestures = gesturesOn,
+                                onGesturesChange = { on ->
+                                    container.gestures.saveEnabled(on)
+                                    gesturesOn = on
+                                },
+                                gesturesOff = gesturesOff,
+                                onGesturesOffChange = { off ->
+                                    container.gestures.saveOff(off.map { it.name }.toSet())
+                                    gesturesOff = off
                                 },
                                 appLock = appLockOn,
                                 appLockAvailable = lockAvailable,
@@ -1522,6 +1649,7 @@ class MainActivity : FragmentActivity() {
                                     self = { container.credentials.get()?.login },
                                     marks = container.marks,
                                     ratings = container.playerRatings,
+                                    finishedDays = container.finishedDays,
                                 ),
                             )
                             val state by pageModel.state.collectAsStateWithLifecycle()
@@ -1529,6 +1657,8 @@ class MainActivity : FragmentActivity() {
                             SignOutOnExpiry(state, container, topModel, navController)
 
                             val draft by pageModel.draft.collectAsStateWithLifecycle()
+                            val finishedDays by pageModel.finishedDays.collectAsStateWithLifecycle()
+                            val markCounts by pageModel.markCounts.collectAsStateWithLifecycle()
                             val sendState by pageModel.send.collectAsStateWithLifecycle()
                             val actionState by pageModel.action.collectAsStateWithLifecycle()
 
@@ -1553,6 +1683,8 @@ class MainActivity : FragmentActivity() {
                                 .collectAsStateWithLifecycle()
                             // Keskinäinen saldo profiilin versus-linkiltä (21.9.2026).
                             val versus by pageModel.versus.collectAsStateWithLifecycle()
+                            // Avautuvat osiot (2.11.2026).
+                            val sections by pageModel.sections.collectAsStateWithLifecycle()
                             PageScreen(
                                 state = state,
                                 onBack = { navController.popBackStack() },
@@ -1572,10 +1704,15 @@ class MainActivity : FragmentActivity() {
                                 onSend = pageModel::send,
                                 export = exportState,
                                 onExport = pageModel::export,
+                                finishedDays = finishedDays,
+                                onFinishedDays = pageModel::showFinishedDays,
+                                markCounts = markCounts,
                                 action = actionState,
                                 onInvite = pageModel::invite,
                                 onIgnore = pageModel::ignore,
                                 onDismissAction = pageModel::dismissAction,
+                                sections = sections,
+                                onOpenSection = pageModel::openSection,
                             )
                         }
 
@@ -1631,6 +1768,8 @@ class MainActivity : FragmentActivity() {
                                     matchMemory = container.matchMemory,
                                     // Katko kesken teon historiaan, ks. `DropLog`.
                                     dropLog = container.drops,
+                                    // Sama chat-viesti samalta sivulta vain kerran (2.11.2026).
+                                    chatStore = container.archivedChats,
                                 )
                             )
                             val state by boardModel.state.collectAsStateWithLifecycle()
@@ -1639,6 +1778,7 @@ class MainActivity : FragmentActivity() {
                             val reminders by boardModel.reminders.collectAsStateWithLifecycle()
                             val matchReplyState by boardModel.matchReply.collectAsStateWithLifecycle()
                             val matchReplyDraft by boardModel.matchReplyDraft.collectAsStateWithLifecycle()
+                            val matchReplySent by boardModel.matchReplySent.collectAsStateWithLifecycle()
 
                             // Katkennut istunto vie takaisin listalle ja tyhjentää
                             // istunnon kokonaan. Tunnusten poisto on TopViewModelin työ,
@@ -1758,6 +1898,7 @@ class MainActivity : FragmentActivity() {
                                 matchReply = MatchReplyUi(
                                     send = matchReplyState,
                                     draft = matchReplyDraft,
+                                    sent = matchReplySent,
                                     selfName = boardModel.selfName,
                                     onOpen = boardModel::openMatchReply,
                                     onDraftChange = boardModel::onMatchReplyDraftChange,
@@ -1782,6 +1923,7 @@ class MainActivity : FragmentActivity() {
                                 diceSubmitTap = container.diceSubmit.get(),
                                 diceSwapTap = container.diceSwap.get(),
                                 diceRollTap = container.diceRoll.get(),
+                                nextOnDice = container.nextOnDice.get(),
                                 boardExtras = container.boardExtras.get(),
                                 moveArrows = container.moveArrows.get(),
                                 pointPress = container.pointPress.get(),
@@ -1797,6 +1939,13 @@ class MainActivity : FragmentActivity() {
                         }
                     }
                     }
+                    // Kaikkien ruutujen päällä, jotta kääntö näyttää odotuksen joka ruudussa
+                    // (Tommin valinta 15.10.2026, `docs/UI.md` › Odotusmerkki käännössä).
+                    RotationWait(
+                        takeOver = onBoard && boardRotates && !boardWriting && !phoneTyping && !freeWindow,
+                        forced = sensorOrientation,
+                        onForce = { sensorOrientation = it },
+                    )
                     }
                     }
                     }
@@ -1836,6 +1985,11 @@ class MainActivity : FragmentActivity() {
  * [freeWindow] (9.10.2026) on Chromebook, jossa sovellus on ikkuna eikä näyttö. Siellä mikään
  * suuntapyyntö ei käännä laitetta vaan muuttaa ikkunan muotoa tai lukitsee sen koon, joten
  * suunta jätetään aina käyttäjälle. Se voittaa kaiken muun.
+ *
+ * [largeScreen] (2.11.2026) on tabletti tai auki taitettu puhelin, eli pienempi mitta
+ * vähintään 600 dp. Siellä suuntaa ei pakoteta koskaan (Tommin päätös: *"ruudunkääntö häiritsee
+ * tabletilla, koska se ei ole aina käsissä"*). Se on sama raja jonka Android 16 tekee itse, ja
+ * 4.10.2026 hylätty vaihtoehto "pakotus rajataan puhelimiin" (`docs/UI.md`).
  */
 internal fun orientationFor(
     onBoard: Boolean,
@@ -1844,10 +1998,15 @@ internal fun orientationFor(
     boardRotates: Boolean = false,
     signingIn: Boolean = false,
     freeWindow: Boolean = false,
+    sensorOrientation: Int? = null,
+    largeScreen: Boolean = false,
 ): Int = when {
-    freeWindow -> ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
-    else -> orientationOnScreen(onBoard, portraitLock, writing, boardRotates, signingIn)
+    freeWindow || largeScreen -> ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+    else -> orientationOnScreen(onBoard, portraitLock, writing, boardRotates, signingIn, sensorOrientation)
 }
+
+/** Ison näytön raja [orientationFor]in `largeScreen`ille, sama kuin Android 16:n. */
+internal const val LARGE_SCREEN_DP = 600
 
 /**
  * Chromebook, eli Android-sovellus ikkunana ChromeOS:n työpöydällä. Androidin oma tunniste
@@ -1863,9 +2022,10 @@ private fun orientationOnScreen(
     writing: Boolean = false,
     boardRotates: Boolean = false,
     signingIn: Boolean = false,
+    sensorOrientation: Int? = null,
 ): Int = when {
     onBoard && writing -> ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
-    onBoard && boardRotates -> ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+    onBoard && boardRotates -> sensorOrientation ?: ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
     onBoard -> ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
     signingIn -> ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
     portraitLock -> ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
@@ -1945,3 +2105,9 @@ private const val SPLASH_START_MARGIN_MS = 100L
 
 /** Onko prosessin ensimmäinen käynnistysruutu jo laskettu prosessin alusta. */
 private var splashAnchoredToProcess = false
+
+/** Välilehden liukuman kesto pyyhkäisyssä. */
+private const val DgTabSlideMillis = 300
+
+/** NavHostin oletushäivytyksen kesto, kirjoitettu auki koska siirtymät annetaan nyt itse. */
+private const val NavFadeMillis = 700

@@ -24,6 +24,32 @@ class MessageArchiveImportTest {
         replyTo = replyTo,
     )
 
+    @Test
+    fun `vanhan tiedoston fraasit saavat hetket jarjestyksesta`() {
+        // Ennen versiota 6 fraasi oli pelkkä teksti. Hetki tulee paikasta, sama sääntö kuin
+        // laitteen säilön vanhoilla fraaseilla (`Phrase.fromPositions`).
+        val json = """{ "format": "$ARCHIVE_EXPORT_FORMAT", "version": 5, "messages": [], "phrases": ["hi", "gg"] }"""
+
+        val luettu = readArchiveJson(json) as ArchiveImport.Read
+
+        assertEquals(listOf(Phrase("hi", 1), Phrase("gg", 2)), luettu.file.phrases)
+    }
+
+    @Test
+    fun `merkki kulkee tiedoston lapi asemineen ja tyhjalla sanalla`() {
+        val peli = GameKey(MatchId("5302842"), 8, 7)
+        val merkit = listOf(
+            MarkedPosition(9, peli, 377, "recube?", 1_000, CheckerPosition.START),
+            MarkedPosition(10, peli, 380, "", 2_000, null),
+        )
+        val json = emptyList<Message>().toArchiveJson(5_000, marks = merkit)
+
+        val luettu = readArchiveJson(json) as ArchiveImport.Read
+
+        assertEquals(merkit.map { it.copy(id = 0) }, luettu.file.marks)
+        assertEquals(0, luettu.unreadable)
+    }
+
     private val muistutus = Reminder(
         id = 7,
         game = GameKey(MatchId("12345"), opponentScore = 3, selfScore = 1),
@@ -43,7 +69,7 @@ class MessageArchiveImportTest {
             account = "tommih",
             messages = listOf(msg(), msg(body = "hän sanoi \"hyvä\"\nja jatkoi", replyTo = msg().id)),
             reminders = listOf(muistutus),
-            phrases = listOf("hi", "gg", "ty gg u2"),
+            phrases = listOf(Phrase("hi", 1), Phrase("gg", 2), Phrase("ty gg u2", 1_792_000_000_000)),
         )
 
         val tulos = readArchiveJson(alkuperainen.toJson())
@@ -126,7 +152,7 @@ class MessageArchiveImportTest {
         assertEquals(3, tulos.unreadable)
         assertEquals(listOf("ehjä"), tulos.file.messages.map { it.body })
         assertEquals(listOf("ok"), tulos.file.reminders.map { it.text })
-        assertEquals(listOf("hi"), tulos.file.phrases)
+        assertEquals(listOf(Phrase("hi", 1)), tulos.file.phrases)
     }
 
     @Test

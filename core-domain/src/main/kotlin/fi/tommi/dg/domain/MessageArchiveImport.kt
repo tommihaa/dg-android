@@ -12,8 +12,8 @@ package fi.tommi.dg.domain
  * sama sääntö jolla kanta tunnisti viestin alun perinkin.
  *
  * **Kaikki versiot luetaan.** Jokainen vientiversio on edellisen ylijoukko
- * ([ARCHIVE_EXPORT_VERSION]), joten puuttuva `opponent`, `account`, `replyTo`, `reminders`
- * tai `phrases` on vanha tiedosto eikä virhe. Uudemman version tiedosto luetaan siltä osin
+ * ([ARCHIVE_EXPORT_VERSION]), joten puuttuva `opponent`, `account`, `replyTo`, `reminders`,
+ * `phrases` tai `marks` on vanha tiedosto eikä virhe. Uudemman version tiedosto luetaan siltä osin
  * kuin kentät tunnetaan.
  *
  * **Rikkinäinen rivi ohitetaan mutta lasketaan.** Viesti jolta puuttuu pakollinen kenttä ei
@@ -41,8 +41,9 @@ fun readArchiveJson(text: String): ArchiveImport {
     val reminders = (root["reminders"] as? List<*>).orEmpty().mapNotNull { item ->
         readReminder(item as? Map<*, *>).also { if (it == null) unreadable++ }
     }
-    val phrases = (root["phrases"] as? List<*>).orEmpty().mapNotNull { item ->
-        (item as? String).also { if (it == null) unreadable++ }
+    val phrases = readPhrases((root["phrases"] as? List<*>).orEmpty()) { unreadable++ }
+    val marks = (root["marks"] as? List<*>).orEmpty().mapNotNull { item ->
+        readMark(item as? Map<*, *>).also { if (it == null) unreadable++ }
     }
     return ArchiveImport.Read(
         ArchiveFile(
@@ -51,6 +52,7 @@ fun readArchiveJson(text: String): ArchiveImport {
             messages = messages,
             reminders = reminders,
             phrases = phrases,
+            marks = marks,
             version = (root["version"] as? Long)?.toInt() ?: 1,
         ),
         unreadable = unreadable,
@@ -91,6 +93,47 @@ private fun readReminder(item: Map<*, *>?): Reminder? {
         game = GameKey(MatchId(matchId), opponentScore, selfScore),
         text = text,
         createdAtEpochMillis = createdAt,
+    )
+}
+
+/**
+ * Fraasit kummassakin muodossa. Versio 6 kirjoittaa olion tekstistä ja hetkestä; vanhempi
+ * pelkän tekstin, jolle hetki annetaan sen paikasta listassa ([Phrase.fromPositions]), sama
+ * sääntö kuin laitteen säilön vanhoilla fraaseilla.
+ */
+private fun readPhrases(items: List<*>, onUnreadable: () -> Unit): List<Phrase> =
+    items.mapIndexedNotNull { index, item ->
+        when (item) {
+            is String -> Phrase(item, index + 1L)
+            is Map<*, *> -> {
+                val text = item["text"] as? String
+                val at = item["addedAtEpochMillis"] as? Long
+                if (text != null && at != null) Phrase(text, at) else null
+            }
+            else -> null
+        }.also { if (it == null) onUnreadable() }
+    }
+
+/**
+ * Merkitty asema. Sana saa olla tyhjä, toisin kuin muistutuksen teksti, koska merkin arvo on
+ * kohdassa eikä selityksessä ([MarkedPosition]). Lukukelvoton asema luetaan nulliksi eikä
+ * hylkää merkkiä: asema on vain `.sgf`-viennin kohdistusta varten, ja ilman sitä merkki
+ * menee pelin alkuun kuten ennen aseman tallennusta tehty merkki.
+ */
+private fun readMark(item: Map<*, *>?): MarkedPosition? {
+    if (item == null) return null
+    val matchId = item["matchId"] as? String ?: return null
+    val opponentScore = (item["opponentScore"] as? Long)?.toInt() ?: return null
+    val selfScore = (item["selfScore"] as? Long)?.toInt() ?: return null
+    val moveNumber = (item["moveNumber"] as? Long)?.toInt() ?: return null
+    val createdAt = item["createdAtEpochMillis"] as? Long ?: return null
+    return MarkedPosition(
+        id = 0,
+        game = GameKey(MatchId(matchId), opponentScore, selfScore),
+        moveNumber = moveNumber,
+        note = (item["note"] as? String).orEmpty(),
+        createdAtEpochMillis = createdAt,
+        position = (item["position"] as? String)?.let(CheckerPosition::decode),
     )
 }
 

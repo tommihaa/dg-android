@@ -32,6 +32,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -271,16 +272,18 @@ fun DiscussionScreen(
                     )
                 }
                 HideNote(hide = hide, onDismiss = onDismissHide)
-                IndexView(
-                    state = state,
-                    onRefresh = onRefresh,
-                    onOpenThread = onOpenThread,
-                    onOpenArchive = onOpenArchive,
-                    onOpenNewThread = onOpenNewThread,
-                    hide = hide,
-                    onHide = onHide,
-                    onToggleHidden = onToggleHidden,
-                )
+                CompositionLocalProvider(LocalListPull provides onRefresh.takeIf { state !is DiscussionUiState.NoPath }) {
+                    IndexView(
+                        state = state,
+                        onRefresh = onRefresh,
+                        onOpenThread = onOpenThread,
+                        onOpenArchive = onOpenArchive,
+                        onOpenNewThread = onOpenNewThread,
+                        hide = hide,
+                        onHide = onHide,
+                        onToggleHidden = onToggleHidden,
+                    )
+                }
             }
         }
     }
@@ -453,10 +456,17 @@ private fun ThreadRow(
     hideEnabled: Boolean = true,
     hiding: Boolean = false,
 ) {
+    // Pitkä painallus: aloittajan viestit arkistosta (`PlayerMenu.kt`). Aloittajalla ei ole
+    // profiililinkkiä listalla, joten profiilia valikossa ei ole.
+    PlayerMenuBox(
+        name = thread.poster,
+        profilePath = null,
+        onClick = onOpen,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onOpen)
             .padding(start = 16.dp, end = if (onHide != null) 4.dp else 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -470,6 +480,7 @@ private fun ThreadRow(
                 )
             }
         }
+    }
     }
 }
 
@@ -966,6 +977,14 @@ private fun PostView(post: ForumPost, onOpenPage: (String) -> Unit) {
         // kuin Infon Links-sivulla.
         Text(text = body, style = MaterialTheme.typography.bodyMedium)
         // Tekijä ja aika sivun omana allekirjoituksena rungon alla, kuten sivullakin.
+        // Pitkä painallus allekirjoituksella avaa pelaajavalikon (`PlayerMenu.kt`), ja napautus
+        // avaa kirjoittajan profiilin (Tommin tilaus 2.11.2026). Ilman polkua napautus ei tee mitään.
+        val authorPath = post.author.profilePath
+        PlayerMenuBox(
+            name = post.author.name,
+            profilePath = authorPath,
+            onClick = authorPath?.let { path -> { onOpenPage(path) } },
+        ) {
         Text(
             text = textWithPlayerColor(
                 stringResource(
@@ -979,6 +998,7 @@ private fun PostView(post: ForumPost, onOpenPage: (String) -> Unit) {
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        }
     }
 }
 

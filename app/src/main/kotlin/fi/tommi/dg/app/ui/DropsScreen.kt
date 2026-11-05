@@ -113,7 +113,8 @@ private fun DropRow(drop: ConnectionDrop, seen: SeenMatch?) {
             else -> stringResource(R.string.marks_match_number, matchId.value)
         }
         Text(
-            text = listOfNotNull(match, drop.cause).joinToString(" · "),
+            // Nimi on linkki profiiliin (2.11.2026, `PlayerLink.kt`).
+            text = textWithPlayerColor(listOfNotNull(match, drop.cause).joinToString(" · "), opponent, seen?.opponent?.userId),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

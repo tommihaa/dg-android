@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import fi.tommi.dg.app.FormSender
 import fi.tommi.dg.app.PageFetcher
+import fi.tommi.dg.app.session.FinishedDaysStore
 import fi.tommi.dg.app.session.PlayerRatingStore
 import fi.tommi.dg.data.MarkBook
 import fi.tommi.dg.data.MessageArchive
@@ -40,6 +41,9 @@ import fi.tommi.dg.scrape.SendResultParser
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -234,6 +238,17 @@ sealed interface PageUiState {
     data object SessionExpired : PageUiState, SessionExpiredState
 }
 
+/** Profiilin avautuvan osion tila, ks. [PageViewModel.sections]. */
+sealed interface SectionUiState {
+
+    data object Loading : SectionUiState
+
+    data class Loaded(val content: PageContent) : SectionUiState
+
+    /** Null kun sivu tuli mutta sitä ei tunnistettu, tai istunto ei kelvannut. */
+    data class Failed(val reason: Failure?) : SectionUiState
+}
+
 /**
  * Porautumisruudun näkymämalli: pelaajaprofiili, turnaussivu, pelaajan turnauslistat sekä
  * sivuston oma Help ja linkkisivu (kaksi jälkimmäistä 29.8.2026, Info-välilehden rivit).
@@ -278,7 +293,46 @@ class PageViewModel(
     private val now: () -> Long = System::currentTimeMillis,
     /** Profiilin rating kirjataan tänne laudan korttia varten, ks. [PlayerRatingStore]. */
     private val ratings: PlayerRatingStore = PlayerRatingStore.NONE,
+    /** Päättyneiden päiväraja, ks. [finishedDays]. */
+    private val finishedDaysStore: FinishedDaysStore = FinishedDaysStore.NONE,
 ) : ViewModel() {
+
+    /**
+     * Haettava polku: reitin polku muistetulla päivärajalla ([FinishedDays.withDays]).
+     * Polku joka ei kanna päättyneitä (parametriton profiili, turnaus) pysyy reitin
+     * polkuna. Muuttuu vain [showFinishedDays]illa.
+     */
+    private var currentPath: String =
+        finishedDaysStore.get()?.let { FinishedDays.withDays(path, it) } ?: path
+
+    private val _finishedDays = MutableStateFlow(FinishedDays.of(currentPath))
+
+    /**
+     * Päättyneiden päiväraja profiilin painikkeille, tai null kun polussa ei ole lukua ja
+     * painikkeet jäävät pois (Pascalin toive ja Tommin valinta 31.10.2026).
+     */
+    val finishedDays: StateFlow<Int?> = _finishedDays.asStateFlow()
+
+    /**
+     * Merkittyjen asemien määrä otteluittain tällä laitteella. Päättyneen rivi kertoo sen,
+     * koska merkit kulkevat `.sgf`-viennissä (Tommin pyyntö 31.10.2026). Seuraa kantaa,
+     * joten laudalla lisätty merkki näkyy paluun jälkeen ilman uutta hakua.
+     */
+    val markCounts: StateFlow<Map<MatchId, Int>> = marks.observeAll()
+        .map { all -> all.groupingBy { it.game.matchId }.eachCount() }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+
+    /**
+     * Hakee profiilin uudelleen toisella päivärajalla ja muistaa valinnan. Sama valinta
+     * pätee seuraavaan avattuun profiiliin, omaan ja toisen pelaajan (Tommi 31.10.2026).
+     */
+    fun showFinishedDays(days: Int) {
+        if (_finishedDays.value == null || _finishedDays.value == days) return
+        finishedDaysStore.save(days)
+        currentPath = FinishedDays.withDays(currentPath, days)
+        _finishedDays.value = days
+        fetch()
+    }
 
     private val _state = MutableStateFlow<PageUiState>(PageUiState.Loading)
     val state: StateFlow<PageUiState> = _state.asStateFlow()
@@ -337,12 +391,47 @@ class PageViewModel(
     private fun fetchVersus(profile: ProfilePage) {
         val versusPath = profile.versusPath ?: return
         viewModelScope.launch {
-            _versus.value = withContext(io) {
-                (pages.fetch(versusPath) as? DgResponse.Ok)
-                    ?.let { ProfileParser.parse(it.html) }
-                    ?.finishedRecord
-                    ?.flipped()
+            val page = withContext(io) {
+                (pages.fetch(versusPath) as? DgResponse.Ok)?.let { ProfileParser.parse(it.html) }
             }
+            _versus.value = page?.finishedRecord?.flipped()
+            // Sama sivu on versus-osion sisältö, joten avaus ei hae sitä toiseen kertaan.
+            if (page != null) {
+                _sections.value = _sections.value + (versusPath to SectionUiState.Loaded(PageContent.Profile(page)))
+            }
+        }
+    }
+
+    private val _sections = MutableStateFlow<Map<String, SectionUiState>>(emptyMap())
+
+    /**
+     * Profiilin avautuvien osioiden sisältö polun mukaan (Tommin tilaus 2.11.2026: sisäiset
+     * linkit avautuvat paikalleen eivätkä vie omalle sivulleen). Osio haetaan vasta kun se
+     * avataan, koska App Help lupaa ettei sovellus lue mitään avaamatonta. Lukusivut eivät
+     * kuluta jonoa.
+     */
+    val sections: StateFlow<Map<String, SectionUiState>> = _sections.asStateFlow()
+
+    /** Hakee osion, ellei se ole jo haettu tai haussa. Epäonnistunut haetaan uudelleen. */
+    fun openSection(sectionPath: String) {
+        when (_sections.value[sectionPath]) {
+            SectionUiState.Loading, is SectionUiState.Loaded -> return
+            else -> Unit
+        }
+        _sections.value = _sections.value + (sectionPath to SectionUiState.Loading)
+        viewModelScope.launch {
+            val result = withContext(io) {
+                when (val response = pages.fetch(sectionPath)) {
+                    is DgResponse.Ok -> READERS.firstNotNullOfOrNull { it(response.html) }
+                        ?.let { SectionUiState.Loaded(it) }
+                        ?: SectionUiState.Failed(null)
+                    is DgResponse.Offline -> SectionUiState.Failed(Failure.Offline)
+                    is DgResponse.ServerError -> SectionUiState.Failed(Failure.Server(response.code))
+                    DgResponse.Sleeping -> SectionUiState.Failed(Failure.Sleeping)
+                    DgResponse.AuthFailed -> SectionUiState.Failed(null)
+                }
+            }
+            _sections.value = _sections.value + (sectionPath to result)
         }
     }
 
@@ -354,7 +443,11 @@ class PageViewModel(
         _draft.value = text
     }
 
-    fun refresh() = fetch()
+    fun refresh() {
+        // Avoimet osiot haetaan ruudulta uudelleen, kun niiden tila puuttuu.
+        _sections.value = emptyMap()
+        fetch()
+    }
 
     // Epäonnistunut päivitys saa korvata näkyvän sisällön virheruudulla: valinta eikä
     // vuoto, ks. perustelu `LoungeViewModel.read`.
@@ -365,7 +458,7 @@ class PageViewModel(
         }
         viewModelScope.launch {
             val loaded = withContext(io) {
-                when (val response = pages.fetch(path)) {
+                when (val response = pages.fetch(currentPath)) {
                     is DgResponse.Ok -> read(response.html)
                     is DgResponse.Offline -> PageUiState.Failed(Failure.Offline)
                     is DgResponse.ServerError -> PageUiState.Failed(Failure.Server(response.code))
@@ -660,7 +753,7 @@ class PageViewModel(
      */
     private fun reload(answered: ProfilePage?): ProfilePage? {
         val profile = answered
-            ?: (pages.fetch(path) as? DgResponse.Ok)?.let { ProfileParser.parse(it.html) }
+            ?: (pages.fetch(currentPath) as? DgResponse.Ok)?.let { ProfileParser.parse(it.html) }
             ?: return null
         _state.value = PageUiState.Loaded(PageContent.Profile(profile))
         return profile
@@ -749,10 +842,14 @@ class PageViewModel(
         private val self: () -> String?,
         private val marks: MarkBook,
         private val ratings: PlayerRatingStore = PlayerRatingStore.NONE,
+        private val finishedDays: FinishedDaysStore = FinishedDaysStore.NONE,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
-            PageViewModel(pages, forms, archive, path, self, marks, ratings = ratings) as T
+            PageViewModel(
+                pages, forms, archive, path, self, marks,
+                ratings = ratings, finishedDaysStore = finishedDays,
+            ) as T
     }
 }
 

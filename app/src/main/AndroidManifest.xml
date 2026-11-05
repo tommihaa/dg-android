@@ -4,6 +4,14 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
+    <!-- Asetusten linkki järjestelmän kääntöasetukseen näytetään vain jos sivu on olemassa,
+      ja Android 11 näyttää sen vain kysytylle aikeelle (18.10.2026). -->
+    <queries>
+        <intent>
+            <action android:name="android.settings.AUTO_ROTATE_SETTINGS" />
+        </intent>
+    </queries>
+
     <application
         android:name=".DgApplication"
         android:label="@string/app_name"
@@ -29,7 +37,7 @@
             android:windowSoftInputMode="adjustResize"
             android:theme="@style/Theme.DgAndroid">
             <!-- ChromeOS avasi ikkunan puhelimen kokoisena, kunnes testaaja valitsi Game
-                 Dashboardin Screen Size -valikosta Resizable (10.10. ja 13.10.2026). Toive tabletin
+                 Dashboardin Screen size -valikosta Resizable (10.10. ja 13.10.2026). Toive tabletin
                  kokoisesta aloitusikkunasta; muut alustat eivät lue tätä. Ks. docs/UI.md ›
                  Chromebookin ikkuna. -->
             <meta-data

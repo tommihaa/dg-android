@@ -209,6 +209,22 @@ class FakeMarks : MarkBook {
     }
 
     override suspend fun count(): Int = rows.value.size
+
+    override suspend fun all(): List<MarkedPosition> = rows.value
+
+    override suspend fun addMissing(marks: List<MarkedPosition>): Int {
+        var added = 0
+        for (m in marks) {
+            val same = rows.value.any {
+                it.game == m.game && it.moveNumber == m.moveNumber && it.note == m.note.trim() &&
+                    it.createdAtEpochMillis == m.createdAtEpochMillis
+            }
+            if (same) continue
+            rows.value = rows.value + m.copy(id = nextId++, note = m.note.trim())
+            added++
+        }
+        return added
+    }
 }
 
 /**

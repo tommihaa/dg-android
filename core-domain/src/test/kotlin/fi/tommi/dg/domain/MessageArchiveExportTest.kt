@@ -99,16 +99,17 @@ class MessageArchiveExportTest {
         val json = listOf(msg().copy(replyTo = "abc")).toArchiveJson(
             1_000,
             reminders = listOf(reminder),
-            phrases = listOf("hi", "gg"),
+            phrases = listOf(Phrase("hi", 1), Phrase("gg", 2)),
         )
 
-        assertTrue(json.contains("\"version\": 4"))
+        assertTrue(json.contains("\"version\": $ARCHIVE_EXPORT_VERSION"))
         assertTrue(json.contains("\"replyTo\": \"abc\""))
         assertTrue(json.contains("\"opponentScore\": 3"))
         assertTrue(json.contains("\"selfScore\": 1"))
         assertTrue(json.contains("\"text\": \"Think about doubling\""))
         assertTrue(json.contains("\"createdAtEpochMillis\": 2000"))
-        assertTrue(json.contains("\"phrases\": [\n    \"hi\",\n    \"gg\"\n  ]"))
+        assertTrue(json.contains("\"text\": \"hi\",\n      \"addedAtEpochMillis\": 1\n"))
+        assertTrue(json.contains("\"text\": \"gg\",\n      \"addedAtEpochMillis\": 2\n"))
         assertTrue(!json.contains("\"id\": 9"))
     }
 

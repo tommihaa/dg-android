@@ -21,6 +21,21 @@ data class EventPage(
      * lukien. Nolla kun sivulla ei ole kaaviota.
      */
     val rows: Int = 0,
+    /**
+     * Ilmoittautuneiden määrä sivun rivistä `Currently there are N players registered`
+     * (Michael R:n toive 19.10.2026). Rivi on mitattu vain ilmoittautumisvaiheen turnauksilta
+     * (58 ja 335 pelaajaa, ilmoittautuneena kaapatuista sivuista), joten null tarkoittaa
+     * "riviä ei ollut" eikä nollaa. Ilmoittautumattoman katsojan sivulla rivi on sama
+     * (`Click to register`, mitattu 20.10.2026 elävältä sivustolta). Kutsuturnauksella luku
+     * on kutsutuista ilmoittautuneet, ks. [invited].
+     */
+    val registered: Int? = null,
+    /**
+     * Kutsuturnauksen kutsuttujen määrä, eli `Invitational`-ehdon alla olevan taulukon
+     * pelaajalinkit (20.10.2026). Mitattu yhdellä sivulla (Knack of Nack Champs #27: 568
+     * kutsuttua, 58 ilmoittautunutta). Null kun sivulla ei ole kutsulistaa tai se ei jäsenny.
+     */
+    val invited: Int? = null,
 ) {
     /**
      * Onko turnaus double repeat, luettuna `Game`-ehdosta. Mitattu muoto on

@@ -151,6 +151,7 @@ class SettingsTransfer(private val prefs: (String) -> SharedPreferences) {
             "dg_dice_tap",
             "dg_board_extras",
             "dg_rarity",
+            "dg_gestures",
             "dg_match_order",
             "dg_message_filter",
             "dg_portrait_lock",

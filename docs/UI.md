@@ -6,6 +6,21 @@ näytön työlista.
 Siirretty `CLAUDE.md`:stä 10.8.2026. Sisältö on ennallaan, vain sijainti muuttui.
 Hakemisto ja pyytämättä laukeavat portit ovat yhä `CLAUDE.md`:ssä.
 
+### Ei nytkähdyksiä: tila järjestetään toisaalta (Tommin linjaus 17.10.2026)
+
+**Ilmestyvä tai katoava rivi ei saa muuttaa laudan kokoa eikä siirtää muuta ruutua.** Kun
+uudelle asialle ei ole tilaa, sille etsitään paikka jossa tyhjää on jo valmiiksi (sivupaneeli,
+kaistan vapaa puolisko, päällepiirto) eikä otettu tilaa laudalta. Ennakkotapaukset ovat
+huomautuspalkki laudan päälle 31.8.2026, latauspalkki 3.9.2026 ja toistojono paneeliin
+17.10.2026 (› Next Game noppien paikalle). Muutoksen yhteydessä katsotaan ruutu sekä tilassa
+jossa rivi on että tilassa jossa sitä ei ole.
+
+Laudan alla on yhä rivejä jotka vievät korkeutta laudalta (`LoadedBoard`in alasarake):
+muistutukset, kirjoitus- ja merkintäkenttä, sivun muut ilmoitukset (`plainNotices`) ja
+paneelittoman ruudun toistojono. Kentät avautuvat painalluksesta, joten niiden siirtymä on
+käyttäjän oma teko. Muistutukset ja ilmoitukset voivat vaihtua sivulta toiselle, eikä niiden
+nytkähdystä ole mitattu.
+
 ### Termien valinta (Tommin kirjaus 27.9.2026)
 
 **Sovelluksen oma käyttöliittymätermi valitaan lyhyeksi, yksimerkityksiseksi ja
@@ -683,6 +698,98 @@ hylättiin 8.8.2026). Vieritystapahtumia ei synny, joten valmis komponentti ei l
 kertaakaan. Kynnys on 72 dp matkaa eikä nopeutta, ja haku lähtee **kerran per ele**: kohde on
 vapaaehtoisvoimin pyöritetty sivusto.
 
+#### Sama veto listoille (20.10.2026)
+
+Pelaajan toive testaajia hakevan palstapostauksen ketjussa (Sylfest Strutle 20.10.2026): peukalo
+yritti vetää Top Pagea alas. Tommin rajaus samana päivänä: **jokainen listaruutu jolla on
+`Refresh`, paitsi asetukset, ja nappi jää.** Ruudut ovat Top Page (molemmat segmentit), Lounge,
+Forumin ketjulista ja sivuruutu (profiili, turnaus ja muut sieltä avatut sivut).
+
+Kolme valintaa jotka eivät näy koodista:
+
+- **Ele tekee täsmälleen saman kuin ruudun nappi.** Se annetaan vain sille osalle jonka
+  yläpalkissa `Refresh` näkyy (`LocalListPull`), joten Forumin ketjussa, arkistossa ja
+  lomakkeella elettä ei ole, ja sivuruudulla vain ladatulla sivulla. Yksikään näistä hauista
+  ei kuluta jonoa: jono on viestiruudulla, jolla `Refresh`iä ei ole.
+- **Nappi jää**, koska ele ei näy ruudulla eikä ruudunlukija voi tehdä sitä.
+- **Asetuksissa ei ole elettä**, koska veto hakisi DailyGammon-lomakkeen uudelleen
+  keskeneräisten muutosten päälle.
+
+Listoilla kelpaa Material3:n `PullToRefreshBox`, koska ne vierivät, toisin kuin lauta.
+`isRefreshing` on aina epätosi: haun etenemisen näyttää ruudun oma `ProgressSlot`, joten pyöreä
+ilmaisin näkyy vain vedon aikana. Toteutus on yhdessä paikassa (`DgLazyColumn`in `onPull`).
+
+**Ilmaisin piilotetaan käsin.** Komponentti vetää sen pois vasta kun `isRefreshing` vaihtuu, ja
+koska se ei tässä vaihdu, ensimmäinen laiteajo jätti ilmaisimen kynnykselle irrotuksen jälkeen
+(Pixel 8a 20.10.2026). Haun käynnistys kutsuu siksi perään `animateToHidden`in. Todennettu samana
+iltana nauhalta Top Pagella, Loungessa ja Forumissa: ilmaisin kasvaa vedon mukana, vetäytyy
+irrotuksessa, ja ruudun latauspalkki syttyy kerran. Sivuruutu käyttää samaa reittiä eikä sitä
+ajettu erikseen.
+
+#### Pyyhkäisy välilehdeltä toiselle (20.10.2026)
+
+Tommin tilaus: kun ei olla laudalla, sivuttainen pyyhkäisy vaihtaa välilehteä. Viisi päätöstä
+samana päivänä monivalintana:
+
+- **Suunta kuin sivua kääntäessä.** Sormi vasemmalle tuo oikealla olevan välilehden.
+- **Vain ruuduilla joilla välilehtirivi näkyy.** Asetuksissa, merkityissä asemissa ja
+  porautumisruudulla ei ole välilehteä josta siirtyä, joten elettä ei ole.
+- **Top Pagen osat ohitetaan** (koodissa `DgTab.Matches`). Ele vaihtaa aina koko välilehteä, oli auki kumpi osa tahansa.
+- **Päädyt kiertävät.** Infon jälkeen tulee Top Page ja toisin päin (`swipeTarget`).
+- **Vaihto kynnyksen jälkeen, ja uusi ruutu liukuu esiin.** Sormea seuraava sivu olisi vaatinut
+  välilehtien rakentamista sivuttain vieriväksi kokonaisuudeksi, joka pitää kaikki viisi
+  muistissa. Napautus häivyttää kuten ennenkin, ja paluu ei liu'u koskaan.
+
+Kaksi valintaa jotka eivät näy koodista (`TabSwipe.kt`). **Ele kuunnellaan vasta lasten
+jälkeen**, joten sivuttain vierivä rivi ja pystyyn vierivä lista saavat liikkeen ensin. **Liike
+kulutetaan heti kun se on todettu sivuttaiseksi**, koska muuten koko levyinen otteluruutu
+tulkitsisi pyyhkäisyn napautukseksi ja avaisi ottelun. Kynnys on sama 72 dp kuin laudan
+vedossa. Välilehtirivi jää, koska TalkBack käyttää yhden sormen pyyhkäisyn omaan liikkumiseensa.
+
+Todennettu tabletilla samana päivänä: pyyhkäisy kumpaankin suuntaan, kierto Top Pagelta Infoon,
+ja pyyhkäisy Loungen Players-otsikon ja pelaajarivin yli vaihtoi välilehteä avaamatta riviä.
+
+**Samassa tilauksessa kolme muuta** (Tommi: *"tee myös kolme ehdotustasi"*):
+
+- **Valitun välilehden uusi napautus vie listan alkuun.** Uutta näkymätöntä elettä ei synny,
+  koska kyse on napautuksesta ja tapa on tuttu muista sovelluksista. Signaali on laskuri
+  (`LocalScrollToTop`) eikä tapahtuma, jotta myöhemmin piirtyvä lista ei vieritä itseään
+  avautuessaan. Kattaa jokaisen `DgLazyColumn`in ja Info-ruudun.
+- **Värähdys kun ele ylittää kynnyksen**: laudan veto, listojen veto ja välilehden vaihto.
+  Pelaaja tietää eleen menneen perille katsomatta ruutua. `GestureThresholdActivate`
+  noudattaa järjestelmän kosketusvärinän asetusta, joten omaa kytkintä ei tarvita.
+- **Pitkä painallus avaa pelaajavalikon** (Tommin valinta: *"ehdotuksesi käy myös pelaajien
+  nimiin muualla"*). Kohdat ovat profiili, turnaus ja arkistoidut viestit, ja jokainen näkyy vain
+  kun kohde on olemassa (`playerMenuEntries`). Syy on jono: otteluriviltä pääsee profiiliin ja
+  turnaukseen avaamatta ottelua. Ottelun selaussivu jäi pois, koska sen vaikutusta jonoon ei ole
+  mitattu. Paikat: Top Pagen ottelurivi, Loungen pelaajarivi, Forumin ketjurivi (aloittajan
+  viestit), Forumin viestin allekirjoitus ja profiilisivun vastustajan nimi. TalkBack lukee
+  pitkän painalluksen toimintona *Player options*. Viestikohta antaa rajauksen Inboxille sen
+  avautuessa, koska Inboxin näkymämalli syntyy vasta omalla reitillään. Todennettu tabletilla:
+  yhden pelaajan rivillä molemmat kohdat, ja viestikohta avasi Inboxin häneen rajattuna.
+
+**Kaikki viisi yhden kytkimen alle** (Tommin tilaus samana iltana: *"kaikki session eleet
+tulisi koota kytkimen alle kuten Settings/This Device/Theme/Game Sounds"*). Kolme valintaa
+monivalintana: mukaan myös vanha veto alas, paikka on Lists and screens rarity-värien jälkeen,
+ja oletus oli ensin kaikki päällä. **Samana iltana pääkytkin vaihdettiin oletukseltaan
+pois** (Tommi: *"äänet ja värähdykset pitää käydä laittamassa päälle, samalla kunnioitetaan
+olemassaolevien pelaajien rauhaa"*, `docs/ARVOT.md` kuudes arvo). Ruudut ovat ruksattuina kuten
+äänissä, joten pääkytkin yksin ottaa kaikki käyttöön. Laudan veto alas, joka oli ollut päällä 9.8.2026
+alkaen, puuttuu nyt kunnes kytkin laitetaan päälle.
+
+**Laudalla ei ollut tavallista Refresh-nappia**, ja väite *"nappi jää"* oli Clauden virhe: iso
+nappi kuution päällä näkyy vain vahvistamattomalla laudalla (`UnconfirmedRefresh`), ja 9.8.2026
+päätös oli juuri veto napin tilalle. Tommi valitsi kolmesta (*"2"*): **kun veto on pois,
+sivupaneelin linkkeihin tulee `› Refresh`**. Linkki eikä nappi, koska teko on sovelluksen eikä
+sivuston (25.8.2026 sääntö), ja se lasketaan linkkien joukkoon, jotta ahtaan paneelin
+parillisuussääntö pysyy. Lisälinkit piilotettuina se näkyy yksin. Todennettu kuorella
+tabletin pystylaudalla: rivi `Skip Game`, `› Mark position`, `› Refresh`, `› Reminders`,
+napautus haki lautasivun (kuoren loki), veto alas ei hakenut mitään. Paikka on ensimmäinen
+laiteajo ja jää käsikokeiluun. Ruudut näkyvät aina ja harmaantuvat pääkytkimen ollessa pois,
+kuten äänissä. Kytkin ei vie toimintoa, koska jokaisen eleen teon saa myös ruudulta.
+Todennettu tabletilla: ryhmä piirtyy, pois kytketty pyyhkäisy ei vaihtanut välilehteä ja
+pääkytkin harmaannutti ruudut. Asetukset palautettiin kokeen jälkeen.
+
 *Riski joka oli auki muutaman tunnin ja on nyt suljettu:* ruudulla ei ole omaa `Back`ia missään
 tilassa, joten jos järjestelmän reunapyyhkäisy ei toimisi piilotettujen palkkien kanssa, ruudulta
 ei pääsisi pois. Todennettu laitteella samana päivänä: se toimii, oikeasta reunasta.
@@ -1025,9 +1132,132 @@ paneelilla ja napeilla.
 **Korjaus samana iltana: tabletilla nämä eivät enää näy, koska paneeli palasi.** Nappulalle
 tuli yläraja (ks. seuraava osio), joten Galaxy Tab S7+:lla sivupaneeli mahtuu taas ja kantaa
 pelaajatiedot kuten puhelimella. Sarakkeen tiedot jäävät siis koodiin sitä välialuetta varten
-jossa lauta täyttää leveyden mutta sarake on vähintään 96 dp: Tommin peruste on että sovellus
+jossa lauta täyttää leveyden mutta sarake on vähintään 90 dp (96 dp 19.10.2026 asti): Tommin peruste on että sovellus
 päätyy erilaisille näytöille kuin nämä kaksi. Rivi on tässä eikä poistettuna siksi, että
 edellinen kappale sanoisi muuten yhä tabletista jotain joka ei pidä paikkaansa.
+
+### Sarakkeen raja 96 → 90 dp: väliin jäänyt reikä 1280 dp:n näytöllä (19.10.2026)
+
+**Pascalin Honor NDL-W09 (1920×1200, oletuskoko 1280×800 dp) ei näyttänyt vaakatilassa
+pisteitä, pippejä eikä nimiä.** Toisto omalla tabletilla antoi saman ruudun tiheydellä 240, ja
+syy on laskettu nappulan katosta: lauta pysähtyy 54 dp:n nappulaan eli noin 1094 dp:n kehykseen,
+ja siitä lähtien sarakkeen leveys on vakio **95,0 dp** (`trayWidth`, 75,6 dp:n kolumni ×
+`TRAY_PER_COLUMN`). Sivupaneeli vaatii 150 dp:n ylijäämän ja saa 1280 dp:llä noin 146 dp
+(pehmuste 32 dp, väli 8 dp), joten se ei piirry. Sarakkeen kynnys oli 96 dp, joten sekään ei
+piirtynyt. **Kumpikin jäi ohi muutamalla dp:llä, ja kaikilla leveyksillä noin 1110 ja 1284 dp:n
+välillä pelaajatiedoille ei ollut kotia.** Lasku on päätelmä vakioista, ei laitemittaus.
+
+**Tämä rikkoi 14.8.2026 kirjatun periaatteen**: paneelin puuttuminen on tiedon katoamista, ja
+sarakkeen varapaikka on olemassa juuri tätä välialuetta varten. Kaanoni ei muutu, koodi korjataan.
+
+**Tommin valinta (19.10.2026), neljästä:** `TRAY_TEXT_MIN` 96 → 90 dp. Hylätyt: paneelin raja
+140 dp (ahtaampi paneeli kuin koskaan mitattu, ks. Pixel 8a 16.9.2026), nappulan katto 52 dp
+(muuttaa laudan kokoa kaikilla isoilla näytöillä) ja uusi asettelusääntö kaanoniin (raskain).
+
+**Todennettu 19.10.2026 klo 23.30 kuorella** (Galaxy Tab S7+, `wm size 1920x1200`, tiheys 240 eli
+1280×800 dp, `raakasivut/move_board.html`, ottelu 5313345, airlock 503): sarakkeessa näkyvät
+vastustajan nimi, `18-away` ja `157 (-1)` ylhäällä sekä oma nimi, `17-away` ja `158 (+1)` alhaalla.
+Teksti mahtuu 95 dp:n sarakkeeseen leikkautumatta, joten 90 dp:n raja riittää tällä fontilla.
+Kaappaus on session väliaikaiskansiossa, ei repossa. Laite palautettu (koko, tiheys, kierto, proxy).
+
+**Mitä tämä ei sulkenut:** leveyksillä alle noin 1110 dp sarake on kapeampi kuin 90 dp, joten
+reikä jäi siellä auki. Laskettu samoilla vakioilla (paneeli 150 dp, pehmuste 32 dp, rivin korkeus
+20 dp): 1024×768 dp sarake 86 dp, 1000×700 84 dp, 1024×600 ja 960×600 79 dp, 800×480 62 dp, eikä
+paneeli mahdu kummassakaan. **Tommin valinta (19.10.2026) kolmesta: raja 90 → 60 dp**, ja
+laitetodennus ennen kuin raja jää. Hylätyt: ei kynnystä lainkaan niin että teksti kutistuu ja
+katkeaa (isompi muutos sarakkeen sisäiseen asetteluun) ja reiän jättäminen auki.
+
+**Todennettu 19.10.2026 klo 23.54–23.55 kuorella** (Galaxy Tab S7+, `wm size 1536x900` ja
+`1200x720`, tiheys 240 eli 1024×600 ja 800×480 dp, ottelu 5313345, airlock 503): molemmilla
+sarakkeessa näkyvät nimi, `18-away` ja `157 (-1)` ylhäällä sekä `tommih`, `17-away` ja
+`158 (+1)` alhaalla leikkautumatta, myös 800×480 dp:n noin 62 dp:n sarakkeessa. **Sivuhavainto
+samoista kaappauksista:** keskikaistan `Mark position`, `Reminders` ja `Cube` katkeavat oikeasta
+reunasta (1024×600: `› Ren`, 800×480: `› Ma`); tutkittu 20.10.2026, ks. alla. Laite palautettu. **90 dp:n luettavuutta ei ole mitattu**,
+kuten ei 96:ntakaan: laitekaappaus 1280 dp:llä kuuluu todennukseen, ja jos teksti ei mahdu, raja
+on väärä luku.
+
+**Sivuhavainto tutkittu 20.10.2026: ei vika, rivi vieritetään.** Toisto samalla tabletilla ja
+laudalla (`wm size 1536x900` ja `1200x720`, tiheys 240, ottelu 5313345, kuoriproxy, airlock 503).
+Keskikaistan rivillä oli yhtä aikaa `Roll Dice`, `Double`, `Verify Double`, `Skip Game`,
+`Mark position`, `Reminders` ja `Cube reminder`, joten loppupää jäi leikkautuneena vierityksen
+taakse. Pyyhkäisy vasemmalle toi `Reminders`in ja `Cube reminder`in kokonaisina näkyviin
+molemmilla leveyksillä, joten mikään nappi ei ole tavoittamattomissa. Se on 26.8.2026 kirjattu
+päätös (*Nappirivi väistää nopat*), ei uusi vika. **Auki jäi vain vihje:** vieritettävyyden
+kertoo ainoastaan katkennut sana, eikä reunassa ole himmennystä. (`›` kuuluu linkkien omaan
+tekstiin eikä kerro vierityksestä, korjattu 20.10.2026.) **Ratkesi samana päivänä**, ks.
+Keskikaistan rivi jakautuu.
+
+**Kun `Show Mark position and the reminders` on pois** (sama laite ja leveydet): rivillä on vain
+`Roll Dice`, `Double`, `Verify Double` ja `Skip Game`, ja kaikki mahtuvat leikkautumatta sekä
+1024×600 että 800×480 dp:llä. Kytkin siis poistaa katkeamisen kokonaan pienellä leveydellä.
+Kytkin palautettiin päälle ja laite oletuksiinsa ajon jälkeen.
+
+### Keskikaistan rivi jakautuu (Tommin valinta 20.10.2026)
+
+Yllä auki jäänyt vihje ratkesi valinnalla kolmesta vaihtoehdosta, jotka kaapattiin kuorelta
+rinnakkain (Galaxy Tab S7+, 1024×600 ja 800×480 dp, ottelu 5313345, airlock 503):
+
+- a) ennallaan, rivi vierii ja loppupää katkeaa reunaan,
+- b) oikean reunan 56 dp:n himmennys niin kauan kuin rivi jatkuu,
+- c) rivi jakautuu kahdeksi ja omat napit siirtyvät toiselle riville.
+
+**Tommi valitsi c:n.** Järjestys on nyt kolmiportainen (`MiddleActionsRow`). Ensin tulee yksi
+rivi, jos se mahtuu, ja silloin mikään ei muutu. Sitten kaksi riviä (`FlowRow`), jos ne
+mahtuvat kaistan korkeuteen, ja viimeisenä vanha vierivä rivi. Jakautuva rivi katkeaa sieltä
+mihin leveys loppuu. 1024 dp:llä `Mark position` jää ylemmälle riville ja 800 dp:llä se siirtyy
+alas `Reminders`in ja `Cube reminder`in kanssa.
+
+**Kahden rivin hinta, nähty kaappauksista:**
+
+- Sivun napit madaltuvat puoleen kaistasta, eli `(bandHeight − 6 dp) / 2` välillä 28–44 dp.
+- Linkkien 48 dp:n kosketusala poistuu, ja linkki on tekstinsä korkuinen, vähintään 28 dp
+  (`COMPACT_LINK_HEIGHT`). Hinta on sama kuin ahtaassa paneelissa.
+- Keskitetty toinen rivi osuu osin laudan keskikaiteen päälle, kuten ylempikin rivi jo osui.
+
+**Vierivä rivi jäi isoa fonttia varten.** Fonttikoolla 1.3 ja 800×480 dp:llä kaksi riviä eivät
+mahdu kaistaan, ja silloin rivi vierii kuten ennen (kaapattu 20.10.2026). `FlowRow` olisi
+jättänyt korkeuteen mahtumattomat napit kokonaan piirtämättä, ja juuri se näkyi kokeilun
+ensimmäisessä versiossa: `Reminders` ja `Cube reminder` puuttuivat ruudulta ilman merkkiä.
+
+Todennettu kuorella samana päivänä: 1024×600 dp ja 800×480 dp kahtena rivinä sekä 800×480 dp
+fonttikoolla 1.3 vierivänä. Leveä ruutu, jolla napit ovat sivupaneelissa, ei käytä tätä riviä.
+Laite palautettiin oletuksiinsa.
+
+### Kaistan kontrasti (Tommin tilaus 20.10.2026)
+
+**Havainto tuplatun kuution kaappauksesta.** Vaahterahuovalla tummassa tilassa `Verify Double`,
+`Skip Game` ja linkit olivat vaaleaa vaalealla eivätkä juuri erottuneet. Syy oli se, että kaistan
+tekstit saivat värinsä paneelista (`LocalPanelLook`), ja paneelin värit on valittu paneelin
+taustaa vasten. Kapealla ruudulla napit ovat kaistalla, joka on laudan huopaa. Leveällä ruudulla
+vikaa ei näe, koska napit ovat silloin tummassa sivupaneelissa.
+
+**Laskettu kaikki paneelit kaikilla huovilla** (`BandContrastTest`, WCAG-suhde, raja 4,5).
+Vika ei rajoittunut puuhun:
+
+| Huopa | Mikä alitti rajan ennen korjausta |
+|---|---|
+| Maple, Olive (vaaleat) | tumman tilan paneelin kaikki tekstit, vaalean Decon kulta |
+| Monte Carlo variant (vihreä) | kaikki: teksti 4,22, toissijainen 3,62, linkit 1,59 |
+| Walnut, Oak leather | linkit 2,59 ja 2,49 |
+| Deco | linkit 3,55 |
+| X-22 vaaleassa tilassa | vaalean paneelin tumma teksti mustalla huovalla |
+
+**Korjaus: kaistalla oma väriversio** (`PanelLook.forBand`, `MiddleStrip`). Kukin teksti- ja
+ääriviivaväri pidetään, jos se erottuu kaistasta, ja muuten tilalle tulee ensimmäinen
+erottuva varaväri. Vaalealla kaistalla varavärit ovat vaalean puuteeman ruskeat
+(`WoodMuted`, `WoodText`), tummalla paneelin kerma ja viimeisenä valkoinen. Valkoinen on
+mukana siksi, että Monte Carlo variantin vihreällä huovalla mikään muu ei ylitä rajaa.
+Täytetyt napit eivät muutu, koska ne kantavat oman taustansa. X-22 tummassa tilassa ja vaalea
+Deco omalla huovallaan pysyvät ennallaan, koska niiden kaikki värit jo erottuvat.
+
+**Muuri vaati lisäksi taustan tekstin alle.** Muuri kulkee kaistan läpi, ja tumma teksti katosi
+sen kohdalla tummaan puuhun (`› Reminders` 1024 dp:llä, `› Mark position` 800 dp:llä). Kun jokin
+väri vaihtuu, linkkien ja vahvistusruudun alle piirtyy kaistan värinen tausta pyöristetyin
+kulmin (`textBacking`). Tausta erottuu puun syystä tasaisena laattana, ja se on tämän hinta.
+
+Todennettu kuorella 800×480 dp:llä: vaahtera tummassa ja vaaleassa tilassa sekä X-22 tummassa
+(ennallaan) ja vaaleassa tilassa, lisäksi vaahtera 1024×600 dp:llä. Vihreää ja Decoa ei
+kaapattu, koska tallennetun ottelun lautaa ei voi valita kuorella; ne kattaa vain testi.
 
 ### Nappulan yläraja: lauta lakkaa kasvamasta leveyden mukana (14.8.2026)
 
@@ -1537,6 +1767,24 @@ kirjoitti. Vastauslomake jäi yhä pois 30.8.2026 päätöksellä (yllä: kyky e
 tuotu viesti ei saa vastauskenttää uudella laitteella; merkityt asemat eivät ole tiedostossa,
 ja manuaali sanoo sen. Lukija lukee versiot 1–4, koska jokainen on edellisen ylijoukko.
 
+**Versio 5 (20.10.2026): merkityt asemat.** Tommi kysyi niitä asetusten siirtoon, ja valitsi
+kolmesta vaihtoehdosta arkistotiedoston. Asetusten siirto korvaa tiedostot kokonaan, joten se
+olisi pyyhkinyt vastaanottavan laitteen omat merkit, ja merkit eivät olleet ennen tätä missään
+varmuuskopiossa. Nyt ne kulkevat `Export`issa, `Back up`issa ja `Import`issa muistutusten
+tavoin: `marks`-lista, jossa peli, siirtonumero, sana, hetki ja asema `CheckerPosition.encode`n
+merkkijonona. Samuus on kaikki muut kentät paitsi asema (`MarkedPositionDao.countSame`), koska
+asema on johdettu laudasta. Lukukelvoton asema luetaan nulliksi eikä hylkää merkkiä, jolloin
+`.sgf`-vienti vie sen pelin alkuun kuten ennen aseman tallennusta tehdyn merkin.
+
+**Versio 6 (20.10.2026): pikaviestin lisäyshetki.** Kahden laitteen ristiintuonti jätti samat
+fraasit eri järjestykseen, koska tuonti lisäsi puuttuvat loppuun. Tommin vahvistamana
+järjestys on nyt lisäyshetken mukaan vanhin ensin, ja tuonnissa sama fraasi pitää
+aikaisemman hetkensä (`PhraseBook.addMissing`). Tämä on ainoa poikkeus sääntöön "tuonti vain
+lisää": laitteen omia nappeja voi siirtyä, mutta mitään ei poisteta. Ennen tätä tallennetut
+fraasit saavat hetket paikastaan (1, 2, 3 …, `Phrase.fromPositions`), ja saman hetken fraasit
+järjestetään tekstin mukaan, jotta tulos on kummallakin laitteella sama. Perustelu ja
+vahvistus: `docs/AVOIMET.md` › Pikaviestien järjestys lisäyshetken mukaan.
+
 **Tuonti vain lisää eikä koskaan korvaa** (Tommin päätös). Viestin samuuden ratkaisee
 sisältötiiviste, joka lasketaan kentistä uudestaan eikä lueta tiedoston `id`-kentästä;
 muistutuksella samuus on kaikki viisi kenttää (`ReminderDao.countSame`), fraasilla
@@ -1985,6 +2233,14 @@ tai pakotus rajataan itse puhelimiin, mikä olisi muuttanut Tommin Android 13 -t
 käytöksen. Puhelimella kaikki toimii ennallaan, ja Tommin tabletti on Android 13:ssa, joten
 siihen rajaus ei vielä osu. Käyttäjälle se sanotaan pystylukon selitteessä ja App Helpin
 asetusvastauksessa. Ei mitattu laitteella, koska Android 16 -tablettia ei ole.
+
+**Korvattu 2.11.2026: pakotus rajataan puhelimiin** (Tommin päätös: *"ruudunkääntö häiritsee
+tabletilla, koska se ei ole aina käsissä"*, ja *"haluaisin poistaa kaikki käännöt, mutta pitää
+testata ettei laite jää jumiin jos sitä kääntää ja klikattava on ruudun ulkopuolella"*). Yllä
+hylätty vaihtoehto on nyt voimassa: `orientationFor` ei pyydä suuntaa kun pienempi mitta on
+vähintään 600 dp (`largeScreen`), Android-versiosta riippumatta. Tabletilla mikään ruutu ei
+käänny itsestään, ei lauta, ei kirjoitushetki eikä kirjautuminen. Kytkimet eivät vaikuta
+tabletilla. Puhelimella kaikki on ennallaan. Laitetodennus on päätöksen ehto, ks. loppu.
 
 **Kirjautumisruutu ja puhelimella kirjoittaminen pystyyn (Tommin päätökset 1.10.2026).**
 Mittaus samana iltana Pixel 8a:lla vaakana: kirjautumisruudun näppäimistö peitti molemmat
@@ -2875,6 +3131,55 @@ luki `CUBEDRS`. Laji luetaan nyt tiedostonimestä (`Cube.doubleRepeat`), ks. `do
 `Undo Move`, väli, `Skip Game`, `Reminders`) ja heittovuoro (`Roll Dice`, väli, `Double`
 kuutiotealina, `Verify Double`, väli, `Skip Game`, muistutukset). Puhelimella ei todennettu,
 mutta siellä paneeli mahtuu (914 x 411 dp), joten pino on sielläkin.
+
+### Next Game noppien paikalle, oma kytkin (Tommin päätös 17.10.2026)
+
+**Tommin havainto pelatessa, ja sitä puolsi Fredericin huomio** *submit the move by tapping
+the dice*. Kun noppakytkimet ovat päällä (`dice_roll` 9.10. ja `dice_submit` 4.9.2026), koko
+vuoro kulkee keskikaistalla: heitto vastustajan nopista, siirto laudalla ja lähetys omista
+nopista. Paneelissa oleva `Next Game` oli silloin ainoa käynti reunalla.
+
+**Peruste on eri kuin 2.9.2026, eikä se kumoa sitä.** Silloin `Submit Move` oli paneelissa,
+joten `Next Game` samassa kohdassa jatkoi peukalon rytmiä. Noppapelaajalla tätä rytmiä ei
+enää ole. Siksi kytkin on oletuksena pois, ja 2.9. päätös on yhä oletus (`docs/ARVOT.md`:
+vaihtoehdot kun mahdollista).
+
+Tommin valinnat 17.10.2026 mockupista:
+- **Oma kytkin** *Tapping the dice* -ryhmän neljäntenä rivinä (`next_on_dice`, `NextOnDiceStore`
+  samassa `dg_dice_tap`-tiedostossa), eikä `dice_submit`in seuraaja. Asetusten siirto kattaa
+  sen ilman muutosta, koska siirto lukee tiedoston.
+- **Paikka on omien noppien kohta** omalla puoliskolla, kuuden kiilan lokero. Pelatut nopat
+  jäävät pois, koska lauta näyttää jo siirron.
+- **Pari pysyy yhdessä**: `To Top` kulkee `Next Gamen` kanssa, koska kumpikaan ei ole
+  turvallisempi oletus (27.8.2026).
+- **Ei suojaviivettä.** Odotuksen kaari tulee samaan lokeroon, joten nopea tuplanapautus osuu
+  kaareen. Tätä ei ole mitattu laitteella, ja se todennetaan pelisessiossa.
+
+Rajat (`nextOnDiceFor`, testi `DiceTapTest`): lomakkeen napit ovat vain `Next Game` tai
+`Next` ja `To Top`, joten vuoron tekoja sisältävä sivu ei koskaan siirry. **Chat-kortti voittaa
+kytkimen**, koska kortti omistaa saman parin, eikä keskellä oleva nappi saa ohittaa
+vastaamatta jäävää viestiä. Kapealla ruudulla napit ovat kaistalla jo valmiiksi, ja puhelimen
+pystylaudalla (`stripCrowded`) pari jää paneeliin, koska kaista on liian matala napille.
+Pari varaa oman puoliskon tilariveiltä samoin kuin nopat (`situationSlot`).
+
+**Todennettu kuoriproxylla Pixel 8a:lla 17.10.2026** (Tommin pyyntö: *"pienen näytön
+rajoitukset kertovat oliko tässä järkeä"*). Sivu oli tallennettu vuoron jälkeinen lauta
+(`sessio-14-10-ilta/0056`), ja kuvat ovat kansiossa `raakasivut/sessio-17-10-kuori/`. Vaakalaudalla
+(`04-vaaka.png`) `Next Game` ja `To Top` ovat oman puoliskon keskellä, eivätkä ne peitä
+mitään. Painalluksen jälkeen kaari on samassa lokerossa, eikä paneelissa ole toista kaarta
+(`05-vaaka-odotus.png`, kuoren viive 1,5 s). Pystylaudalla (`03-pysty.png`) pari jää
+paneeliin rajauksen mukaisesti. Asetusrivi on kuvassa `02-asetus-pois.png`. Tuplanapautusta ei
+mitattu, koska se vaatii oikean lähetyksen.
+
+**Pelisessiossa samana iltana (Pixel vaakana) pari sopi paikalleen**, Tommin sanoin *"sopi
+mainiosti"*. **Sivuvaikutus oli toistojonon nytkäys.** Kun pari vie oman puoliskon ja
+vastustajan nopat toisen, `Pending Replay` ei mahdu kaistalle. Se putosi laudan alle, ja
+lauta kutistui yhden rivin verran `Next`-tilassa ja kasvoi takaisin omalla vuorolla
+(*March 26 Deja Vu*, kehykset `raakasivut/sessio-17-10-yo/pending-replay-nytkays.png`).
+**Korjaus (Tommin valinta neljästä):** rivi menee sivupaneeliin ottelukortin alle, ja laudan
+alle vain kun paneelia ei ole. Lauta ei siis enää muuta kokoaan toistojonon takia. Hylätyt
+vaihtoehdot olivat rivi aina laudan alla, piilotus `Next`-tilassa ja rivi `Next`-napin
+vieressä.
 
 ### Tyhjä noppalokero ei varaa leveyttä (26.8.2026)
 
@@ -4274,6 +4579,8 @@ kaukana laudasta, ja sovelluslukko tuli listojen värien jälkeen. Kolmesta ehdo
 valitsi neljä ryhmää ja taiton kaikki auki:
 
 - **Theme** ylimpänä ryhmien ulkopuolella, koska se kirjoittaa alempia valintoja (22.9.2026).
+  **Taittuu 20.10.2026 alkaen** samalla tavalla kuin ryhmät (Tommin tilaus,
+  `DeviceSettingsGroup.THEME`). Taiton otsikko on `Theme`, joten ryhmä sen alla ei toista nimeä.
 - **Board**: Board look ja arvontakytkin, Dice, Score ja Handedness.
 - **Playing**: Forced moves, Tapping the dice ja Money game.
 - **Lists and screens**: Background, Pictures below the lists, Rarity colours ja Waiting
@@ -6440,7 +6747,9 @@ kuten ennen: paneelin pohjalla ja laudan alla.
 **Missä se tehdään.** `stripNotes` kokoaa listan (`StripNoteSpec`: teksti, väri, lihavointi)
 samoilla ehdoilla kuin paneelin rivit olivat; `situationSlot` saa `hasNotes`in tilannetekstin
 sijaan ja sääntö on ennallaan (`SituationSlotTest`). `SidePanel.showNotes` piilottaa neljä
-riviä kerralla, ja `Pending Replay` laudan alla piirtyy vain kun lokeroa ei ole.
+riviä kerralla, ja `Pending Replay` laudan alla piirtyy vain kun lokeroa ei ole. (17.10.2026
+alkaen paneelissa ottelukortin alla, ja laudan alla vain ilman paneelia; ks. › Next Game
+noppien paikalle.)
 
 **Todennettu kuorella samana iltana** peruutussivulla `sessio-14-9-paiva/0034` (brunok,
 tunnus sovitettu illan Top Pagen ensimmäiseen riviin): *Rolled back: your opponent did not
@@ -6696,7 +7005,9 @@ mene APK:hon. Kansio valitaan kerran asetusten laiteosiosta järjestelmän kansi
 manifestiin tullut uutta oikeutta. Valitsin näyttää kaikki tarjoajat jotka antavat kansion,
 mutta suositus on laitteen oma kansio: pilvikansio hakisi kuvat verkosta joka avauksella, ja
 Tommin huoli 15.9.2026 illalla oli juuri se. Kuvat viedään tabletille PC:ltä
-`tyokalut/taustakuvat.py`:llä, kansio on `/sdcard/Pictures/dg-taustakuvat`.
+`tyokalut/taustakuvat.py`:llä, kansio on `/sdcard/Pictures/dg-taustakuvat`. Säännöllinen vienti
+kuvaerän yhteydessä lopetettiin 18.10.2026 Tommin päätöksellä, ja skripti jää käsiajoa varten
+(`docs/AVOIMET.md` › *Katutaide tyhjään tilaan*).
 
 **Asettelu on peitto, ei sääntö kuvamäärästä.** Tommin sana oli *"1-3 kuvaa"* ja *"en halua että
 kuvia leikkautuu"*. `dgWallpaperLayout` laskee jokaiselle määrälle yhdestä kolmeen sekä
@@ -7998,6 +8309,19 @@ luku ja arkistointi ovat siis todennettu laitteella.
 auki chat-kortin yläpuolelle, ja ruudulla oli kaksi päällekkäistä viestikenttää. Nyt tila
 `ReplyUiState.Sent` sulkee kentän, nappi *Reply to* palaa, ja sen alla lukee kuittaus
 (`page_message_sent`). Napin painallus avaa uuden viestin esitäytettynä, ja kuittaus poistuu.
+
+**Nappi poistuu lähetyksen jälkeen** (Tommin tilaus 2.11.2026 pelisessiosta: *"viestiin
+vastattua pelin loputtua ei tarvita enää reply-painiketta"*). Kumoaa yllä olevan kohdan
+napin paluusta: `ReplyUiState.Sent` näyttää napin paikalla pelkän kuittauksen. Toinen viesti
+samalle pelaajalle kulkee profiilin `Message`-kentän kautta, ja pisterivin nimi avaa
+profiilin. Havainto `raakasivut/sessio-2-11-ilta/kehykset/reply-lahetetty.png`.
+
+**Lähetetty vastaus näkyy viestikortissa** (Tommin valinta C neljästä mockupista 2.11.2026,
+vaihtoehdot A kortti ennallaan, B kortti pois, C kortissa molemmat puolet, D kuittaus kortin
+paikalle). Vastauksen oma osa ilman lainausrivejä (`ownPart`) tulee vastustajan viestin alle
+oikeaan reunaan. `BoardViewModel.matchReplySent` kantaa ottelun mukana, joten seuraavan ottelun
+päättymissivu alkaa taas napista; ennen tätä `ReplyUiState.Sent` jäi voimaan otteluiden yli.
+Jos vastustaja ei kirjoittanut mitään, korttia ei ole, ja jäljelle jää kuittausrivi.
 Kaksi kenttää ovat eri kanavia: Reply to lähettää pikaviestin heti, ottelun chat lähtee vasta
 Next Gamen tai To Topin mukana.
 
@@ -8290,6 +8614,15 @@ niminä. Todennettu tabletilla samana iltana: App Helpin G.3 näyttää kappalee
 lihavoituina (kaappaus `raakasivut/testaajapalaute-13-10/k01.png`). Manifestin toivetta
 tabletti ei lue, joten sille ei ole laitteella todennettavaa.
 
+**Kaappaus tuli 15.10.2026** (`docs/TESTIKUTSUT.md` › *Ryhmän tilanne 15.10.2026*). Kuva
+ratkaisee molemmat avoimet kohdat. Kokorivin kirjoitusasu on *Screen size* pienellä s:llä,
+joten App Help ja `HelpConsistencyTest`in poikkeuslista korjattiin siihen. *Game Dashboard*
+on nappi ikkunan yläpalkin keskellä, ja Help nimeää nyt paikan: *"tap Game Dashboard in the
+middle of the window's top bar"*. Muutos menee 1.6:n jälkeiseen versioon, koska 1.6 lähetettiin
+tarkastukseen jo 14.10. Todennettu Pixel 8a:lla samana päivänä: Infon haku sanalla
+*Dashboard* löytää G.3:n, ja vastauksessa uusi lause näkyy kolmen nimen lihavointeineen
+(kaappaus `raakasivut/testaajapalaute-15-10/p04.png`).
+
 **Päällekkäisyys.** `CenteredOverStack` sijoitti lisät negatiiviseen y:hyn, kun lisät,
 ottelukortti ja sivun napit eivät mahtuneet lohkoon. Nyt ottelukortti tiivistyy ensin
 (nimi yhdelle riville, kierros hännälle) ja vasta viimeisenä jää pois, koska se on lohkoista
@@ -8452,6 +8785,15 @@ ruudulle, joten lista alkoi ensimmäisestä viestistä. Turkin ketjun merkkikood
 `Be&#351;ikta&#351;` ruudulla on sivuston oma: sivu lähettää sen muodossa `&amp;#351;`, ja
 kirjoittaja huomautti siitä itse seuraavassa viestissä.
 
+**Uusinta 14.10.2026 klo 17.07–17.08, kun ketjut olivat saaneet vastauksia** (proxy ja nauha
+`raakasivut/sessio-14-10-ilta/`, versioimatta). Tommi avasi kaksi New-merkittyä ketjua, ja
+kummassakin otsake oli lukukohdan perässä. Turkin ketju oli etusivulla `64289#7`, eli samassa
+kohdassa jonka `docs/KYSYMYKSET.md`:n taulukko ennusti klo 3.55. Viesti 7 on tamandua, ja otsake
+oli viestien 7 ja 8 välissä. Ketju *DailyGammon 8x8 Tournament 2026 - Kickoff* oli `64131#160`,
+ja otsake oli viestien 160 ja 161 välissä. Tommi näki molemmat oikeassa paikassa. Etusivu
+siirsi lukukohdat avauksen jälkeen numeroihin `#9` ja `#161`. **Keskeltä avautuminen on yhä
+todentamatta:** uusia oli kaksi ja yksi, joten kumpikaan lista ei voinut alkaa keskeltä.
+
 **Todennettu tabletilla 14.10.2026 yöllä** (SM-T970, debug-asennus versiokoodilla 6). Luettu
 ketju *DailyGammon 8x8 Tournament 2026 - Kickoff* (160 viestiä, ei New-merkkiä, joten avaus ei
 kuluttanut mitään) avautui lopusta: viimeinen viesti ja `Add a Comment` näkyivät heti. Lista ei
@@ -8529,3 +8871,342 @@ yönä: oma viesti on linkin numero plus yksi (`DiscussionViewModel.confirmComme
 DailyGammon.* Ketju oli luettu ennen avausta (ei New-merkkiä), joten se avautui lopusta
 lukukohdan #11 mukaisesti. **Rajaus ennallaan:** kesken luetun ketjun avaus keskeltä ja oma
 viesti joka ei ole viimeinen ovat yhä vain testien varassa.
+
+### Players' links Infoon (Tommin tilaus ja valinnat 15.10.2026)
+
+Tommi tilasi pelaajien ylläpitämien kohteiden linkkejä Players mapin innoittamana ja nimesi
+listan: Keram56:n ranking, turnausjärjestäjät (eg, basplund, Scooby, korttiturnaukset,
+International Team Event), sovellukset (hape42, DG Mobile, darkhelmetin quiz) ja
+analyysiohjelmat (BGBlitz, Sage Pro, gnubg, Snowie, XG2). **Sijoitus on oma Info-rivi
+erillään DailyGammon Linksistä** (Tommin valinta monivalinnasta, kuitattu tulkintana
+"oma Info-rivi"), Players mapin perässä. Ruutu on chatin mockupin mukainen: neljä ryhmää
+(Rankings, Tournaments, Apps, Analysis software), rivillä nimi ja ylläpitäjän DG-nimi.
+Mockupista poiketen rivin toisella rivillä on myös osoitteen palvelin, samalla lupauksella
+kuin DailyGammon Linksissä (osoite näkyy ennen napautusta).
+
+**Rivi avaa taulukon suoraan eikä palstaketjua** (Tommin valinta: *"päivitetään osoitteet
+kauden vaihtuessa"*). Vaihtoehto olisi ollut ketju, joka pysyy samana kaudesta toiseen,
+mutta sen avaus merkitsee ketjun luetuksi. Turnausten taulukot ovat kausikohtaisia, joten
+osoitteet vanhenevat; App Help sanoo sen.
+
+**Osoitteet luettiin DG:n palstalta 15.10.2026** (Bravessa; Chromen Claude-välilehti sai
+DG:ltä virhesivun). Lyhytosoitteet avattiin curlilla kohteisiinsa:
+
+| Rivi | Ketju | Lyhytosoite | Kohde |
+|---|---|---|---|
+| DG Active Players Ranking | 64259 | ei | Sheets, kolmesta ensimmäinen (aktiiviset kuukausi ja vuodet taaksepäin) |
+| DailyGammon 8x8 Tournament | 64131 | `tiny.cc/dg_8x8` | `dg8x8.gergelyelias.com` |
+| Anti-backgammon Championship 2026 | 64225 | `tinyurl.com/ABG-TC2026` | Sheets |
+| Anti-backgammon Premier League 2026 | 64225 | `tinyurl.com/ABG-PL2026` | Sheets |
+| Scooby's Challenge 16 | 63732 | `tinyurl.com/SCOOBY-Challenge-16` | Sheets (`SCOOBY-Challenge` ilman numeroa on 404) |
+| Picture Postcard Tournament #5 | 63626 | `tiny.cc/dg_pp5` | Sheets |
+| International Challenges 2026 | 63708 | `tiny.cc/DGIC_2026` | Sheets |
+| Second Roll | 64121, 64144 | `secondroll.de` | tekijän oma osoite säilytetty, ohjaa `srv706843.hstgr.cloud` |
+
+ANTI on kaksi riviä yhden sijaan, koska sarjoja on kaksi omine taulukkoineen. Keram56:n
+kolme taulukkoa ovat saman rankingin näkymiä, joten ne ovat yksi rivi. **Snowie jätettiin
+pois:** ohjelma on lopetettu, ja `snowie.com` myy lumijäämyllyjä. Sovellusten ja ohjelmien
+osoitteet ovat valmistajien omia (`apps.apple.com/.../id1449956942`, Play-kaupan
+`com.dailygammon.DGMobile`, `bgblitz.com`, `sage.bgsage.ai`, `gnu.org/software/gnubg`,
+`extremegammon.com`), kaikki 200 samana päivänä.
+
+Todennettu tabletilla 15.10.2026: Infossa rivi Players mapin ja Resign matchesin välissä,
+ruudulla neljä ryhmää ja 14 riviä, ja *Scooby's Challenge 16* avasi Braveen taulukon
+*BIG SCOOBY's Challenge #16*. Kaappaukset `raakasivut/players-links-15-10/`.
+
+**Avoin:** bgonline-foorumi (Tommin toinen lähde) ei vastannut 15.10.2026 (Brave virhesivu,
+curl aikakatkaisu), joten sieltä ei kerätty mitään.
+
+### Odotusmerkki käännössä (Tommin tilaus ja valinnat 15.10.2026)
+
+**Tilaus:** *"kun vaihtaa tilaa siis pysty-vaaka-pysty variaatioista niin odotus-animaatio
+kertomaan, että jotain on tekeillä"*. Tarkennukset samana iltana: *"näytön kääntö vie pixelillä
+ehkä 10 sekunteja ja haluan käyttäjän tietävän että asia on käsittelyssä"*, *"voiko animaatiota
+tehostaa tekstillä?"* ja *"tämä odotus-animaatio johtuu ruudun käännöstä"*.
+
+**Toteutus (`RotationWait.kt`, kutsu `MainActivity`ssä kaikkien ruutujen päällä).** Ruutu
+himmenee, ja keskelle tulee valittu odotuksen ilmaisin ja teksti *Turning the screen…*. Merkillä
+on kaksi laukaisijaa. Sovellus lukee kallistusanturia (`OrientationEventListener`), ja kun laite
+on ollut käännettynä 0,25 s mutta ikkuna ei ole vielä kääntynyt, merkki tulee näkyviin. Ikkunan
+kääntymisen jälkeen merkki pysyy vielä 1,0 s. Anturin laukaisu on pois, kun Android ei käännä
+ikkunaa laitteen mukana: automaattinen kääntö pois, pystylukko, laudan vaakapakotus, puhelimella
+kirjoittaminen, jaettu näyttö ja Chromebook. Jos Android ei käännä lainkaan, merkki katoaa 10 s:n
+kuluttua.
+
+**Mitä kääntymisessä tapahtuu, mitattu ennen muutosta (klo 23.21–23.28).** Activity ei synny
+uudelleen, koska manifest käsittelee kääntymisen itse. Kääntö laukaistiin `cmd window
+user-rotation`illa ja nauhoitettiin `screenrecord`illa.
+
+| Laite ja ruutu | Pysty → vaaka | Vaaka → pysty | Sovelluksen oma osuus |
+|---|---|---|---|
+| Pixel 8a, lauta | 0,69 s | 0,46 s | noin 0,05–0,1 s |
+| SM-T970, lauta | 1,15 s | 0,94 s | noin 0,05 s |
+| SM-T970, luettelo | 1,51 s | 1,25 s | noin 0,3 s |
+| SM-T970, Samsungin Asetukset | 1,21 s | 0,90 s | vertailu |
+
+Luvut ovat ensimmäisestä muuttuneesta kehyksestä viimeiseen. Tabletilla uusi asettelu on
+valmis heti, ja sen jälkeen ruutu seisoo noin 0,8 s ennen 0,25 s:n pyörähdystä. Samsungin oma
+sovellus odottaa yhtä kauan, joten odotus on järjestelmän.
+
+**Pixelin pitkä odotus on anturissa, ja se näkyi vasta käsin käännettynä (klo 23.44).** Adb:n
+kääntö ohittaa anturin, joten ensimmäinen mittaus ei nähnyt sitä. Tommi käänsi Pixeliä käsin
+luettelossa, ja loki näytti, että anturi pidättää käännön niin kauan kuin puhelin heiluu
+(*Gyro finds rotation while in swing_time check*, sitten *Rejected by swing_time*). Pisin
+pidätys oli 3,7 s (anturi havaitsi 23.44.34,51, ruutu kääntyi 38,22). Sovellus piirsi uuden
+asettelun joka kerta 42–49 ms:ssa. Android ja sovellus eivät saa pidätyksestä tietoa, joten
+ainoa tapa näyttää se oli lukea anturia itse (Tommin valinta kolmesta: anturi, pelkkä 1 s
+käännön jälkeen tai maininta ohjeessa).
+
+**Kolme kokeilua tabletilla, ja nauha ja silmä erosivat.** Ikkunan kääntymisen laukaisu ilmestyi
+nauhalla kaikissa kolmessa vasta pyörähdyksen alkaessa: näkyvyys `LaunchedEffect`issä, suunta
+`LocalConfiguration`ista koostuksessa ja suunta mittauksen rajoista (`BoxWithConstraints`).
+Tommi käänsi tablettia kolmannella versiolla ja näki merkin *heti odotuksessa*. Toteutus käyttää
+sitä muotoa.
+
+**Todennus:** Pixelillä adb-kääntö molempiin suuntiin näytti merkin ja tekstin heti, ja ruutu oli
+puhdas 2 s:n kohdalla. Käsin käännettäessä Tommi näki merkin *heti* ennen ruudun kääntymistä, ja
+nauhalla merkki on pystyruudulla 0,25 s ennen pyörähdystä vaakaan. Kuvat
+`raakasivut/kaanto-15-10/` (ei versioitu).
+
+**Valinnat (Tommi, monivalinnoin):** kaikki ruudut (vaihtoehdot vain lauta ja kaikki paitsi
+lauta), kesto käännön jälkeen 1,0 s (0,7 ja 1,5 s), himmennys ja merkki (pelkkä merkki),
+anturin luku Pixelin odotukseen ja teksti joka kertoo syyn. Pixelillä ikkunan kääntö kestää
+noin 0,5 s, joten siellä merkki jää hetkeksi valmiin ruudun päälle.
+
+**Rajaukset:** ikkunan suunta luetaan ikkunan mitoista, joten Chromebookin ikkunan vetäminen
+leveästä korkeaksi näyttää käännön jälkeisen merkin. Himmennys ei ota kosketuksia vastaan.
+Kasvojen suuntaa lukeva automaattikääntö voi kieltää käännön, jolloin merkki näkyy 10 s turhaan.
+
+**Katto ei pitänyt, korjattu 18.10.2026.** Pelisessiossa (`sessio-18-10-ilta`, Pixel 8a) merkki
+oli laudan päällä noin 20 s ottelun avauksesta, ja Tommi koki ruudun jumittuneen. Pixelissä on
+kasvojen suuntaa lukeva kääntö päällä (`camera_autorotate=1`): etukamera avautui 21.49.22,48 ja
+ruutu kääntyi vaakaan 24,51. Nauhalla merkki katosi kahdesti sekunniksi ja palasi, eli anturin
+välähdys asentoon jota ikkuna jo vastasi aloitti 10 s:n katon alusta. Katto lasketaan nyt
+ensimmäisestä ristiriidasta, ja se alkaa alusta vasta kun ikkuna kääntyy tai laite on ollut 2 s
+ikkunan suunnassa. Kaksikymmentä sekuntia on Androidin odotusta eikä sovelluksen, joten korjaus
+lyhentää vain merkin; ruudun kääntyminen odottaa yhä kameraa.
+
+**Kasvojentunnistus asetuksiin, ja jumi ilman sitä mitataan (18.10.2026 illalla).** Kun Tommi
+kytki kasvojentunnistuksen pois, kääntö oli *"todella nopea"*. Seuraavassa sessiossa
+(`sessio-18-10-ilta2`) merkki oli silti alussa ruudulla noin 8 s. Kamera ei avautunut, ja
+ikkuna kääntyi 15 s ottelun avauksesta, eikä Androidin loki kertonut syytä. Kaksi muutosta
+Tommin valinnoin. *Turn the board with the device* -rivin selite kertoo kasvojentunnistuksesta,
+ja sen alla on linkki `Android's auto-rotate settings` (`AutoRotateLink`), joka avaa
+järjestelmän sivun. Pixel 8a avasi sen (`SmartAutoRotateSettingsActivity`), ja linkki näkyy vain
+kun laite tuntee sivun. Kytkimen nimeä ei lainata, koska Pixelillä se on suomeksi pelkkä
+*Kasvojentunnistus* eikä englanninkielistä nimeä ole nähty. Toinen muutos on `DgKaanto`-loki
+(`KaantoLoki`): anturin kulma ja kallistus Androidin omalla kaavalla, ristiriita ja merkki. Se
+kertoo seuraavassa sessiossa, oliko laite liian lähellä vaakatasoa Androidin kääntöön.
+
+**Oma kääntö laudalla (Tommin valinta 19.10.2026: *"Kokeillaan: lauta kääntyy sovelluksen oman
+anturin mukaan kun Android viipyy, vain automaattisen käännön ollessa päällä"*).** `DgKaanto`
+mittasi jumin pelisessiossa `sessio-19-10-yo`: Androidin anturi ilmoitti vaaka-asennon 14,6 s
+myöhässä, vaikka sovelluksen anturi näki puhelimen sivuttain samalla kallistuksella jolla toinen
+yritys kääntyi 0,2 s:ssa (`raakasivut/LUEMINUT.md` › Pelisessio 19.10.2026). Nyt `RotationWait`
+pakottaa laudalla suunnan itse, kun ristiriita on kestänyt 1,0 s (`TAKEOVER_AFTER_MS`): kulma
+240–300 on `LANDSCAPE`, 60–120 `REVERSE_LANDSCAPE` ja alle 30 tai yli 330 `PORTRAIT`. Sen jälkeen
+sovellus kääntää itse laudalta poistumiseen asti, 0,3 s:n vakaudella. Paluuta Androidille ei ole
+kesken laudan, koska järjestelmän anturi voi olla yhä jäljessä ja kääntäisi ruudun takaisin.
+Ehdot: automaattinen kääntö päällä, `Turn the board with the device` päällä, ei kirjoitushetkeä,
+ei jaettua näyttöä eikä Chromebookia, ja laitteen luonnollinen asento on pysty (tabletti ei ota
+kääntöä haltuun). Kirjoitushetki voittaa oman käännön (`orientationFor`). Loki kirjaa
+`oma kääntö suunta=… syy=…`.
+
+**Todentamatta laitteella: oma kääntö ei lauennut kokeilussa.** Tommi käänsi Pixeliä klo
+02.20–02.22. Android käänsi joka kerta 0,15–0,2 s:ssa ristiriidan alusta, joten lokiin ei
+tullut yhtään `oma kääntö` -riviä. Kokeilu todensi vain sen että tavallinen kääntö toimii
+muutoksen jälkeen ennallaan. Haltuunotto todentuu vasta kun jumi toistuu, ja silloin lokin
+pitää näyttää `oma kääntö syy=android viipyy` noin sekunti ristiriidan alusta.
+
+### Pipit seuraavat koottua siirtoa (Tommin tilaus 2.11.2026)
+
+**Tilaus:** *"saako dg android laskemaan pips uudestaan aina kun osa siirtoa harmautuu tai
+peruutetaan? anti-backgammon selainsovellus tekee tämän jo"*. Sage Pro tekee saman
+(`docs/VERTAILU-SAGE-XG.md`). Siihen asti muurin ja lokerosarakkeen pipit olivat sivun paneelin
+lukuja ja pysyivät vuoron alun arvossa koko kokoamisen ajan.
+
+**Luku on paneelin luku plus aseman muutos** (`LocalComposition.livePips`). Sivun luku pysyy
+ankkurina, ja sama erotus kattaa oman askeleen, lyönnin (vastustajan nappula muurille, 25 pipiä)
+ja ulos kannon. Peruutus palauttaa sivun luvut. Pip-vahti ja roolit luetaan yhä sivun laudasta.
+Piilotettu pip pysyy piilossa.
+
+**Korostus mockupista** (Tommin valinta samana päivänä): luku ja etumatka saavat oranssin
+taustan kun ne poikkeavat sivun luvuista, eli kuvaavat vasta koottua siirtoa. Etumatka verrataan
+erikseen, koska vastustajan luku ei muutu omasta askeleesta mutta hänen etumatkansa muuttuu.
+Lokerosarakkeen yksi rivi korostuu kokonaan.
+
+**Todennettu tabletilla 2.11.2026 klo 21.18** kuoriproxyllä, sivustoon koskematta (fixture
+`move_bar_entry.html`, Top Pagen ottelunumero vaihdettu laudan numeroon scratchpadin kopiossa).
+Nopat 5-4, oma nappula muurilla. Vuoron alussa 171 (-1) ylhäällä ja 172 (+1) alhaalla,
+korostamatta. Muurilta 20:lle: oma 167 (-4) ja vastustajan etumatka (+4) korostettuina,
+vastustajan 171 korostamatta. 8/4\*: 175 (+12) ja 163 (-12), eli lyöty blotti 21 → 25.
+`Undo Move` palautti sivun luvut ilman korostusta.
+
+~~**Havainto, ei korjattu:** lyöty nappula ja muurilta lähtevä nuoli piirtyvät alapään
+`Pips`-sanan päälle.~~ **Tarkennettu ja korjattu samana iltana.** Peittäjä oli 8/4\*:n nuoli,
+joka ylitti muurin, eikä lyöty nappula: se on muurin keskellä eikä osu tekstiin. Nuolet ovat
+kaiken päällä tarkoituksella (29.9.2026), joten muurin pip-rivit jäivät niiden alle.
+
+### Nuoli himmenee muurin kohdalla (Tommin valinta 2.11.2026)
+
+Kolme mockupia: teksti laatalla nuolen päällä, teksti nuolen päällä ilman laattaa, ja nuoli
+himmenee muurilla. Tommi valitsi kolmannen. `MoveArrowLayer` piirtää nuolet muurin sarakkeen
+ulkopuolelle täysinä ja sarakkeeseen yhtenä tasona peittävyydellä 0,3 (`barColumnBounds`, sama
+sarakejako kuin nuolten päillä). Taso eikä läpikuultava väri, jotta reuna ei näy täytön läpi.
+Himmennys koskee muurin koko korkeutta, myös muurilta lähtevän nuolen häntää.
+
+**Todennettu tabletilla klo 21.25** samalla kuoriajolla: `Pips 163 (-12)` luettavissa nuolen
+läpi, nuoli täysi muurin molemmin puolin.
+
+### Game sounds -rivien Play ja tabletin vapaa suunta (Tommin tilaukset 2.11.2026)
+
+**Play.** Tommi valitsi kahdesta mockupista A:n: jokaisen äänirivin perässä on `Play`, joka
+soittaa äänen kuunneltavaksi myös silloin kun `Game sounds` tai rivin ruutu on pois. Ruutu ja
+nimi ovat oma kosketusalueensa, joten `Play` ei vaihda ruutua. **Äänetön tila voittaa
+kuuntelunkin** (Tommin valinta: *"en pidä pyytämättä ja yllättäen soivista äänistä tai kun
+toisten laitteilla tulee sellaisia kaiutinten ollessa auki"*). Silloin rivien alle tulee
+selite `This device is on silent or vibrate, so Play stays quiet too.` TalkBackin raja ei koske
+kuuntelua, koska painettu ääni ei peitä puhetta yllättäen (`WoodSoundPlayer.preview`).
+
+**Todennettu Pixel 8a:lla klo 21.48.** `Play` tyhjällä Doubling cube -rivillä: järjestelmän
+äänilokiin `event:started` napautuksen hetkellä, ja ruutu pysyi tyhjänä. Värinätilassa sama
+napautus ei tuottanut tapahtumaa, ja selite näkyi. Soittotila palautettiin normaaliksi.
+
+**Tabletin vapaa suunta todennettu SM-T970:lla klo 21.43–21.45** kuoriproxyllä (kääntö
+`user_rotation`illa, alkuarvot palautettu). Pystyssä lauta ja Mark position -kenttä, vaakaan
+käännettynä sama kenttä näkyvissä. Kenttä kohdistettuna vaakana: kenttä ja `Mark 134` jäivät
+näppäimistön yläpuolelle. Kääntö pystyyn kesken kirjoittamisen säilytti tekstin, ja kenttä ja
+nappi pysyivät näppäimistön yläpuolella. Otteluluettelo vaakana kokonaan käytettävissä. Mitään
+napautettavaa ei jäänyt ruudun ulkopuolelle. **Puhelin ennallaan:** Pixelillä vaakalaudan Mark
+position käänsi ruudun pystyyn kuten ennenkin (`mRotation=ROTATION_0`).
+
+### Profiilin sisäiset linkit avautuvina osioina (Tommin tilaus 2.11.2026)
+
+Tilaus pelisession jälkeen: *"pelaajasivulle haluaisin mukaan samat toiminnot kun
+dailygammon-saitilla, mutta en linkkien taakse vaan avautumaan ja sulkeutumaan kun otsikkoa
+klikkaa"*. Mockupin jälkeen tarkennus: *"Send, Invite ja Ignore napit on ok, mutta muut
+internal linkit pitäisi olla laajentuvia. Player's Map on external, en tiedä vielä mihin se
+kannattaisi sijoittaa"*.
+
+**Neljä sisäistä linkkiä on nyt otsikoita** (`expandableSection`): Active tournaments,
+Tournament wins, Matches versus you ja toisen pelaajan pelilista (*Show games, sorted by
+opponent*, vain kun taulukot puuttuvat). Otsikko avaa ja sulkee, ja tila on `▸` tai `▾`
+sekä ruudunlukijalle `stateDescription` (*Expanded*, *Collapsed*). Sisältö on sama sivu kuin
+linkin takana: turnauslistat `PlayerTournamentRowView`-riveinä ja profiilimuoto
+`MatchRow`-riveinä, päättyneet uusin ensin, vienti ja merkit mukana. `PageViewModel.sections`
+hakee sivun vasta ensimmäisellä avauksella, eikä toista kertaa. Versus-sivu on jo haettu
+saldoa varten, ja sama haku täyttää osion. `Refresh` tyhjentää osiot, ja auki jäänyt osio
+haetaan uudelleen. Napit (Message, Invite, Ignore) ja Players map ovat ennallaan, ja kartan
+paikka odottaa Tommin päätöstä. **Päätetty samana iltana:** *"siirrä Players map linkki
+Comment-kohdan alle"*. Linkki on nyt pelaajan kenttien alla. Comment on 80 tallennetulla
+profiilisivulla aina viimeinen kenttä, joten ilman Commentia linkki on viimeisen kentän alla.
+Todennettu Pixel 8a:lla klo 23.50 omalla profiililla, jossa ei ole Commentia: linkki Home
+Pagen alla ennen viivaa (`raakasivut/sessio-2-11-ilta/kehykset/kartta-kenttien-alla.png`).
+Commentillista profiilia ei avattu laitteella.
+
+**Linkki *Saved messages with <nimi>* ratingin alla** (Tommin tilaus samana iltana) avaa
+Inboxista keskustelun tämän pelaajan kanssa. Reitti on sama kuin nimen pitkän painalluksen
+valikossa (`LocalPlayerMenu`), ja linkki näkyy vain kun arkistossa on keskustelu.
+
+**Todennettu Pixel 8a:lla kuorella klo 22.58–22.59** (Top Page `sessio-19-10-yo2/0002`,
+päättymissivu ja profiili `sessio-2-11-ilta/0073` ja `0074`): suljettu tila
+(`raakasivut/sessio-2-11-ilta/kehykset/kuori-profiili-suljettu.png`), Matches versus you ja
+Active tournaments auki (`kuori-profiili-osiot.png`). Versus-osio ei hakenut sivua toiseen
+kertaan. Kuori vastasi `userevent`-pyyntöön 503, joten Active tournaments näytti virheen ja
+Refresh-napin; virheruutu on `RetryNote`, ja se vie osion sisällä paljon korkeutta. Linkki
+avasi Inboxin LTB-keskustelun. Kuori antaa saman LTB-sivun jokaiselle `/bg/user/`-polulle,
+joten versus-osion rivit olivat LTB:n kaikki ottelut eivätkä keskinäiset. Saldo jäi siksi
+pois. Tournament wins ja pelilista avattiin vain testissä, ei laitteella.
+
+
+**Oikealla sivustolla klo 23.04 Pixel 8a:lla:** foorumiketjun *How old are we?* (ei uusia
+viestejä, joten lukukohta ei siirtynyt) allekirjoitus *hape42 at …* avasi hape42:n profiilin
+(`raakasivut/sessio-2-11-ilta/kehykset/foorumi-allekirjoitus-profiili.png`), ja otsikko
+*Matches versus you: 3 won, 2 lost* avasi viisi keskinäistä ottelua vientinappeineen
+(`profiili-versus-oikea.png`).
+
+### Profiilin otsikot Loungen muotoon ja kartan ilmoitus odottaa OK:ta (Tommin tilaus 2.11.2026)
+
+Tilaus samana iltana: luku otsikkoon *"Game Lounge-näkymään"* eli *Active tournaments
+(lukumäärä)*, *Tournament wins (lukumäärä)* ja *Matches versus you (lukumäärä)*, ja *"Active
+Games ja Finished matches lukumäärät on jo paikallaan, mutta nämäkin osiot pitäisi myös saada
+supistettua ja laajennettua"*. Kartasta: *"en huomannut not on a map viestiä, jätä se
+pidemmäksi aikaa ja ok-nappi poistaa"*.
+
+**Osion otsikko on Loungen `FoldHeading`** (`+` kiinni, `−` auki) entisen `▸`/`▾`-rivin
+tilalla, ja luku tulee haetusta osiosta (`sectionCount`): turnausrivit tai ottelut
+(käynnissä ja päättyneet). Osio haetaan yhä vasta ensimmäisellä avauksella, joten
+avaamaton Active tournaments ja Tournament wins ovat ilman lukua; App Helpin lupaus ei
+muuttunut. Versus-sivu on haettu saldoa varten, joten sen otsikko on heti muotoa
+*Matches versus you (6): 3 won, 2 lost*. Ruudunlukijan *Expanded*/*Collapsed* poistui
+otsikon mukana, koska Loungen otsikolla sitä ei ole ollutkaan.
+
+**Active games ja Finished matches taittuvat samalla otsikolla**, auki oletuksena. Kiinni
+ollessa Finished matchesin päiväpainikkeet ja rivit piiloutuvat; viennin tila näkyy yhä.
+Tila ei säily profiilin sulkemisen yli.
+
+**Kartan ilmoitus on ikkuna ennen karttaa.** Selain avautui heti ja peitti Toastin, joka
+ehti kadota ennen paluuta. Ensimmäinen korjaus avasi ikkunan selaimen kanssa yhtä aikaa, ja
+Tommi näki sen vasta palatessaan: *"se pitäisi näkyä jo kun kartta on ladattu"*. Sovellus ei
+voi piirtää selaimen päälle, joten Tommi valitsi ikkunan ennen karttaa *"ja cancel
+vaihtoehto, ettei jatketa jos pelaaja puuttuu kartalta"*. OK avaa koko kartan ja Cancel
+jättää sen avaamatta. Sama ikkuna tulee kun nimilistaa ei saatu luettua. Kartalla olevan
+pelaajan kartta avautuu suoraan kuten ennen, ja nimilista haetaan yhä vasta napautuksesta.
+
+**Todennettu Pixel 8a:lla oikealla sivustolla klo 23.25–23.33** (profiilisivut eivät kuluta
+jonoa): oma profiili luvuin *Active tournaments (52)* ja *Tournament wins (53)*
+(`raakasivut/sessio-2-11-ilta/kehykset/profiili-osiot-luvut.png`), kaikki neljä otsikkoa
+kiinni (`profiili-kaikki-kiinni.png`), yhden pelaajan profiili *Matches versus you (6): 3 won,
+2 lost* (`profiili-versus-luku.png`) ja ensimmäisen korjauksen ikkuna Bravesta palattua
+(`kartta-ilmoitus-ok.png`). Pelaaja valittiin siksi, ettei häntä ole kartan KML:ssä.
+Toinen korjaus klo 23.40: ikkuna tuli ennen selainta (`kartta-ilmoitus-ennen.png`), Cancel
+jätti sovelluksen profiiliin ilman selainta ja OK avasi Braven.
+
+### Pelaajan nimi on linkki ja Loungen haku taiton ulkopuolella (Tommin tilaukset 2.11.2026)
+
+Tilaukset: *"siirrä Game Lounge pelaajahaku pois Players-listauksesta ylemmälle tasolle"*,
+tarkennettuna *"sen yläpuolelle ja aina näkyväksi"*, ja *"kaikkialla sovelluksessa missä pelaaja
+on tunnistettu pitäisi sen nimen olla linkki pelaajakortille, jollei ole tarkoituksenmukaista
+viedä toisaalle, kuten postaukseen"*.
+
+**Haku on Players-otsikon yläpuolella**, eikä taitto piilota sitä. Haku avaa kiinni olevan
+listan tuloksille. Kenttä näkyy jokaisessa tilassa jossa lounge on luettu, kuten ennenkin.
+
+**Nimen polku luetaan kolmesta paikasta** (`PlayerLink.kt` `playerProfilePath`): sivun oma
+profiililinkki, käyttäjänumero (`/bg/user/<numero>`) ja viimeksi laitteen nimihakemisto
+(`PlayerRatingStore.userIdByName`, sama hakemisto josta rarity-väri luetaan nimellä).
+Hakemisto annetaan rarity-kytkimestä riippumatta, koska linkki ei ole väri. Nimi jota ei
+tunneta on pelkkää tekstiä. Linkkiä ei alleviivata: nimi on linkki kaikkialla, joten merkki ei
+erottaisi mitään. Lauseen sisällä linkki on `LinkAnnotation` vain nimen kohdalla, joten rivin
+muu osa tekee yhä omansa (Top Pagen rivi avaa ottelun, turnausrivi turnauksen).
+
+**Uudet linkit:** Top Pagen *vs nimi*, laudan chat-kortin *Chat with nimi*, Tournaments-välilehden
+vastustaja, foorumin ketjulistan aloittaja, Inboxin keskustelun otsikko, kuplan lähettäjä ja
+*to nimi*, kutsun lähettäjä, Mark position -listan ja katkohistorian vastustaja, Resign-sivun
+vastustaja ja asetussivun omistaja. **Ennestään linkkejä:** profiilin ottelurivi, Loungen
+pelaajalista ja tarjoukset, foorumiviestin allekirjoitus, laudan pelaajakortit ja
+päättymissivun pisterivit sekä cup-kaavion ensimmäisen kierroksen solut. **Poikkeukset:**
+Inboxin keskustelulista ja roskakori avaavat keskustelun, cup-kaavion myöhempi kierros
+ottelun ja profiilin otsikko on pelaaja itse.
+
+**Todennettu Pixel 8a:lla oikealla sivustolla 2.11.2026 klo 23.55–23.58:** Loungen haku
+kiinni olevan Players-listan yläpuolella, ja haku *blahblah* avasi listan tuloksille
+(`raakasivut/sessio-2-11-ilta/kehykset/lounge-haku-ylhaalla.png`). Tournaments-välilehden
+*round 3/5 against* -rivin nimi avasi vastustajan profiilin eikä turnausta
+(`nimi-linkki-turnauslista.png`). Top Pagen nimeä ei napautettu laitteella, koska ohi osunut
+napautus avaisi ottelun ja kuluttaisi jonoa; sama `LinkAnnotation` on testattu
+`PlayerLinkTest`issä. Tommi kokeili samana yönä Top Pagen, Inboxin, laudan chat-kortin ja
+foorumin ketjulistan nimet: *"kokeilin nuo neljä ja näyttivät toimivan"*. Seuraavana päivänä
+3.11.2026 Tommi kokeili myös merkityt asemat ja Resign-sivun: *"merkitty asema ja
+resign-sivun nimilinkit toimii"*. Asetussivun
+linkin hän kokeili samana päivänä (*"asetussivun linkki toimii"*). Kutsun ja katkohistorian
+linkkejä ei ole kokeiltu laitteella.
+
+### Foorumin allekirjoitus avaa profiilin (Tommin tilaus 2.11.2026)
+
+*"myös forum-postausten pelaajanimistä pitäisi siirtyä pelaaja-näkymään"*. Allekirjoituksen
+napautus avaa kirjoittajan profiilin, ja pitkä painallus avaa pelaajavalikon kuten ennenkin.
+Ensimmäinen laiteajo näytti kuolleen napautuksen: `ForumParser` luki linkistä nimen ja
+tunnuksen mutta jätti `profilePath`in pois, ja `PostView` ohitti napautuksen ilman polkua.
+Korjattu jäsentimeen, testi `ForumParserTest`. Ketjulistan aloittajan nimellä ei ole
+sivulla linkkiä, joten rivin napautus avaa yhä ketjun.

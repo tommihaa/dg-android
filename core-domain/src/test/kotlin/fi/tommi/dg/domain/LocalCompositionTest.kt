@@ -155,6 +155,49 @@ class LocalCompositionTest {
     }
 
     @Test
+    fun `pipit lasketaan uudelleen jokaisesta askeleesta ja peruutuksesta`() {
+        // Keltainen 2x13 ja 2x8 = 42, sininen 2x1 ja blotti 5:lla = 48 + 20 = 68.
+        val board = lauta(
+            omat = mapOf(13 to 2, 8 to 2),
+            vastustaja = mapOf(5 to 1, 1 to 2),
+            nopat = listOf(6, 3),
+            linkit = setOf(13, 8),
+        )
+        fun pipit(b: BoardState) = b.players.map { it.pips }
+        assertEquals(listOf(68, 42), pipit(board))
+
+        val session = checkNotNull(LocalComposition.begin(board))
+        assertEquals(listOf(68, 42), pipit(session.boardNow()), "Ilman askelta luvut ovat sivun")
+
+        val first = checkNotNull(session.step(13))
+        assertEquals(listOf(68, 36), pipit(first.boardNow()), "13/7: omat -6, vastustaja ennallaan")
+
+        val second = checkNotNull(first.step(8))
+        assertEquals(listOf(73, 33), pipit(second.boardNow()), "8/5*: omat -3, lyoty blotti 20 -> 25")
+
+        assertEquals(listOf(68, 42), pipit(second.undo().boardNow()), "Peruutus palauttaa sivun luvut")
+        assertEquals(listOf(68, 42), pipit(board), "Sivun lauta ei muutu")
+    }
+
+    @Test
+    fun `piilotettu pip pysyy piilossa kootussa laudassa`() {
+        val board = lauta(
+            omat = mapOf(13 to 2, 8 to 2),
+            vastustaja = mapOf(1 to 2),
+            nopat = listOf(6, 3),
+            linkit = setOf(13, 8),
+        )
+        val hidden = board.copy(
+            players = board.players.mapIndexed { i, p ->
+                p.copy(pips = null, backgroundColor = if (i == 1) "#FFFFFF" else "#3399CC")
+            },
+        )
+        val session = checkNotNull(LocalComposition.begin(hidden))
+        val first = checkNotNull(session.step(13))
+        assertEquals(listOf(null, null), first.boardNow().players.map { it.pips })
+    }
+
+    @Test
     fun `tuplan ketju muurilta jatkuu siita mihin edellinen nuoli paattyi`() {
         // XG:n viitekuvan muoto (Tommi 29.9.2026): yksi nappula nelja askelta, lyonti matkalla.
         val board = lauta(

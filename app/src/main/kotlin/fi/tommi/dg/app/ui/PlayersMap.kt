@@ -1,6 +1,8 @@
 package fi.tommi.dg.app.ui
 
-import android.widget.Toast
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -9,6 +11,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.res.stringResource
 import fi.tommi.dg.app.R
 import fi.tommi.dg.scrape.MapPoint
 import fi.tommi.dg.scrape.PlayersMapParser
@@ -63,8 +66,14 @@ private fun fetchKml(): String? = PlayersMapCache.kml ?: runCatching {
 
 /**
  * Palauttaa napautuksen käsittelijän, joka avaa kartan [player]in kohdalle. Ilman nimeä,
- * ilman merkkiä tai ilman yhteyttä kartta avautuu koko näkymään, ja lyhyt ilmoitus kertoo miksi.
+ * ilman merkkiä tai ilman yhteyttä kartta avautuu koko näkymään, ja ilmoitus kertoo miksi.
  * Toinen napautus kesken haun ei tee mitään.
+ *
+ * Ilmoitus on ikkuna ennen karttaa (Tommin valinta 2.11.2026): OK avaa kartan alusta ja
+ * Cancel jättää sen avaamatta. Toast jäi selaimen alle, ja selaimen jälkeen avautunut ikkuna
+ * näkyi vasta paluussa, kun ilmoitus kuuluu kartan rinnalle. Sovellus ei voi piirtää selaimen
+ * päälle, joten ilmoitus luetaan ennen. Siksi tämä funktio myös piirtää, toisin kuin
+ * `remember`-alkuiset yleensä.
  */
 @Composable
 internal fun rememberPlayersMapOpener(player: String?): () -> Unit {
@@ -72,6 +81,22 @@ internal fun rememberPlayersMapOpener(player: String?): () -> Unit {
     val uriHandler = LocalUriHandler.current
     val scope = rememberCoroutineScope()
     var busy by remember { mutableStateOf(false) }
+    var note by remember { mutableStateOf<String?>(null) }
+    note?.let { text ->
+        AlertDialog(
+            onDismissRequest = { note = null },
+            confirmButton = {
+                TextButton(onClick = {
+                    note = null
+                    uriHandler.openUri(PLAYERS_MAP_URL)
+                }) { Text(stringResource(R.string.dialog_ok)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { note = null }) { Text(stringResource(R.string.dialog_cancel)) }
+            },
+            text = { Text(text) },
+        )
+    }
     return {
         if (!busy) {
             busy = true
@@ -79,14 +104,13 @@ internal fun rememberPlayersMapOpener(player: String?): () -> Unit {
                 val name = player?.trim().orEmpty()
                 val kml = if (name.isEmpty()) null else withContext(Dispatchers.IO) { fetchKml() }
                 val point = kml?.let { PlayersMapParser.locate(it, name) }
-                val note = when {
+                note = when {
                     name.isEmpty() -> null
                     kml == null -> context.getString(R.string.players_map_unread)
                     point == null -> context.getString(R.string.players_map_not_on_map, name)
                     else -> null
                 }
-                note?.let { Toast.makeText(context, it, Toast.LENGTH_LONG).show() }
-                uriHandler.openUri(point?.let(::playersMapUrlAt) ?: PLAYERS_MAP_URL)
+                if (note == null) uriHandler.openUri(point?.let(::playersMapUrlAt) ?: PLAYERS_MAP_URL)
                 busy = false
             }
         }

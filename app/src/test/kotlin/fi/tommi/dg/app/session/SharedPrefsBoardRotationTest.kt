@@ -75,6 +75,25 @@ class SharedPrefsBoardRotationTest {
     }
 
     @Test
+    fun `oma kaanto pakottaa laudan suunnan`() {
+        assertEquals(
+            ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE,
+            orientationFor(
+                onBoard = true, portraitLock = false, boardRotates = true,
+                sensorOrientation = ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE,
+            ),
+        )
+        // Kirjoitushetki voittaa oman käännön.
+        assertEquals(
+            ActivityInfo.SCREEN_ORIENTATION_PORTRAIT,
+            orientationFor(
+                onBoard = true, portraitLock = false, writing = true, boardRotates = true,
+                sensorOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE,
+            ),
+        )
+    }
+
+    @Test
     fun `kirjoitushetki kaantaa pystyyn kytkimesta riippumatta`() {
         assertEquals(
             ActivityInfo.SCREEN_ORIENTATION_PORTRAIT,
@@ -119,6 +138,25 @@ class SharedPrefsBoardRotationTest {
                     writing = writing,
                     signingIn = true,
                     freeWindow = true,
+                ),
+            )
+        }
+    }
+
+    // Tabletti (Tommin päätös 2.11.2026): laite ei ole aina käsissä, joten mikään ei käännä sitä.
+    @Test
+    fun `iso naytto ei pyyda suuntaa milloinkaan`() {
+        for (onBoard in listOf(true, false)) for (writing in listOf(true, false)) for (rotates in listOf(true, false)) {
+            assertEquals(
+                ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED,
+                orientationFor(
+                    onBoard = onBoard,
+                    portraitLock = true,
+                    writing = writing,
+                    boardRotates = rotates,
+                    signingIn = true,
+                    sensorOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT,
+                    largeScreen = true,
                 ),
             )
         }

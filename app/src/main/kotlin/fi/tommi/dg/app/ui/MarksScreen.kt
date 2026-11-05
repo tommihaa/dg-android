@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import fi.tommi.dg.app.R
 import fi.tommi.dg.domain.MarkedPosition
@@ -118,10 +119,15 @@ private fun MatchHeading(matchId: MatchId, seen: SeenMatch?) {
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(top = 12.dp, bottom = 2.dp)) {
         val opponent = seen?.opponent?.name
         Text(
+            // Nimi on linkki profiiliin (2.11.2026, `PlayerLink.kt`).
             text = if (opponent != null) {
-                stringResource(R.string.marks_match_versus, opponent, matchId.value)
+                textWithPlayerColor(
+                    stringResource(R.string.marks_match_versus, opponent, matchId.value),
+                    opponent,
+                    seen.opponent.userId,
+                )
             } else {
-                stringResource(R.string.marks_match_number, matchId.value)
+                AnnotatedString(stringResource(R.string.marks_match_number, matchId.value))
             },
             style = MaterialTheme.typography.titleSmall,
         )

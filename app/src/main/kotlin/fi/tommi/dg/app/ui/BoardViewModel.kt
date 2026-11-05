@@ -1,5 +1,6 @@
 package fi.tommi.dg.app.ui
 
+import fi.tommi.dg.app.session.ArchivedChatStore
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -532,6 +533,11 @@ class BoardViewModel(
      */
     private val dropLog: DropLog? = null,
     /**
+     * Jo arkistoidut chat-viestit sivun mukaan (kaanonin tarkennus 2.11.2026). Oletus muistaa
+     * vain olion elinajan; sovellus antaa laitteelle tallentavan. Ks. [ArchivedChatStore].
+     */
+    private val chatStore: ArchivedChatStore = ArchivedChatStore.inMemory(),
+    /**
      * Viestiarkisto. **Ei kyky sivustolla** kuten [reminderBook], mutta eri syystä tärkeä:
      * ottelun chat on se puoli jota sivusto ei säilytä lainkaan, ja tämä ruutu on ainoa
      * paikka jossa se on luettavissa. Ilman tätä sivu näyttäisi viestin ja heittäisi sen pois.
@@ -973,6 +979,14 @@ class BoardViewModel(
     private var matchReplyFor: MatchId? = null
 
     /**
+     * Lähetetty vastaus ottelukohtaisesti, ilman lainausrivejä (Tommin valinta C 2.11.2026):
+     * päättymissivun viestikortti näyttää sen vastustajan viestin alla, ja nappi poistuu.
+     * Ottelu kulkee mukana, jotta seuraavan ottelun päättymissivu alkaa napista.
+     */
+    private val _matchReplySent = MutableStateFlow<Pair<MatchId, String>?>(null)
+    val matchReplySent: StateFlow<Pair<MatchId, String>?> = _matchReplySent.asStateFlow()
+
+    /**
      * Kirjautuneen tunnus ruudulle, jotta *Reply to* jää pois omalta riviltä. Laajennus
      * lukee saman evästeestä `USERID`; tämä lukee sen samasta lähteestä kuin arkistointi.
      */
@@ -1020,7 +1034,7 @@ class BoardViewModel(
                 }
                 val submission = form.write(text) ?: return@withContext ReplyUiState.Idle
                 when (val response = forms.send(submission)) {
-                    is DgResponse.Ok -> confirmMatchReply(response.html, text, row.player.name)
+                    is DgResponse.Ok -> confirmMatchReply(response.html, text, row.player.name, over.page.matchId)
                     else -> replyFailure(response)
                 }
             }
@@ -1037,7 +1051,12 @@ class BoardViewModel(
     }
 
     /** Kuittaussivu: oma viesti arkistoon ja luonnos tyhjäksi, tai ei mitään. */
-    private suspend fun confirmMatchReply(html: String, text: String, opponent: String?): ReplyUiState {
+    private suspend fun confirmMatchReply(
+        html: String,
+        text: String,
+        opponent: String?,
+        matchId: MatchId?,
+    ): ReplyUiState {
         if (!DgPages.isMessageSentPage(html)) return ReplyUiState.Unconfirmed
         archive.archive(
             outgoingMessage(
@@ -1055,6 +1074,7 @@ class BoardViewModel(
             account = self(),
         )
         _matchReplyDraft.value = ""
+        if (matchId != null) _matchReplySent.value = matchId to ownPart(text)
         return ReplyUiState.Sent
     }
 
@@ -1467,12 +1487,14 @@ class BoardViewModel(
 
         val incoming = screen.incoming
         val incomingId = incoming?.let { text ->
-            // Avain on pari eikä yhdistetty merkkijono: erotinta ei tarvitse valita, joten
-            // kaksi eri paria ei voi tuottaa samaa avainta millään sisällöllä.
-            // Lomakkeettomalla sivulla avaimen ensimmäinen puoli on ottelu, koska lomaketta
-            // ei ole; tarkoitus on sama, sama viesti samalta sivulta vain kerran.
-            archivedChats.getOrPut((form?.action ?: "match:${matchId?.value}") to text) {
-                archive.archive(
+            // Sama viesti samalta sivulta vain kerran, myös sovelluksen uudelleenkäynnistyksen
+            // yli (kaanonin tarkennus 2.11.2026, [ArchivedChatStore]). Sivun oma lomakeosoite
+            // kantaa siirron numeron, joten sama teksti ottelun eri vaiheessa on eri viesti.
+            // Lomakkeettomalla sivulla avaimen ensimmäinen puoli on ottelu, koska ottelulla on
+            // yksi päättymissivu. Arvo on arkistoidun rivin tunniste, jotta vastaus osaa yhä
+            // osoittaa oikeaan riviin.
+            val key = ArchivedChatStore.key(form?.action ?: "match:${matchId?.value}", text)
+            chatStore.get(key) ?: archive.archive(
                     Message(
                         matchId = matchId,
                         // Arkiston avain on henkilö eikä ottelu: päättynyt ottelu putoaa
@@ -1491,8 +1513,7 @@ class BoardViewModel(
                         receivedAtEpochMillis = now(),
                     ),
                     account = self(),
-                ).id
-            }
+                ).id.also { chatStore.put(key, it) }
         }
         return ChatOnBoard(
             incoming = incoming,
@@ -1595,23 +1616,6 @@ class BoardViewModel(
     }
 
     /**
-     * Ne chat-viestit jotka tämä näkymämalli on jo kirjoittanut arkistoon.
-     *
-     * **Avain on sivun oma lomakeosoite ja viestin teksti, arvo arkistoidun rivin tunniste**,
-     * eli sama sivu samalla sisällöllä ei kirjoitu kahdesti ja vastaus osaa yhä osoittaa
-     * oikeaan riviin. Osoite on avaimessa mukana koska se kantaa sivun tilatunnisteen: sama
-     * teksti ottelun eri vaiheessa on eri viesti. Ilman tätä päivitys kirjoittaisi saman viestin uudelleen, ja
-     * `Message.id` sisältää saapumishetken, joten rivi olisi kannassa eri tunnisteella eikä
-     * `insertIfNew` estäisi sitä.
-     *
-     * **Rajaus, ja se on nimettävä.** Vahti elää tämän olion ajan. Jos sama sivu saapuisi
-     * uudelleen sovelluksen käynnistyksen jälkeen, viesti kirjoittuisi toiseen kertaan.
-     * Sitä ei ole mitattu, koska sivuston oma sääntö on että viesti katoaa lukuhetkellä;
-     * kysymys on `docs/AVOIMET.md`:ssä eikä ratkaistu arvaamalla.
-     */
-    private val archivedChats = mutableMapOf<Pair<String, String>, String>()
-
-    /**
      * Epäonnistunut pyyntö ei hävitä jo näkyvää lautaa. Minuutin takainen asema on
      * vanhentunutta mutta oikeaa tietoa, virheruutu ei ole mitään.
      *
@@ -1647,6 +1651,7 @@ class BoardViewModel(
         private val opponentArrowsOn: () -> Boolean = { false },
         private val matchMemory: MatchMemory? = null,
         private val dropLog: DropLog? = null,
+        private val chatStore: ArchivedChatStore = ArchivedChatStore.inMemory(),
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
@@ -1658,6 +1663,7 @@ class BoardViewModel(
                 markBook = markBook,
                 matchMemory = matchMemory,
                 dropLog = dropLog,
+                chatStore = chatStore,
                 archive = archive,
                 self,
                 playPath,
@@ -1693,6 +1699,10 @@ class BoardViewModel(
         fun offlineReason(response: DgResponse.Offline) = "Offline: ${response.cause}"
     }
 }
+
+/** Vastauksen oma osa: lainausrivit (`>`) ja reunojen tyhjät rivit pois. */
+internal fun ownPart(text: String): String =
+    text.lines().filterNot { it.trimStart().startsWith(">") }.joinToString("\n").trim()
 
 /**
  * Päättymissivun vastauksen esitäyttö, DGText2Arean `win_reply.js`:n muodossa: ottelun

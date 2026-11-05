@@ -45,7 +45,28 @@ object EventParser {
             },
             rounds = brackets?.rounds.orEmpty(),
             rows = brackets?.rows ?: 0,
+            registered = REGISTERED.find(document.body().text())?.groupValues?.get(1)?.toIntOrNull(),
+            invited = invitedCount(document),
         )
+    }
+
+    /**
+     * Kutsuttujen määrä: `Invitational`-otsikon jälkeisen ensimmäisen taulukon pelaajalinkit.
+     * Null kun otsikkoa tai taulukkoa ei ole, jotta kutsuja ei väitä lukua jota ei mitattu.
+     */
+    private fun invitedCount(document: org.jsoup.nodes.Document): Int? {
+        val heading = document.select("h4").firstOrNull {
+            it.text().trim().equals("Invitational", ignoreCase = true)
+        } ?: return null
+        var node = heading.nextSibling()
+        while (node != null) {
+            if (node is Element && node.normalName() in HEADINGS) return null
+            if (node is Element && node.normalName() == "table") {
+                return node.select("a[href*=/bg/user/]").size.takeIf { it > 0 }
+            }
+            node = node.nextSibling()
+        }
+        return null
     }
 
     /**
@@ -129,6 +150,9 @@ object EventParser {
             decided = cell.selectFirst("b") != null,
         )
     }
+
+    /** Ilmoittautumisvaiheen rivi: `Currently there are 335 players registered.` */
+    private val REGISTERED = Regex("""Currently there are (\d+) players? registered""", RegexOption.IGNORE_CASE)
 
     private val HEADINGS = setOf("h1", "h2", "h3", "h4")
     private val WHITESPACE = Regex("""\s+""")

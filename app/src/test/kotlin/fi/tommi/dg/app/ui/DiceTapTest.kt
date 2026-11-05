@@ -132,4 +132,19 @@ class DiceTapTest {
         assertEquals(false, diceRollTapFor(listOf("Accept", "Decline"), enabled = true))
         assertEquals(false, diceRollTapFor(null, enabled = true))
     }
+
+    /**
+     * Nappipari noppien paikalle (17.10.2026): vain vuoron jälkeisellä sivulla, vain kytkin
+     * päällä ja vain kun chat-kortti ei omista paria. Vuoron tekoja sisältävä lomake ei kelpaa.
+     */
+    @Test
+    fun `next game tulee noppien paikalle vain vuoron jalkeisella sivulla`() {
+        assertEquals(true, nextOnDiceFor(listOf("Next Game", "To Top"), enabled = true, chatCardVisible = false))
+        assertEquals(true, nextOnDiceFor(listOf("Next", "To Top"), enabled = true, chatCardVisible = false))
+        assertEquals(false, nextOnDiceFor(listOf("Next Game", "To Top"), enabled = false, chatCardVisible = false))
+        assertEquals(false, nextOnDiceFor(listOf("Next Game", "To Top"), enabled = true, chatCardVisible = true))
+        assertEquals(false, nextOnDiceFor(listOf("To Top"), enabled = true, chatCardVisible = false))
+        assertEquals(false, nextOnDiceFor(listOf("Roll Dice", "Double"), enabled = true, chatCardVisible = false))
+        assertEquals(false, nextOnDiceFor(null, enabled = true, chatCardVisible = false))
+    }
 }

@@ -102,3 +102,35 @@ class SharedPrefsDiceRoll(private val prefs: SharedPreferences) : DiceRollStore 
         const val KEY = "dice_roll"
     }
 }
+
+/**
+ * `Next Game` ja `To Top` omien noppien paikalle keskikaistalle (Tommin havainto pelatessa ja
+ * Fredericin huomio 17.10.2026, `docs/UI.md` › *Next Game noppien paikalle*). Noppakytkimien
+ * kanssa koko vuoro kulkee keskikaistalla, ja paneelissa oleva `Next Game` oli ainoa käynti
+ * reunalla. Samassa tiedostossa ja samassa ryhmässä, koska kytkin palvelee samaa rytmiä.
+ * Oletus pois: 2.9.2026 päätös (napit paneeliin) on yhä oletus.
+ */
+interface NextOnDiceStore {
+
+    fun get(): Boolean
+
+    fun save(enabled: Boolean)
+}
+
+class SharedPrefsNextOnDice(private val prefs: SharedPreferences) : NextOnDiceStore {
+
+    constructor(context: Context) : this(
+        context.applicationContext.getSharedPreferences(FILE_NAME, Context.MODE_PRIVATE),
+    )
+
+    override fun get(): Boolean = prefs.getBoolean(KEY, false)
+
+    override fun save(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY, enabled).apply()
+    }
+
+    private companion object {
+        const val FILE_NAME = "dg_dice_tap"
+        const val KEY = "next_on_dice"
+    }
+}

@@ -46,6 +46,26 @@ class MarkBookTest {
     }
 
     @Test
+    fun `tuonti lisaa vain puuttuvat merkit ja sailyttaa aseman`() = runTest {
+        kirja.add(PELI, 377, "recube?", 1_000)
+        val asema = CheckerPosition.START
+
+        val lisatty = kirja.addMissing(
+            listOf(
+                fi.tommi.dg.domain.MarkedPosition(0, PELI, 377, "recube?", 1_000),
+                fi.tommi.dg.domain.MarkedPosition(0, PELI, 380, "", 2_000, asema),
+            ),
+        )
+
+        assertEquals(1, lisatty)
+        assertEquals(2, kirja.count())
+        assertEquals(asema, kirja.all().single { it.moveNumber == 380 }.position)
+        // Sama tiedosto toiseen kertaan ei kirjoita mitään.
+        assertEquals(0, kirja.addMissing(kirja.all()))
+        assertEquals(2, kirja.count())
+    }
+
+    @Test
     fun `pelin merkit nakyvat siirtonumeron jarjestyksessa`() = runTest {
         kirja.add(PELI, 380, "recube?", 2_000)
         kirja.add(PELI, 377, "", 1_000)

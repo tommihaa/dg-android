@@ -121,6 +121,7 @@ class ForumParserTest {
         assertEquals(1, first.ordinal)
         assertEquals("ekakirjoittaja", first.author.name)
         assertEquals("10001", first.author.userId)
+        assertEquals("/bg/user/10001", first.author.profilePath)
         assertEquals("Sat Aug 1 23:40:45 2026", first.postedAtText)
         assertFalse(first.body.contains("Posted by"), "Allekirjoitus vuoti runkoon: ${first.body}")
     }

@@ -136,8 +136,8 @@ class HelpConsistencyTest {
             "Verify Decline", // sivuston vahvistusruutu
             "Verify Double", // sivuston vahvistusruutu
             "Save to Drive", // Androidin jakovalikon kohde
-            "Game Dashboard", // ChromeOSin ikkunavalikko, testaajan sanoin 13.10.2026
-            "Screen Size", // sama valikko
+            "Game Dashboard", // ChromeOSin ikkunavalikko, testaajan kaappauksesta 15.10.2026
+            "Screen size", // sama valikko
             "Resizable", // sama valikko
         )
         val ui = strings.filterKeys { !it.startsWith("help_") }.values.joinToString("\n")
@@ -205,12 +205,34 @@ class HelpConsistencyTest {
             listOf(
                 "<b>Keep lists and messages upright</b>, which is off unless you turn it on",
                 "<b>Turn the board with the device</b>, which is on unless you turn it off",
-                // Laitekohtainen suositus (Tommin tilaus 10.10.2026): puhelimelle pakotukset, tabletille oletukset.
+                // Laitekohtainen suositus (Tommin tilaus 10.10.2026): puhelimelle pakotukset.
                 "On a phone we suggest turning on <b>Keep lists and messages upright</b>",
                 "turning off <b>Turn the board with the device</b>",
-                "On a tablet the defaults work well",
+                // Tabletilla ei pakotusta lainkaan (Tommin päätös 2.11.2026, `orientationFor` `largeScreen`).
+                "On a tablet every screen turns with the device and nothing turns it for you",
             ),
         )
+    }
+
+    @Test
+    fun kaannonOdotusSanotaan() {
+        // Tommin tilaus ja valinnat 15.10.2026 (`docs/UI.md` › Odotusmerkki käännössä): kääntö
+        // himmentää ruudun odotuksen ilmaisimella ja tekstillä, kunnes ruutu on kääntynyt. Kutsu ja
+        // teksti luetaan lähteistä, jotta ilmaisimen poisto tai tekstin vaihto kaataa tämän ennen ohjetta.
+        val main = File("src/main/kotlin/fi/tommi/dg/app/MainActivity.kt").readText()
+        assertTrue("RotationWait ei ole enää ruutujen päällä: ohje vanheni", "RotationWait(" in main)
+        // Oma kääntö laudalla (Tommin valinta 19.10.2026): ohje lupaa sen, joten kutsun on annettava lupa.
+        assertTrue("RotationWait ei enää käännä laudalla itse: ohje vanheni", "takeOver = onBoard" in main)
+        assertEquals("Turning the screen…", strings["rotation_wait"])
+        assertMentions(
+            listOf("settings"),
+            listOf(
+                "When you turn the device, the screen dims with the shape from <b>Waiting for DailyGammon</b>",
+                "the words Turning the screen until the screen has turned",
+                "the app turns it itself and goes on turning it with the device until you leave the board",
+            ),
+        )
+        assertMentions(listOf("look"), listOf("in the middle of the screen while the device turns"))
     }
 
     @Test
@@ -260,14 +282,19 @@ class HelpConsistencyTest {
     @Test
     fun tuontiLuvataanJaSenSaantoSanotaan() {
         // Tuonti tuli 16.9.2026 (Tommin tilaus), ja se vain lisää eikä koskaan korvaa.
-        // Manuaalin on nimettävä nappi, sanottava sääntö ja kerrottava mikä ei vielä kulje
-        // tiedostossa (merkityt asemat), jottei siirto lupaa enempää kuin tiedosto kantaa.
+        // Manuaalin on nimettävä nappi, sanottava sääntö ja kerrottava mitä tiedosto kantaa.
+        // Merkityt asemat tulivat tiedostoon 20.10.2026 (Tommin valinta), ja siihen asti
+        // manuaali sanoi niiden puuttuvan; nyt sen on sanottava niiden olevan mukana.
         assertMentions(listOf("move_device", "archive"), listOf(strings.getValue("messages_import_action"), strings.getValue("messages_export_action")))
         val move = answers("move_device")
         assertTrue("move_device ei sano että laitteen oma jää ennalleen", "left as it is" in move)
-        assertTrue("move_device ei sano että merkit puuttuvat", "Marked positions are not in the file" in move)
+        assertTrue("move_device ei sano että merkit siirtyvät", "phrases and marked positions come in" in move)
+        // Pikaviestien järjestys lisäyshetken mukaan (Tommin vahvistus 20.10.2026): tuonti saa
+        // siirtää omia nappeja, joten manuaalin on sanottava järjestyksen sääntö.
+        assertTrue("move_device ei sano pikaviestien järjestystä", "same order on both, oldest first" in move)
+        assertTrue("archive ei sano pikaviestien järjestystä", "in the order they were saved, oldest first" in answers("archive"))
         val archive = answers("archive")
         assertTrue("archive ei sano ettei tuonti korvaa", "nothing already here is changed" in archive.lowercase())
-        assertTrue("archive ei luettele tiedoston sisältöä", "messages, reminders and phrases" in archive)
+        assertTrue("archive ei luettele tiedoston sisältöä", "messages, reminders, phrases and marked positions" in archive)
     }
 }

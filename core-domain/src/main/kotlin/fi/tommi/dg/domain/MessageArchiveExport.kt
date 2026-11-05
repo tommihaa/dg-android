@@ -23,9 +23,13 @@ const val ARCHIVE_EXPORT_FORMAT = "fi.tommi.dg.archive"
  * tilaus) `reminders`, `phrases` ja viestin `replyTo`. Muoto laajeni kerran eikä kahdesti,
  * koska laitteen vaihto vie mukanaan kaiken mitä käyttäjä itse kirjoitti (`docs/AVOIMET.md`
  * › Arkiston tuonti). Vastauslomake jäi yhä pois 30.8.2026 päätöksellä: se on kyky eikä
- * sisältöä.
+ * sisältöä. 5 (20.10.2026, Tommin valinta) `marks`: merkityt asemat kulkevat samaa reittiä
+ * kuin muistutukset, koska ne ovat samaa lajia (käyttäjän kirjoittamaa, laitteen yhteistä).
+ * Asetusten siirto hylättiin reittinä, koska se korvaa tiedostot kokonaan eikä yhdistä.
+ * 6 (20.10.2026, Tommin vahvistus) `phrases` olioina tekstistä ja lisäyshetkestä, jotta
+ * kahden laitteen fraasit yhdistyvät samaan järjestykseen ([Phrase]).
  */
-const val ARCHIVE_EXPORT_VERSION = 4
+const val ARCHIVE_EXPORT_VERSION = 6
 
 /**
  * Tiedoston sisältö kokonaisuutena, sama olio kirjoitettaessa ja luettaessa.
@@ -36,14 +40,18 @@ const val ARCHIVE_EXPORT_VERSION = 4
  *   tiedetty eikä luule vanhaa muotoa.
  * @param reminders Muistutukset kaikista otteluista. [Reminder.id] on laitteen juokseva numero
  *   eikä kulje tiedostossa; luettu muistutus saa id:ksi nollan.
- * @param phrases Fraasinapit tallennusjärjestyksessä.
+ * @param phrases Fraasinapit lisäyshetkineen, vanhin ensin (versio 6). Vanhan tiedoston
+ *   pelkät tekstit saavat hetket järjestyksestään ([Phrase.fromPositions]).
+ * @param marks Merkityt asemat (versio 5). [MarkedPosition.id] ei kulje tiedostossa, kuten ei
+ *   muistutuksenkaan; asema kulkee [CheckerPosition.encode]n merkkijonona tai `null`ina.
  */
 data class ArchiveFile(
     val exportedAtEpochMillis: Long,
     val account: String?,
     val messages: List<Message>,
     val reminders: List<Reminder> = emptyList(),
-    val phrases: List<String> = emptyList(),
+    val phrases: List<Phrase> = emptyList(),
+    val marks: List<MarkedPosition> = emptyList(),
     val version: Int = ARCHIVE_EXPORT_VERSION,
 )
 
@@ -55,8 +63,9 @@ fun List<Message>.toArchiveJson(
     exportedAtEpochMillis: Long,
     account: String? = null,
     reminders: List<Reminder> = emptyList(),
-    phrases: List<String> = emptyList(),
-): String = ArchiveFile(exportedAtEpochMillis, account, this, reminders, phrases).toJson()
+    phrases: List<Phrase> = emptyList(),
+    marks: List<MarkedPosition> = emptyList(),
+): String = ArchiveFile(exportedAtEpochMillis, account, this, reminders, phrases, marks).toJson()
 
 fun ArchiveFile.toJson(): String {
     // `this` on tallennettava paikalliseksi: `buildString`in lohko vaihtaa vastaanottajan
@@ -112,13 +121,36 @@ fun ArchiveFile.toJson(): String {
             }
             append("  ],\n")
         }
+        append("  \"marks\": [")
+        if (file.marks.isEmpty()) {
+            append("],\n")
+        } else {
+            append('\n')
+            file.marks.forEachIndexed { index, mark ->
+                append("    {\n")
+                append("      \"matchId\": ").append(jsonString(mark.game.matchId.value)).append(",\n")
+                append("      \"opponentScore\": ").append(mark.game.opponentScore).append(",\n")
+                append("      \"selfScore\": ").append(mark.game.selfScore).append(",\n")
+                append("      \"moveNumber\": ").append(mark.moveNumber).append(",\n")
+                append("      \"note\": ").append(jsonString(mark.note)).append(",\n")
+                append("      \"createdAtEpochMillis\": ").append(mark.createdAtEpochMillis).append(",\n")
+                append("      \"position\": ")
+                    .append(mark.position?.encode()?.let(::jsonString) ?: "null").append('\n')
+                append("    }")
+                append(if (index != file.marks.lastIndex) ",\n" else "\n")
+            }
+            append("  ],\n")
+        }
         append("  \"phrases\": [")
         if (file.phrases.isEmpty()) {
             append("]\n")
         } else {
             append('\n')
             file.phrases.forEachIndexed { index, phrase ->
-                append("    ").append(jsonString(phrase))
+                append("    {\n")
+                append("      \"text\": ").append(jsonString(phrase.text)).append(",\n")
+                append("      \"addedAtEpochMillis\": ").append(phrase.addedAtEpochMillis).append('\n')
+                append("    }")
                 append(if (index != file.phrases.lastIndex) ",\n" else "\n")
             }
             append("  ]\n")

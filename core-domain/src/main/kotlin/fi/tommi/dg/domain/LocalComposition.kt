@@ -569,7 +569,7 @@ class CompositionSession private constructor(
             if (ownOff > 0) add(BorneOffCheckers(seat.color, ownOff))
             board.borneOff.firstOrNull { it.color == opponentColor }?.let { add(it) }
         }
-        return board.copy(
+        val shown = board.copy(
             points = points,
             bar = bar,
             borneOff = borneOff,
@@ -595,6 +595,34 @@ class CompositionSession private constructor(
             },
             undoHref = if (steps.isNotEmpty()) LOCAL_UNDO else null,
         )
+        return shown.copy(players = livePips(shown))
+    }
+
+    /**
+     * Pelaajapaneelit kootun aseman pip-luvuin (Tommin tilaus 2.11.2026, malli anti-backgammonin
+     * selainsovellus ja Sage Pro: *"laskemaan pips uudestaan aina kun osa siirtoa harmautuu tai
+     * peruutetaan"*).
+     *
+     * **Luku on paneelin luku plus aseman muutos**, ei alusta laskettu. Sivun luku pysyy
+     * ankkurina, ja erotus kattaa kaikki kolme tapausta samalla laskulla: oma askel vähentää
+     * omia pippejä, lyönti lisää vastustajan pippejä (muurilla nappula on 25), ja ulos kannettu
+     * on nolla. Peruutus palauttaa aseman ja siksi luvun, eikä tilaa tarvita.
+     *
+     * **Piilotettu pip pysyy piilossa:** null paneelissa on null tässäkin. Istuimen suunta on
+     * pip-vahdin ratkaisema ([resolveSeat]), joten piilotetulla laudalla oletussuunta ei pääse
+     * ruudulle lukuna. Paneelien järjestys on istuimen järjestys: oma viimeisenä.
+     */
+    private fun livePips(shown: BoardState): List<PlayerPanel> {
+        val opponentColor = CheckerColor.entries.first { it != seat.color }
+        val ownDelta = shown.totalPipCount(seat.color, seat.homeIsLow) -
+            board.totalPipCount(seat.color, seat.homeIsLow)
+        val oppDelta = shown.totalPipCount(opponentColor, !seat.homeIsLow) -
+            board.totalPipCount(opponentColor, !seat.homeIsLow)
+        val last = board.players.lastIndex
+        return board.players.mapIndexed { index, panel ->
+            val delta = if (index == last) ownDelta else oppDelta
+            panel.pips?.let { panel.copy(pips = it + delta) } ?: panel
+        }
     }
 
     /**

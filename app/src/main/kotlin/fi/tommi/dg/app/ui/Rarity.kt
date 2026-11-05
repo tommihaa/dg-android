@@ -171,16 +171,21 @@ internal fun textWithTournamentColor(text: String, name: String?, color: Color?)
     }
 
 /**
- * Lauseen teksti, jossa pelaajan nimi on rarity-värissä (esim. `vs frans`). Nimen viimeinen
- * esiintymä väritetään, koska nimi on lauseissa lopussa. Ilman tunnettua ratingia teksti
- * palaa sellaisenaan.
+ * Lauseen teksti, jossa pelaajan nimi on rarity-värissä (esim. `vs frans`) ja linkki
+ * profiiliin kun polku tunnetaan (`PlayerLink.kt`, 2.11.2026). Nimen viimeinen esiintymä
+ * käsitellään, koska nimi on lauseissa lopussa. Ilman ratingia ja polkua teksti palaa
+ * sellaisenaan.
  */
 @Composable
-internal fun textWithPlayerColor(text: String, name: String?, userId: String?): AnnotatedString {
-    val color = playerRarityColor(userId, name)
-    return buildAnnotatedString {
-        append(text)
-        val at = name?.takeIf { it.isNotEmpty() }?.let { text.lastIndexOf(it) } ?: -1
-        if (color != null && at >= 0) addStyle(SpanStyle(color = color), at, at + name!!.length)
-    }
-}
+internal fun textWithPlayerColor(
+    text: String,
+    name: String?,
+    userId: String?,
+    profilePath: String? = null,
+): AnnotatedString = nameSpan(
+    text = text,
+    name = name,
+    color = playerRarityColor(userId, name),
+    path = playerProfilePath(name, userId, profilePath),
+    open = playerOpener(),
+)

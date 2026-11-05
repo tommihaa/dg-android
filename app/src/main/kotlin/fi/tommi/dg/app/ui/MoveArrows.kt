@@ -4,11 +4,16 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.ClipOp
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.Dp
 import fi.tommi.dg.domain.ArrowEnd
@@ -59,9 +64,35 @@ internal fun MoveArrowLayer(
             checkerSize = checkerSize.toPx(),
             mirrored = mirrored,
         )
-        arrowLines(arrows, board, color, frame, barOnTop).forEach { drawArrow(it, frame.checkerSize, fill, halo) }
+        val lines = arrowLines(arrows, board, color, frame, barOnTop)
+        val (barLeft, barRight) = barColumnBounds(frame)
+        // Muurin ulkopuolella nuoli on täysi.
+        clipRect(left = barLeft, right = barRight, clipOp = ClipOp.Difference) {
+            lines.forEach { drawArrow(it, frame.checkerSize, fill, halo) }
+        }
+        // **Muurilla nuoli himmenee** (Tommin valinta 2.11.2026 kolmesta mockupista): muurin
+        // pip-rivit ([BarPips]) jäivät nuolen alle, kun 8/4* ylitti muurin. Kerros on yksi
+        // läpikuultava taso eikä läpikuultava väri, jotta reuna ei näy täytön läpi.
+        clipRect(left = barLeft, right = barRight) {
+            val bounds = Rect(barLeft, 0f, barRight, size.height)
+            drawIntoCanvas { it.saveLayer(bounds, Paint().apply { alpha = ON_BAR_ALPHA }) }
+            lines.forEach { drawArrow(it, frame.checkerSize, fill, halo) }
+            drawIntoCanvas { it.restore() }
+        }
     }
 }
+
+/**
+ * Muurin sarakkeen vaakaraja pikseleinä, sama sarakejako kuin [arrowLines]issa (6 + muuri + 6).
+ */
+internal fun barColumnBounds(frame: ArrowFrame): Pair<Float, Float> {
+    val playX = if (frame.mirrored) frame.trayWidth + frame.bandWidth else 0f
+    val unit = (frame.width - frame.trayWidth - frame.bandWidth) / BOARD_COLUMNS
+    return (playX + BAR_COLUMN * unit) to (playX + (BAR_COLUMN + 1) * unit)
+}
+
+/** Nuolen peittävyys muurin kohdalla, mockupin arvo. */
+private const val ON_BAR_ALPHA = 0.3f
 
 /** Laudan mitat pikseleinä nuolen laskentaa varten. Ks. [MoveArrowLayer]. */
 internal data class ArrowFrame(

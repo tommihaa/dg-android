@@ -269,8 +269,15 @@ object DgBoard {
      * (`TrayPlayerFacts`). Arvo on jätetty ennalleen, koska se oli jo lähellä käytännön
      * kynnystä (Galaxy Tab S7+ landscape 108 dp, pieni puhelin noin 30 dp) eikä uutta
      * mittausta pelaajatiedon luettavuudelle ole tehty. Vanha nimi oli `TRAY_ACTIONS_MIN`.
+     *
+     * **96 → 90 dp 19.10.2026.** Nappulan katolla sarake on 95,0 dp, joten 96 jätti ruudun
+     * ilman nimiä, pisteitä ja pippejä kun paneelikaan ei mahtunut (Honor NDL-W09, 1280 dp).
+     * Luettavuutta 90 dp:ssä ei ole mitattu, ks. `docs/UI.md` › Sarakkeen raja 96 → 90 dp.
+     *
+     * **90 → 60 dp samana iltana**: alle 1110 dp:n tableteilla (1024×600 dp sarake 79 dp,
+     * 800×480 dp 62 dp) pelaajatiedoille ei ollut kotia. Luettavuus todennetaan laitteella.
      */
-    val TRAY_TEXT_MIN: Dp = 96.dp
+    val TRAY_TEXT_MIN: Dp = 60.dp
 
     /**
      * Pelaajapaneelin leveys päällepiirtona.

@@ -149,9 +149,10 @@ see what a parser expects.
 
 ## Status
 
-In a closed test on Google Play since 1 October 2026. The current version is 1.2. Google
-lets a new developer's app into the store only after a closed test, so testers are welcome:
-how to join is on the [test page](https://tommihaa.github.io/dg-android/).
+[On Google Play](https://play.google.com/store/apps/details?id=fi.tommi.dg) since 5 November
+2026. The current version is 1.9. Bugs, missing things and questions go to the
+[Google group](https://groups.google.com/g/dg-android-testers). More on the
+[app's page](https://tommihaa.github.io/dg-android/).
 
 There are no release builds here. If you build it yourself, you are using your own
 DailyGammon account through an unofficial client, at your own risk.

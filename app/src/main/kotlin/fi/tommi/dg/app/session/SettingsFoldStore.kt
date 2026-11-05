@@ -4,10 +4,12 @@ import android.content.Context
 import android.content.SharedPreferences
 
 /**
- * Laiteasetusten neljä ryhmää Theme-valinnan alla (Tommin valinta 27.9.2026). Järjestys on
- * ruudun järjestys, ja [key] on tallennusavain eikä näkyvä nimi.
+ * Laiteasetusten taittuvat ryhmät: neljä Theme-valinnan alla (Tommin valinta 27.9.2026) ja
+ * Theme itse (Tommin tilaus 20.10.2026). Järjestys on ruudun järjestys, ja [key] on
+ * tallennusavain eikä näkyvä nimi.
  */
 enum class DeviceSettingsGroup(val key: String) {
+    THEME("theme"),
     BOARD("board"),
     PLAYING("playing"),
     LISTS("lists"),

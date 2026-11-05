@@ -88,6 +88,52 @@ class DgBoardWidthTest {
     }
 
     /**
+     * **Pelaajatiedoilla on aina koti 1280 dp:n näytöllä** (Honor NDL-W09, 1920×1200 oletuskoolla,
+     * 19.10.2026). Nappulan katolla paneeli saa 146 dp eikä mahdu, ja sarake on 95,0 dp, joten
+     * kynnyksen 96 jälkeen ruudulla ei ollut nimiä, pisteitä eikä pippejä. Väite on että jompikumpi
+     * koti mahtuu, ja sarakkeelle vaaditaan marginaali (3 dp) eikä tasan kynnystä, koska reunalla
+     * pyöristys ratkaisi. Syöte on laudalle tarjottu leveys: ikkuna miinus 32 dp:n pehmuste.
+     */
+    @Test
+    fun `1280 dp nayton pelaajatiedoille on koti`() {
+        val slot = (1280 - 32).dp
+        val frame = DgBoard.frameWidth(slot, 790.dp, numberRow)
+        val spare = slot - frame - PANEL_GAP
+        val panelFits = spare >= PANEL_MIN
+        val trayWidth = DgBoard.trayWidth(frame)
+
+        assertTrue(
+            "ei paneelia ($spare) eikä saraketta ($trayWidth)",
+            panelFits || trayWidth >= DgBoard.TRAY_TEXT_MIN,
+        )
+        assertTrue(
+            "sarake $trayWidth istuu kynnyksellä ${DgBoard.TRAY_TEXT_MIN}",
+            panelFits || trayWidth.value >= DgBoard.TRAY_TEXT_MIN.value + 3f,
+        )
+    }
+
+    /**
+     * **Pienellä tabletilla pelaajatiedoilla on koti** (19.10.2026): paneeli ei mahdu millään
+     * näistä, ja sarake on 62–79 dp. Syöte on ikkuna miinus 32 dp:n pehmuste ja korkeus miinus
+     * 8 dp:n `Column`-pehmuste, samoin kuin muissa tämän tiedoston laitteissa. Luvut on laskettu
+     * samalla kaavalla ja todennettu laitteella (`docs/UI.md` › Sarakkeen raja 96 → 90 dp).
+     */
+    @Test
+    fun `pienen tabletin pelaajatiedoille on koti`() {
+        listOf(1024 to 600, 960 to 600, 1000 to 700, 1024 to 768, 800 to 480).forEach { (w, h) ->
+            val slot = (w - 32).dp
+            val frame = DgBoard.frameWidth(slot, (h - 8).dp, numberRow)
+            val panelFits = slot - frame - PANEL_GAP >= PANEL_MIN
+            val trayWidth = DgBoard.trayWidth(frame)
+
+            assertTrue(
+                "${w}x$h: ei paneelia eikä saraketta ($trayWidth)",
+                panelFits || trayWidth >= DgBoard.TRAY_TEXT_MIN,
+            )
+        }
+    }
+
+    /**
      * Yläraja koskee vain leveää laitetta. Puhelimella nappula on 30 dp:n luokkaa, eli
      * kaukana katosta, ja juuri se on ehdon tarkoitus: tabletin korjaus ei saa kutistaa
      * puhelinta.

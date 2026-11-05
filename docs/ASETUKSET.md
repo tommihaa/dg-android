@@ -307,6 +307,12 @@ reitissä tekisi niistä eri mieliset. Suoja on kytkin joka on oletuksena pois.
 `NAME`, joka näyttää oman pistemäärän nimen perässä. `dg_board_extras` (`BoardExtrasStore`,
 oletus päällä) piilottaa laudan omat lisälinkit, ja se on lisätty asetusten siirtotiedostoon.
 
+**Neljäs noppakytkin 17.10.2026: `next_on_dice`** samassa `dg_dice_tap`-tiedostossa
+(`NextOnDiceStore`, oletus pois). Se tuo `Next Game`n ja `To Top`in omien noppien paikalle
+keskikaistalle sivupaneelin sijaan. Tommin havainto pelatessa ja Fredericin huomio, oma kytkin
+eikä `dice_submit`in seuraaja (Tommin valinta). Ehdot ja perustelu: `docs/UI.md` › *Next Game
+noppien paikalle*.
+
 **Oletukset ovat nykyinen käytös** (`COUNTER` ja `AWAY`), eikä se seuraa `board_style`n
 sivustouskollisesta oletuksesta: kumpikin kytkin syntyi havainnosta eikä viasta, ja
 oletuksen vaihtaminen olisi eri päätös jota ei ole kysytty. Jos se joskus kysytään,
@@ -942,3 +948,11 @@ turnausten nimet kierrosmäärän mukaan (`docs/UI.md` › *Turnausten rarity-v�
 kytkettynä `MainActivity` tarjoaa rating-hauiksi null-funktiot ja kierrosmäärille tyhjän
 varaston, joten yksikään ruutu ei tarvitse omaa ehtoaan. Ks. `docs/UI.md` › *Rarity-värit
 kaikkiin pelaajanimiin ja kytkin*.
+
+**Paikallinen kytkin 20.10.2026: eleet.** `dg_gestures` (`GestureStore`, **pääkytkin oletus
+pois**, Tommin päätös kuudennen arvon mukaan, `docs/ARVOT.md`) on samaa muotoa kuin `Game sounds`: pääkytkin `Use gestures` ja sen
+alla ruutu kullekin eleelle (veto alas, pyyhkäisy välilehdeltä toiselle, välilehden napautus
+alkuun, pitkä painallus pelaajavalikkoon ja värähdys). Tallennetaan nimet eikä
+järjestysnumeroita. Jokainen ele lukee `LocalGestures`ista onko se päällä, joten ruutujen
+parametreihin ei tullut yhtään ehtoa. Siirtyy `Save to file` -tiedostossa. Ks. `docs/UI.md` ›
+*Pyyhkäisy välilehdeltä toiselle*.

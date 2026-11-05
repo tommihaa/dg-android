@@ -1,5 +1,6 @@
 package fi.tommi.dg.app.session
 
+import fi.tommi.dg.domain.Phrase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -16,9 +17,18 @@ import kotlinx.coroutines.flow.asStateFlow
  * Säilö ([PhraseStore]) kantaa listan käynnistysten yli; tämä kantaa sen session ajan ja
  * kirjoittaa jokaisen muutoksen heti säilöön.
  */
-class PhraseBook(private val store: PhraseStore) {
+class PhraseBook(
+    private val store: PhraseStore,
+    /** Lisäyshetken kello. Parametrina, jotta testi voi antaa saman hetken kahdesti. */
+    private val now: () -> Long = System::currentTimeMillis,
+) {
 
-    private val _phrases = MutableStateFlow(store.get())
+    private val _entries = MutableStateFlow(Phrase.ordered(store.get()))
+
+    /** Fraasit lisäyshetkineen, vanhin ensin. Viennin lähde (`ArchiveFile.phrases`). */
+    val entries: StateFlow<List<Phrase>> = _entries.asStateFlow()
+
+    private val _phrases = MutableStateFlow(_entries.value.map { it.text })
 
     /**
      * Fraasit tallennusjärjestyksessä. Tyhjä lista on tyhjä eikä palaudu oletukseen
@@ -37,30 +47,49 @@ class PhraseBook(private val store: PhraseStore) {
     fun add(text: String) {
         val phrase = normalize(text)
         if (phrase.isEmpty() || phrase in _phrases.value) return
-        _phrases.value = _phrases.value + phrase
-        store.save(_phrases.value)
+        write(_entries.value + Phrase(phrase, now()))
     }
 
     /**
-     * Tuonti tiedostosta: liittää listan loppuun ne fraasit joita ei vielä ole, samassa
-     * järjestyksessä kuin tiedostossa. Laitteen omat napit pysyvät paikoillaan (Tommin
-     * päätös 16.9.2026: tuonti vain lisää). Vertailu on [normalize]n muodossa, sama sääntö
-     * jolla ruutu päättää onko kentän teksti jo nappi.
+     * Tuonti tiedostosta: lisää ne fraasit joita ei vielä ole ja järjestää listan lisäyshetken
+     * mukaan (Tommin vahvistus 20.10.2026, `docs/AVOIMET.md`). Jos sama fraasi on jo
+     * laitteella, sen hetkeksi jää aikaisempi. **Poikkeus "tuonti vain lisää" -sääntöön
+     * (16.9.2026) koskee vain järjestystä:** laitteen omia nappeja voi siirtyä, mutta mitään
+     * ei poisteta eikä tekstiä muuteta. Näin kahden laitteen ristiintuonti päätyy samaan
+     * järjestykseen kummassakin. Vertailu on [normalize]n muodossa, sama sääntö jolla ruutu
+     * päättää onko kentän teksti jo nappi.
      *
      * @return kuinka monta fraasia lisättiin.
      */
-    fun addMissing(phrases: List<String>): Int {
-        val fresh = phrases.map(::normalize).filter { it.isNotEmpty() }.distinct() - _phrases.value.toSet()
-        if (fresh.isEmpty()) return 0
-        _phrases.value = _phrases.value + fresh
-        store.save(_phrases.value)
-        return fresh.size
+    fun addMissing(phrases: List<Phrase>): Int {
+        val byText = LinkedHashMap<String, Phrase>()
+        for (own in _entries.value) byText[own.text] = own
+        var added = 0
+        for (incoming in phrases) {
+            val text = normalize(incoming.text)
+            if (text.isEmpty()) continue
+            val own = byText[text]
+            if (own == null) {
+                byText[text] = Phrase(text, incoming.addedAtEpochMillis)
+                added++
+            } else if (incoming.addedAtEpochMillis < own.addedAtEpochMillis) {
+                byText[text] = own.copy(addedAtEpochMillis = incoming.addedAtEpochMillis)
+            }
+        }
+        val merged = Phrase.ordered(byText.values.toList())
+        if (merged != _entries.value) write(merged)
+        return added
     }
 
     fun remove(phrase: String) {
         if (phrase !in _phrases.value) return
-        _phrases.value = _phrases.value - phrase
-        store.save(_phrases.value)
+        write(_entries.value.filterNot { it.text == phrase })
+    }
+
+    private fun write(phrases: List<Phrase>) {
+        _entries.value = phrases
+        _phrases.value = phrases.map { it.text }
+        store.save(phrases)
     }
 
     companion object {

@@ -32,6 +32,12 @@ interface PlayerRatingStore {
     /** Kirjaa nimen ja käyttäjänumeron parit sivuilta, joilla molemmat näkyvät. */
     fun recordNames(names: Map<String, String>) = Unit
 
+    /**
+     * Käyttäjänumero nimellä samasta hakemistosta kuin [ratingByName], tai null. Nimi on
+     * linkki profiiliin myös sivuilla jotka antavat pelkän nimen (Tommin tilaus 2.11.2026).
+     */
+    fun userIdByName(name: String): String? = null
+
     companion object {
         /** Ei muista mitään. Näkymämallien oletus, jotta testit eivät tarvitse varastoa. */
         val NONE: PlayerRatingStore = object : PlayerRatingStore {
@@ -66,6 +72,8 @@ class SharedPrefsPlayerRatings(private val prefs: SharedPreferences) : PlayerRat
 
     override fun ratingByName(name: String): Double? =
         prefs.getString(nameKey(name), null)?.let(::rating)
+
+    override fun userIdByName(name: String): String? = prefs.getString(nameKey(name), null)
 
     override fun recordNames(names: Map<String, String>) {
         val edit = prefs.edit()

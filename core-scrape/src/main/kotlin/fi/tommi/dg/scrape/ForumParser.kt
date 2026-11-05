@@ -320,6 +320,9 @@ object ForumParser {
             author = PlayerRef(
                 name = authorLink?.text()?.trim()?.takeIf { it.isNotEmpty() },
                 userId = authorLink?.let { SiteIds.userId(it.attr("href")) },
+                // Sivun oma linkki sellaisenaan: allekirjoituksen napautus avaa profiilin
+                // (Tommin tilaus 2.11.2026). Ennen tätä polku jäi pois, ja napautus oli kuollut.
+                profilePath = authorLink?.attr("href")?.takeIf { it.isNotBlank() },
             ),
             postedAtText = authorLink?.let {
                 val afterName = signatureText.substringAfter(it.text(), missingDelimiterValue = "")

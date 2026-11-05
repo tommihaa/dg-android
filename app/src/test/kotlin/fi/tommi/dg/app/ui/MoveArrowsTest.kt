@@ -77,6 +77,15 @@ class MoveArrowsTest {
     }
 
     @Test
+    fun `himmennys osuu muurin sarakkeeseen molemmissa suunnissa`() {
+        // Sarake 6 on muuri: 600..700 px peilaamattomana.
+        assertEquals(600f to 700f, barColumnBounds(kehys))
+        // Peilattuna pelialue alkaa lokeron ja kaistan jälkeen (200 + 50 px), sarake on 100 px.
+        val peilattu = kehys.copy(width = 1550f, trayWidth = 200f, bandWidth = 50f, mirrored = true)
+        assertEquals(850f to 950f, barColumnBounds(peilattu))
+    }
+
+    @Test
     fun `vastustajan siirto ja latausrivi naytetaan vain ennen omaa askelta`() {
         // sessio-29-9-ackammon: esipoimittu pakkosiirto on koottu askel, joten latausrivi
         // ei saa näkyä sen päällä. Ehto on sama kuin vastustajan nuolilla.
