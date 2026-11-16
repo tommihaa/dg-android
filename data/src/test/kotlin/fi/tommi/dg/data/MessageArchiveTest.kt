@@ -3,9 +3,11 @@ package fi.tommi.dg.data
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import fi.tommi.dg.data.db.DgDatabase
+import fi.tommi.dg.domain.FormMethod
 import fi.tommi.dg.domain.MatchId
 import fi.tommi.dg.domain.Message
 import fi.tommi.dg.domain.MessageSource
+import fi.tommi.dg.domain.ReplyForm
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import kotlinx.coroutines.flow.first
@@ -108,6 +110,27 @@ class MessageArchiveTest {
         assertEquals(listOf("Good roll"), arkisto.observeAll(TILI).first().map { it.body })
         assertEquals(listOf("Great match!"), arkisto.observeAll("toinen").first().map { it.body })
         assertEquals(0, arkisto.addMissing(listOf(vanha), TILI))
+    }
+
+    @Test
+    fun `tuonti taydentaa puuttuvan vastauslomakkeen muttei korvaa olemassa olevaa`() = runTest {
+        // Tommin valinta 8.11.2026: ennen versiota 7 tuotuun viestiin saa vastauskyvyn uudella
+        // tuonnilla. Rivi pysyy muuten ennallaan, eikä jo olemassa olevaa lomaketta korvata.
+        val lomake = ReplyForm("/bg/sendmsg/33060", FormMethod.POST, "text", 80)
+        val ilman = viesti("Good roll", receivedAt = 1_000)
+        val omalla = viesti("Great match!", receivedAt = 2_000).copy(replyForm = lomake)
+        arkisto.archive(listOf(ilman, omalla), TILI)
+
+        val lisatty = arkisto.addMissing(
+            listOf(ilman.copy(replyForm = lomake), omalla.copy(replyForm = lomake.copy(action = "/bg/sendmsg/1"))),
+            "toinen",
+        )
+
+        assertEquals(0, lisatty)
+        val kannassa = arkisto.observeAll(TILI).first().associateBy { it.body }
+        assertEquals(lomake, kannassa.getValue("Good roll").replyForm)
+        assertEquals(lomake, kannassa.getValue("Great match!").replyForm)
+        assertEquals(2, arkisto.count())
     }
 
     @Test

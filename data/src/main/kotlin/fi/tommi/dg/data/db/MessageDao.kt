@@ -26,6 +26,19 @@ interface MessageDao {
     suspend fun insertIfNew(messages: List<MessageEntity>): List<Long>
 
     /**
+     * Vastauslomake jo kannassa olevaan viestiin, vain jos sillä ei vielä ole lomaketta
+     * (Tommin valinta 8.11.2026, ks. `MessageArchive.addMissing`). Olemassa olevaa
+     * lomaketta ei korvata, eikä muuhun riviin kosketa.
+     *
+     * @return 1 jos lomake kirjoitettiin, muuten 0.
+     */
+    @Query(
+        "UPDATE messages SET replyAction = :action, replyMethod = :method, replyField = :field, " +
+            "replyMaxLength = :maxLength WHERE id = :id AND replyAction IS NULL",
+    )
+    suspend fun fillReplyForm(id: String, action: String, method: String, field: String, maxLength: Int?): Int
+
+    /**
      * Kirjautuneen tilin arkisto uusin ensin.
      *
      * **Tilillä rajattu 16.9.2026 alkaen**, ks. [MessageEntity.account]. `null`-tili ei

@@ -1,6 +1,7 @@
 package fi.tommi.dg.app.ui
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -35,8 +36,14 @@ import fi.tommi.dg.domain.SeenMatch
  * **Tämä on lukulista eikä työkalu** (Tommin toive 15.9.2026 illalla: *"ottelun jälkeen
  * näkisi mark-positiot, joita analyysin tullessa muistaisi uudelleen pohtia"*). Rivi kertoo
  * mistä kohdasta `.mat`-tiedostoa asema löytyy analyysiohjelmassa, eli pelin pistetilanteen
- * ja siirtonumeron, sekä sanan jonka pelaaja kirjoitti. Lauta ei avaudu tästä, koska
- * ottelu on tyypillisesti jo päättynyt eikä sivustolla ole aseman osoitetta.
+ * ja siirtonumeron, sekä sanan jonka pelaaja kirjoitti.
+ *
+ * **`View` avaa sivuston katselulaudan merkityssä asemassa** (Tommin pyyntö 9.11.2026,
+ * *"Active Game-tyylisenä linkkinä joka vie juuri siihen asemaan"*; sana Tommin valinta).
+ * Tähän asti tässä luki ettei sivustolla ole aseman osoitetta. Se oli totta kirjoitettaessa
+ * 15.9.2026, mutta katselulaudan asemaosoite mitattiin 8.11.2026 ([MarkedPosition.viewerPath]).
+ * Nappi on ääriviivapilleri kuten turnausrivin `Active Game` (`docs/UI.md` › *Rivin teot
+ * ääriviivapillereinä*).
  *
  * **Ottelu nimetään ottelumuistista** (`MatchMemory`), samoin kuin turnauslistassa: merkki
  * kantaa vain ottelun numeron, ja vastustaja sekä turnaus luetaan siitä mitä sovellus
@@ -52,6 +59,7 @@ fun MarksScreen(
     marks: List<MarkedPosition>,
     remembered: Map<MatchId, SeenMatch>,
     onRemove: (Long) -> Unit,
+    onOpenPath: (String) -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -81,19 +89,23 @@ fun MarksScreen(
             contentPadding = PaddingValues(bottom = 16.dp),
         ) {
             item {
-                Text(
-                    text = stringResource(R.string.marks_explain),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                )
+                SelectionContainer {
+                    Text(
+                        text = stringResource(R.string.marks_explain),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    )
+                }
             }
             if (groups.isEmpty()) {
                 item {
-                    Text(
-                        text = stringResource(R.string.marks_empty),
-                        modifier = Modifier.padding(16.dp),
-                    )
+                    SelectionContainer {
+                        Text(
+                            text = stringResource(R.string.marks_empty),
+                            modifier = Modifier.padding(16.dp),
+                        )
+                    }
                 }
                 return@DgLazyColumn
             }
@@ -102,7 +114,7 @@ fun MarksScreen(
                     MatchHeading(matchId = matchId, seen = remembered[matchId])
                 }
                 items(rows, key = { it.id }, contentType = { DgStripedRow }) { mark ->
-                    MarkRow(mark = mark, onRemove = onRemove)
+                    MarkRow(mark = mark, onRemove = onRemove, onOpenPath = onOpenPath)
                 }
             }
         }
@@ -155,10 +167,10 @@ private fun MatchHeading(matchId: MatchId, seen: SeenMatch?) {
  * samannäköisiä ja kahden tekstirivin korkuisia, joten ilman viivaa raja ei näy.
  */
 @Composable
-private fun MarkRow(mark: MarkedPosition, onRemove: (Long) -> Unit) {
+private fun MarkRow(mark: MarkedPosition, onRemove: (Long) -> Unit, onOpenPath: (String) -> Unit) {
     val removeLabel = stringResource(R.string.marks_remove)
     Row(
-        modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 4.dp, bottom = 4.dp),
+        modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(modifier = Modifier.weight(1f)) {
@@ -180,13 +192,20 @@ private fun MarkRow(mark: MarkedPosition, onRemove: (Long) -> Unit) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        TextButton(
+        RowPillButton(
+            label = stringResource(R.string.marks_view),
+            onClick = { onOpenPath(mark.viewerPath) },
+            modifier = Modifier.padding(start = 8.dp),
+        )
+        // `Remove` pillerinä raksin tilalla (Tommin pyyntö ja sana 9.11.2026). Sana on Remove
+        // eikä Delete, koska Delete on sovelluksessa Inboxin roskakoripoisto jossa on Undo,
+        // ja merkin poisto on suora. Ruudunlukija kuulee yhä `Remove mark`, koska rivejä on
+        // monta ja pelkkä sana ei kerro mitä poistetaan.
+        RowPillButton(
+            label = stringResource(R.string.marks_remove_button),
             onClick = { onRemove(mark.id) },
-            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
-            modifier = Modifier.semantics { contentDescription = removeLabel },
-        ) {
-            Text(text = "×", style = MaterialTheme.typography.bodyMedium)
-        }
+            modifier = Modifier.padding(start = 8.dp).semantics { contentDescription = removeLabel },
+        )
     }
     HorizontalDivider()
 }

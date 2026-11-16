@@ -3,6 +3,7 @@ package fi.tommi.dg.app.ui
 import android.content.res.Configuration
 import androidx.annotation.StringRes
 import androidx.compose.foundation.background
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.clickable
 import android.provider.Settings
 import androidx.compose.animation.core.Animatable
@@ -114,6 +115,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.isOutOfBounds
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.Layout
@@ -252,7 +254,7 @@ fun BoardScreen(
      * Havainto on 31.8.2026 laiteajosta, ks. `docs/AVOIMET.md`.
      */
     onBack: () -> Unit = {},
-    /** Tämän pelin muistutukset, vanhin ensin. Ks. [ReminderStrip]. */
+    /** Tämän pelin muistutukset, vanhin ensin. Ks. [ReminderList]. */
     reminders: List<Reminder> = emptyList(),
     onAddReminder: (String) -> Unit = {},
     onRemoveReminder: (Long) -> Unit = {},
@@ -269,6 +271,8 @@ fun BoardScreen(
      * peilaamatta, joten kutsuja joka ei anna näitä saa saman laudan kuin ennen tiloja.
      */
     style: BoardStyle = BoardStyle.SITE,
+    /** Nappulan vaalea ja tumma sivuston puolen mukaan, ks. [BoardLook.siteSides]. */
+    checkersBySite: Boolean = false,
     /** Sivuston lautaan vaikuttavat asetukset laitteen säilöstä. Ks. [BoardLook.of]. */
     siteSettings: SiteBoardSettings = SiteBoardSettings.UNKNOWN,
     /**
@@ -290,6 +294,10 @@ fun BoardScreen(
     nextOnDice: Boolean = false,
     /** `Mark position`, `Reminders` ja `Cube reminder` näkyvissä (9.10.2026), ks. `BoardExtrasStore`. */
     boardExtras: Boolean = true,
+    /** Sivun `Swap Dice` laudalla (Tommin päätös 12.11.2026), ks. `BoardExtrasStore`. */
+    swapDiceShown: Boolean = true,
+    /** Sivun `Skip Game` laudalla (Tommin päätös 12.11.2026), ks. `BoardExtrasStore`. */
+    skipGameShown: Boolean = true,
     /** Siirtonuolet kootusta siirrosta (Tommi 29.9.2026, `MoveArrowsStore`). Oletus pois. */
     moveArrows: Boolean = false,
     /** Painetun pisteen numero laudan reunassa (Tommi 4.10.2026, `PointPressStore`). Oletus pois. */
@@ -445,6 +453,7 @@ fun BoardScreen(
                             LoadedBoard(
                                 state,
                                 style = style,
+                                checkersBySite = checkersBySite,
                                 siteSettings = siteSettings,
                                 diceStyle = diceStyle,
                                 scoreStyle = scoreStyle,
@@ -453,6 +462,8 @@ fun BoardScreen(
                                 diceRollTap = diceRollTap,
                                 nextOnDice = nextOnDice,
                                 boardExtras = boardExtras,
+                                swapDiceShown = swapDiceShown,
+                                skipGameShown = skipGameShown,
                                 moveArrows = moveArrows,
                                 pointPress = pointPress,
                                 onPointMiss = { playSound(WoodSound.MISS) },
@@ -567,11 +578,13 @@ private fun PendingBar(
             Card(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
             ) {
-                Text(
-                    text = stringResource(R.string.board_pending_gone),
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(12.dp),
-                )
+                SelectionContainer {
+                    Text(
+                        text = stringResource(R.string.board_pending_gone),
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(12.dp),
+                    )
+                }
             }
         }
         return
@@ -589,17 +602,21 @@ private fun PendingBar(
         val resolvesItself = !pending.dependsOnAssembly
 
         Column(modifier = Modifier.padding(12.dp)) {
-            Text(
-                text = stringResource(R.string.board_pending_title, pending.submit),
-                style = MaterialTheme.typography.titleSmall,
-            )
-            Text(
-                text = stringResource(
-                    if (resolvesItself) R.string.board_pending_body
-                    else R.string.board_pending_body_assembled,
-                ),
-                style = MaterialTheme.typography.bodySmall,
-            )
+            SelectionContainer {
+                Text(
+                    text = stringResource(R.string.board_pending_title, pending.submit),
+                    style = MaterialTheme.typography.titleSmall,
+                )
+            }
+            SelectionContainer {
+                Text(
+                    text = stringResource(
+                        if (resolvesItself) R.string.board_pending_body
+                        else R.string.board_pending_body_assembled,
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
         }
     }
 }
@@ -859,26 +876,32 @@ private fun MatchOverContent(
                 }
             }
         }
-        Text(
-            text = page.resultText,
-            style = MaterialTheme.typography.titleLarge,
-            color = LocalPanelLook.current.text,
-            modifier = Modifier.padding(top = 4.dp, bottom = 8.dp),
-        )
-        if (page.predicted) {
+        SelectionContainer {
             Text(
-                text = stringResource(R.string.match_over_predicted),
-                style = MaterialTheme.typography.bodySmall,
-                color = LocalPanelLook.current.secondary,
-                modifier = Modifier.padding(bottom = 8.dp),
+                text = page.resultText,
+                style = MaterialTheme.typography.titleLarge,
+                color = LocalPanelLook.current.text,
+                modifier = Modifier.padding(top = 4.dp, bottom = 8.dp),
             )
         }
+        if (page.predicted) {
+            SelectionContainer {
+                Text(
+                    text = stringResource(R.string.match_over_predicted),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = LocalPanelLook.current.secondary,
+                    modifier = Modifier.padding(bottom = 8.dp),
+                )
+            }
+        }
         page.matchLength?.let { length ->
-            Text(
-                text = stringResource(R.string.match_over_length, length),
-                style = MaterialTheme.typography.bodySmall,
-                color = LocalPanelLook.current.secondary,
-            )
+            SelectionContainer {
+                Text(
+                    text = stringResource(R.string.match_over_length, length),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = LocalPanelLook.current.secondary,
+                )
+            }
         }
         // Lomakkeeton viestikortti tuloksen ja pisterivien väliin (Tommin valinta 3.10.2026,
         // vertailukuvat `raakasivut/sessio-3-10-ilta/kuori/viestikortti-*`). Ruutu luetaan
@@ -923,12 +946,14 @@ private fun MatchOverContent(
                 !name.equals(matchReply.selfName, ignoreCase = true)
             if (canReply && replyTo != name) {
                 if (replySent) {
-                    Text(
-                        text = stringResource(R.string.page_message_sent),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = LocalPanelLook.current.secondary,
-                        modifier = Modifier.padding(top = 4.dp),
-                    )
+                    SelectionContainer {
+                        Text(
+                            text = stringResource(R.string.page_message_sent),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = LocalPanelLook.current.secondary,
+                            modifier = Modifier.padding(top = 4.dp),
+                        )
+                    }
                 } else {
                     // Nappi pisterivin alla eikä vieressä: puhelimen kapealla ruudulla rivi on
                     // nimi ja luku, ja nappi sen perässä rikkoisi rivin. Laajennus lisää sen
@@ -1102,13 +1127,15 @@ private fun ChatCard(
                     Text(text = incoming, style = MaterialTheme.typography.bodyMedium)
                 }
                 sentReply?.let { reply ->
-                    Text(
-                        text = reply,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.End,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
+                    SelectionContainer {
+                        Text(
+                            text = reply,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.End,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
                 }
             }
 
@@ -1153,11 +1180,13 @@ private fun ChatCard(
                         }
                     }
 
-                    Text(
-                        text = stringResource(R.string.board_chat_send_explain),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    SelectionContainer {
+                        Text(
+                            text = stringResource(R.string.board_chat_send_explain),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
 
                 // Ilman lomaketta ei ole Replyta eikä nappeja: sivun omat napit piirtää silloin
@@ -1237,6 +1266,7 @@ private fun NotABoardKind.text(): String = when (this) {
 private fun LoadedBoard(
     state: BoardUiState.Loaded,
     style: BoardStyle,
+    checkersBySite: Boolean,
     siteSettings: SiteBoardSettings,
     diceStyle: DiceStyle,
     scoreStyle: ScoreStyle,
@@ -1249,6 +1279,10 @@ private fun LoadedBoard(
     nextOnDice: Boolean,
     /** Ks. `BoardExtrasStore`: sovelluksen omat lisälinkit paneelissa. */
     boardExtras: Boolean,
+    /** Ks. `BoardExtrasStore`: sivun `Swap Dice` -nappi. */
+    swapDiceShown: Boolean,
+    /** Ks. `BoardExtrasStore`: sivun `Skip Game` -nappi. */
+    skipGameShown: Boolean,
     /** Piirretäänkö kootun siirron nuolet, ks. [MoveArrowLayer]. */
     moveArrows: Boolean,
     /** Syttyykö painetun pisteen numero, ks. [PointPress]. */
@@ -1285,8 +1319,12 @@ private fun LoadedBoard(
     // Avausheitto sivun laudalle tässä ja kootulle laudalle `boardNow`issa: pelin
     // ensimmäisellä sivulla vastustajan noppa piirtyy hänen puolelleen, ks.
     // [BoardState.openingRoll] ja `docs/UI.md` › Avausheitto.
-    val board = state.composition?.boardNow(siteDice = diceStyle == DiceStyle.SITE)
+    val boardNow = state.composition?.boardNow(siteDice = diceStyle == DiceStyle.SITE)
         ?: state.board.withOpeningDice()
+    // **Sivun napit piiloon omilla kytkimillään** (Tommin päätös 12.11.2026, `docs/UI.md` ›
+    // *Swap Dice ja Skip Game omille kytkimilleen*). Suodatus on esitykseen menevässä
+    // laudassa eikä tilassa: näkymämallin portti (`linkChangesMatch`) lukee sivun `skipHref`iä.
+    val board = boardShown(boardNow, swapDiceShown = swapDiceShown, skipGameShown = skipGameShown)
 
     // Pisteiden esitys yhtenä johdoksena molemmille kodeille (paneeli ja lokerosarake):
     // null away tarkoittaa scoreTextissä sivun omaa pistekenttää, joten SITE-valinta on
@@ -1317,10 +1355,13 @@ private fun LoadedBoard(
 
     // **Muistutusten kirjoitustila asuu tässä, koska sen kaksi puolta ovat eri paikoissa
     // 24.8.2026 alkaen.** Avaava nappi on laudan toimintorivillä ([ReminderActions]) ja
-    // kenttä laudan alla ([ReminderStrip]). Jos tila jäisi kentän puolelle, nappi ei voisi
+    // kenttä laudan päällä olevassa luettelossa ([ReminderDialog], 7.11.2026 alkaen). Jos tila jäisi kentän puolelle, nappi ei voisi
     // avata sitä, ja jos se jäisi laudan puolelle, kenttä ei näkisi sitä.
     var composing by remember { mutableStateOf(false) }
     var draft by remember { mutableStateOf("") }
+    // Luettelo laudan päällä (Tommin valinta 7.11.2026): rivit eivät ole enää laudan alla.
+    // `composing` on yhä kirjoitustila, ja se kääntää ruudun pystyyn kuten ennenkin.
+    var remindersOpen by remember { mutableStateOf(false) }
     // Merkin kirjoitustila samasta syystä samassa paikassa. Kaksi kenttää eivät ole auki
     // yhtä aikaa, koska laudan alla on tilaa yhdelle riville kerrallaan.
     var marking by remember { mutableStateOf(false) }
@@ -1366,6 +1407,20 @@ private fun LoadedBoard(
     val cubeReminder = reminders.firstOrNull { it.text == cubeText }
     val cubeReminderSet = cubeReminder != null
     val visibleReminders = reminders.filter { it.text != cubeText }
+    // Tyhjällä luettelolla linkki avaa suoraan kentän, koska muuta tehtävää ei ole; se on
+    // sama yksi painallus kuin ennen. Ilman pelin tunnistetta tyhjää luetteloa ei avata,
+    // koska kenttää ei tarjota (ks. [ReminderList]).
+    val openReminders: () -> Unit = {
+        if (visibleReminders.isNotEmpty() || gameKnown) {
+            remindersOpen = true
+            composing = visibleReminders.isEmpty()
+            marking = false
+        }
+    }
+    // Viimeisen rivin poisto sulkee luettelon, ellei kenttä ole auki.
+    LaunchedEffect(visibleReminders.isEmpty(), composing) {
+        if (remindersOpen && visibleReminders.isEmpty() && !composing) remindersOpen = false
+    }
 
     // **Vastustajan omistama kuutio ei kanna muistutusta** (Tommin havainto ja päätös
     // 15.9.2026 päivällä, eino-ottelu: laserkehys ja `Pick me` vastustajan kortissa vaikka
@@ -1490,7 +1545,13 @@ private fun LoadedBoard(
             //
             // Skeema luetaan samasta syystä sivun laudasta: se kertoo mitkä kuvat juuri
             // tällä sivulla olivat. Säilötty asetus on BoardLookin varasuunta, ei tämä.
-            val look = BoardLook.of(style, siteSettings, state.board.scheme, decoLight = decoLightBoard())
+            val look = BoardLook.of(
+                style,
+                siteSettings,
+                state.board.scheme,
+                decoLight = decoLightBoard(),
+                checkersBySite = checkersBySite,
+            )
             val roles = BoardRoles(selfCheckerColor(state.board, state.pips), look)
 
             // **Paneeli saa vain ylijäävän leveyden, ei varattua.** Lauta mitoitetaan ensin,
@@ -1702,10 +1763,8 @@ private fun LoadedBoard(
 
                 if (extrasShown) {
                     ReminderActions(
-                        onToggleComposing = {
-                            composing = !composing
-                            if (composing) marking = false
-                        },
+                        onToggleComposing = openReminders,
+                        reminderCount = visibleReminders.size,
                         onToggleCube = {
                             if (cubeReminder != null) onRemoveReminder(cubeReminder.id)
                             else onAddReminder(cubeText)
@@ -1716,7 +1775,10 @@ private fun LoadedBoard(
                         // samoin kuin kenttää ei tarjota ilman pelin tunnistetta.
                         onToggleMarking = {
                             marking = !marking
-                            if (marking) composing = false
+                            if (marking) {
+                                composing = false
+                                remindersOpen = false
+                            }
                         },
                         showMark = showMark,
                         // Laudan alla linkit ovat rivissä kuten ahtaassa paneelissa: leveyttä on, ja
@@ -1729,16 +1791,19 @@ private fun LoadedBoard(
                         showRefresh = refreshShown,
                         onRefresh = onRefresh,
                     )
-                } else if (refreshShown) {
+                } else if (refreshShown || visibleReminders.isNotEmpty()) {
                     // Lisälinkit piilossa: Refresh yksin, koska haku ei ole lisä vaan ainoa reitti.
+                    // Kirjoitetut muistutukset pitävät linkkinsä (7.11.2026): rivit eivät ole
+                    // enää laudan alla, joten ilman linkkiä niitä ei näkisi missään.
                     ReminderActions(
-                        onToggleComposing = {},
+                        onToggleComposing = openReminders,
                         onToggleCube = {},
                         showCube = false,
                         showMark = false,
-                        showReminders = false,
+                        showReminders = visibleReminders.isNotEmpty(),
+                        reminderCount = visibleReminders.size,
                         compact = compactPanel || panelBelow || !fits,
-                        showRefresh = true,
+                        showRefresh = refreshShown,
                         onRefresh = onRefresh,
                     )
                 }
@@ -1901,70 +1966,91 @@ private fun LoadedBoard(
                     ) { content() }
                 }
             }
+            // **Paneeli siirtokäden vastakkaiselle puolelle** (Tommin päätös 9.9.2026:
+            // *"korjataan kaanoni, nimeä se kätisyydeksi"*). Oikeakätisellä paneeli on
+            // vasemmalla ja vasenkätisellä oikealla; peilaus ei siirrä sitä lainkaan.
+            //
+            // Tämä korvaa 8.9.2026 säännön joka luki puolen [BoardLook.mirrored]ista.
+            // Peruste kumoutui käytössä: peilatessa siirtokäsi ei vaihdu, vain paneeli
+            // siirtyy, ja se vie paneelin sen käden alle jolla nappuloita liikutetaan
+            // (`SUBSTANSSI.md` kohta 103). Lokerosarake seuraa yhä peilausta, koska se
+            // on laudan osa eikä käden alla.
+            val panelOnRight = leftHanded
+            // Omistettu kuutio paneelin korttiin (Tommin valinta 14.9.2026 illalla, B).
+            // Ehdot ovat samat kuin laudan omat: tarjottu kuutio menee kaistalle ja
+            // omistamaton muurille, ja vain omistettu tarjoamaton on kortissa.
+            val cubeOwnedHere = board.cube?.position == CubePosition.TOP ||
+                board.cube?.position == CubePosition.BOTTOM
+            val cubeOfferedHere = board.form?.submits?.contains(ACCEPT_SUBMIT) == true
+            val panelCube = shownCube(board).takeIf { fits && cubeOwnedHere && !cubeOfferedHere }
+            val panelOnCube: (() -> Unit)? = when {
+                board.form?.submits?.contains(DOUBLE_SUBMIT) == true ->
+                    ({ pressCube(DOUBLE_SUBMIT, verifyBox.isChecked(DOUBLE_SUBMIT)) })
+                else -> null
+            }
+            // Leveys parametrina, koska sama paneeli piirtyy myös laudan päälle reunapyyhkäisyllä
+            // kun se ei mahdu viereen (Tommin valinta 7.11.2026, ks. [PANEL_PEEK_MS]).
+            val panelOf: @Composable (Dp) -> Unit = { width ->
+                SidePanel(
+                    board = state.board,
+                    compact = compactPanel,
+                    roundLabel = state.roundLabel,
+                    roles = roles,
+                    pips = state.pips,
+                    checkers = state.checkers,
+                    awayOf = awayOf,
+                    onOpenPage = onOpenPage,
+                    // Sama sääntö kuin laudalla ([cubeOnStrip]): omistettu ja
+                    // tarjoamaton kuutio ei ole kaistalla, ja paneelin ollessa se
+                    // on omistajan kortissa eikä muurin päässä.
+                    panelCube = panelCube,
+                    onCube = panelOnCube,
+                    cubeReminder = cubeReminderShown,
+                    modifier = if (panelBelow) {
+                        Modifier.width(frameWidth).height(panelBelowHeight)
+                    } else {
+                        Modifier.width(width).fillMaxHeight()
+                    },
+                    actions = reminderActions,
+                    actionsPresent = panelActionsPresent,
+                    // Napit vasempaan reunaan peukalon alle (Tommin päätös 2.9.2026).
+                    // Sama chat-kortin ehto kuin keskikaistalla.
+                    formActions = {
+                        PanelActionStack(
+                            board,
+                            onFollow = onFollow,
+                            onPress = pressChecked,
+                            verify = verifyBox,
+                            // Kaistalla oleva nappipari kantaa myös odotuksen kaaren.
+                            showSubmits = !chatCardVisible && !nextOnBand,
+                            busy = state.refreshing && !nextOnBand,
+                            arc = arcLookOf(roles),
+                            compact = compactPanel,
+                        )
+                    },
+                    showNotes = situationSlot == null,
+                )
+            }
+            val panel: @Composable () -> Unit = { panelOf(panelWidth) }
+            // **Paneeli laudan päälle `Players`-linkillä kun se ei mahdu** (Tommin päätös
+            // 7.11.2026, palstan havainnon jälkeen: kapealla puhelimella nimet ja pisteet eivät
+            // olleet ruudulla missään). Linkki on keskikaistan ryhmän lopussa. Paneeli katoaa
+            // napautuksella sen ulkopuolelle tai itsestään, kun siihen ei ole koskettu
+            // [PANEL_PEEK_MS]:iin. Reunapyyhkäisy oli ensimmäinen versio samana iltana, ja se
+            // vaihtui näkyvään linkkiin: sovelluksen omat eleet ovat oletuksena pois, eikä
+            // näkymätöntä elettä löydä lukematta ohjetta.
+            val peekAllowed = !fits && !panelBelow
+            var peek by remember { mutableStateOf(false) }
+            var peekTouch by remember { mutableStateOf(0) }
+            LaunchedEffect(peek, peekTouch) {
+                if (peek) {
+                    delay(PANEL_PEEK_MS)
+                    peek = false
+                }
+            }
+            if (!peekAllowed && peek) peek = false
+            Box(modifier = Modifier.fillMaxSize()) {
             arrange {
-                // **Paneeli siirtokäden vastakkaiselle puolelle** (Tommin päätös 9.9.2026:
-                // *"korjataan kaanoni, nimeä se kätisyydeksi"*). Oikeakätisellä paneeli on
-                // vasemmalla ja vasenkätisellä oikealla; peilaus ei siirrä sitä lainkaan.
-                //
-                // Tämä korvaa 8.9.2026 säännön joka luki puolen [BoardLook.mirrored]ista.
-                // Peruste kumoutui käytössä: peilatessa siirtokäsi ei vaihdu, vain paneeli
-                // siirtyy, ja se vie paneelin sen käden alle jolla nappuloita liikutetaan
-                // (`SUBSTANSSI.md` kohta 103). Lokerosarake seuraa yhä peilausta, koska se
-                // on laudan osa eikä käden alla.
-                val panelOnRight = leftHanded
-                // Omistettu kuutio paneelin korttiin (Tommin valinta 14.9.2026 illalla, B).
-                // Ehdot ovat samat kuin laudan omat: tarjottu kuutio menee kaistalle ja
-                // omistamaton muurille, ja vain omistettu tarjoamaton on kortissa.
-                val cubeOwnedHere = board.cube?.position == CubePosition.TOP ||
-                    board.cube?.position == CubePosition.BOTTOM
-                val cubeOfferedHere = board.form?.submits?.contains(ACCEPT_SUBMIT) == true
-                val panelCube = shownCube(board).takeIf { fits && cubeOwnedHere && !cubeOfferedHere }
-                val panelOnCube: (() -> Unit)? = when {
-                    board.form?.submits?.contains(DOUBLE_SUBMIT) == true ->
-                        ({ pressCube(DOUBLE_SUBMIT, verifyBox.isChecked(DOUBLE_SUBMIT)) })
-                    else -> null
-                }
-                val panel: @Composable () -> Unit = {
-                    SidePanel(
-                        board = state.board,
-                        compact = compactPanel,
-                        roundLabel = state.roundLabel,
-                        roles = roles,
-                        pips = state.pips,
-                        checkers = state.checkers,
-                        awayOf = awayOf,
-                        onOpenPage = onOpenPage,
-                        // Sama sääntö kuin laudalla ([cubeOnStrip]): omistettu ja
-                        // tarjoamaton kuutio ei ole kaistalla, ja paneelin ollessa se
-                        // on omistajan kortissa eikä muurin päässä.
-                        panelCube = panelCube,
-                        onCube = panelOnCube,
-                        cubeReminder = cubeReminderShown,
-                        modifier = if (panelBelow) {
-                            Modifier.width(frameWidth).height(panelBelowHeight)
-                        } else {
-                            Modifier.width(panelWidth).fillMaxHeight()
-                        },
-                        actions = reminderActions,
-                        actionsPresent = panelActionsPresent,
-                        // Napit vasempaan reunaan peukalon alle (Tommin päätös 2.9.2026).
-                        // Sama chat-kortin ehto kuin keskikaistalla.
-                        formActions = {
-                            PanelActionStack(
-                                board,
-                                onFollow = onFollow,
-                                onPress = pressChecked,
-                                verify = verifyBox,
-                                // Kaistalla oleva nappipari kantaa myös odotuksen kaaren.
-                                showSubmits = !chatCardVisible && !nextOnBand,
-                                busy = state.refreshing && !nextOnBand,
-                                arc = arcLookOf(roles),
-                                compact = compactPanel,
-                            )
-                        },
-                        showNotes = situationSlot == null,
-                    )
-                }
                 if (fits && !panelOnRight && !panelBelow) {
                     panel()
                     Spacer(modifier = Modifier.width(SIDE_PANEL_GAP))
@@ -2038,7 +2124,6 @@ private fun LoadedBoard(
                     // otteluluettelokin näyttää vain nimen ja polun.
                     playerFactsInTray = showTrayFacts,
                     ownedCubeInPanel = panelCube != null,
-                    pipsOnBar = fits,
                     // Kootun aseman pipit ovat `board`issa, sivun luvut tässä vertailua varten.
                     pagePips = state.board.players.map { it.pips },
                     cubeReminder = cubeReminderShown,
@@ -2046,7 +2131,28 @@ private fun LoadedBoard(
                     verifyHintSlot = hintSlot,
                     onDismissVerifyHint = { verifyHint = null },
                     // Tyhjä kun paneeli on: napit ovat siellä eivätkä molemmissa.
-                    middleTrailing = if (fits) ({}) else reminderActions,
+                    // **Ilman paneelia kaistalla vain sivun napit ja `Players`** (Tommin valinta
+                    // 12.11.2026, palstan pelaajan XA2 640x360 dp). Seitsemän alkiota (sivun napit, kolme
+                    // lisälinkkiä, `Refresh`, `Players`) ei mahtunut puoliskolle edes kiilojen
+                    // päälle, ja rivi vieri `Players` näkymättömissä (kuorikaappaus 12.11.2026).
+                    // Sovelluksen omat linkit ovat `Players`in avaamassa paneelissa, joka on sama
+                    // [panelOf] kuin leveällä ruudulla, joten mikään ei katoa.
+                    middleTrailing = if (fits) ({}) else ({
+                        siteButtons()
+                        if (peekAllowed) {
+                            TextButton(
+                                onClick = {
+                                    peek = !peek
+                                    peekTouch++
+                                },
+                                modifier = LocalPanelLook.current.textBacking.takeIf { it.isSpecified }
+                                    ?.let { Modifier.background(it, RoundedCornerShape(4.dp)) } ?: Modifier,
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+                            ) {
+                                LinkText(stringResource(R.string.board_players_link))
+                            }
+                        }
+                    }),
                     // Sama sääntö toisella akselilla: chat-kortin ollessa näkyvissä sivun
                     // lomakkeen napit ovat kortissa eivätkä molemmissa. Ehto on kortin
                     // näkyvyys eikä lomakkeen olemassaolo: piirtämätön kortti ei omista
@@ -2061,6 +2167,8 @@ private fun LoadedBoard(
                     middleShowSkip = false,
                     // Napit ovat paneelissa kun paneeli on (2.9.2026), muuten kaistalla.
                     middleShowActions = !fits,
+                    // Avausheitto yhdelle puoliskolle kun napit ovat kaistalla, ks. [MiddleStrip].
+                    middleOpeningStarter = state.board.openingRoll?.starter.takeIf { !fits },
                     middleNextOnDice = nextOnBand,
                     // Syy on tilarivi eikä napin vieressä (26.9.2026, [stripNotes]).
                     unconfirmedRefresh = unconfirmedRefresh,
@@ -2143,14 +2251,16 @@ private fun LoadedBoard(
                                 color = LocalPanelLook.current.outline.copy(alpha = 0.6f),
                             )
                             panelNotes.forEach { note ->
-                                Text(
-                                    text = note.text,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = note.color,
-                                    fontWeight = if (note.bold) FontWeight.Bold else null,
-                                    textAlign = TextAlign.Center,
-                                    modifier = Modifier.fillMaxWidth(),
-                                )
+                                SelectionContainer {
+                                    Text(
+                                        text = note.text,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = note.color,
+                                        fontWeight = if (note.bold) FontWeight.Bold else null,
+                                        textAlign = TextAlign.Center,
+                                        modifier = Modifier.fillMaxWidth(),
+                                    )
+                                }
                             }
                             panelHint?.let { VerifyHintRow(text = it, onDismiss = { verifyHint = null }) }
                         }
@@ -2158,6 +2268,52 @@ private fun LoadedBoard(
                     }
                     }
                 }
+            }
+            if (peekAllowed) {
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = peek,
+                    enter = androidx.compose.animation.slideInHorizontally { if (panelOnRight) it else -it },
+                    exit = androidx.compose.animation.slideOutHorizontally { if (panelOnRight) it else -it },
+                    modifier = Modifier.fillMaxSize(),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            // Napautus paneelin ulkopuolelle sulkee sen eikä osu laudalle.
+                            .pointerInput(panelOnRight) {
+                                val panelPx = SIDE_PANEL_MAX.toPx()
+                                awaitEachGesture {
+                                    val down = awaitFirstDown(requireUnconsumed = false)
+                                    val outside = if (panelOnRight) down.position.x < size.width - panelPx else down.position.x > panelPx
+                                    if (outside) {
+                                        down.consume()
+                                        peek = false
+                                    }
+                                }
+                            },
+                        contentAlignment = if (panelOnRight) Alignment.CenterEnd else Alignment.CenterStart,
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .background(LocalPanelLook.current.background)
+                                // Kosketus paneelissa pitää sen auki ja menee sen napeille.
+                                .pointerInput(Unit) {
+                                    awaitEachGesture {
+                                        awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                                        peekTouch++
+                                    }
+                                },
+                        ) {
+                            // Paneelin oma enimmäisleveys eikä [DgBoard.INFO_PANEL_WIDTH]: 200 dp:ssä
+                            // linkit rivittyivät kukin omalleen ja viimeinen jäi `Roll Dice`n
+                            // alle (Pixel 8a, 7.11.2026). 240 dp on se leveys jolla paneeli
+                            // piirtyy Pixelin vaakalaudan vieressä.
+                            panelOf(SIDE_PANEL_MAX)
+                        }
+                    }
+                }
+            }
             }
 
                 asked?.let { label ->
@@ -2186,22 +2342,32 @@ private fun LoadedBoard(
             }
         }
 
-        Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-            ReminderStrip(
+        if (remindersOpen) {
+            ReminderDialog(
                 reminders = visibleReminders,
                 // Peli luetaan laudalta yllä eikä välitetä erikseen: sama johdos kuin
                 // näkymämallissa, ja `null` tarkoittaa samaa molemmissa. Ruutu ei siis
                 // tarjoa kenttää siihen mitä näkymämalli ei ottaisi vastaan.
+                gameKnown = gameKnown,
                 composing = composing && gameKnown,
+                onCompose = { composing = true },
                 draft = draft,
                 onDraftChange = { draft = it },
                 onAdd = {
                     onAddReminder(it)
                     draft = ""
                     composing = false
+                    remindersOpen = false
                 },
                 onRemove = onRemoveReminder,
+                onDismiss = {
+                    composing = false
+                    remindersOpen = false
+                },
             )
+        }
+
+        Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
             MarkStrip(
                 marking = marking && gameKnown && board.moveNumber != null,
                 moveNumber = board.moveNumber,
@@ -2221,12 +2387,14 @@ private fun LoadedBoard(
             // molemmat piirtämällä sama tapahtuma näkyi laitteella kahdesti (Tommin havainto
             // 10.8.2026). Rajaus on `plainNotices`issa eikä tässä, ks. `BoardState`.
             board.plainNotices.forEach { notice ->
-                Text(
-                    text = notice,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = LocalPanelLook.current.secondary,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp),
-                )
+                SelectionContainer {
+                    Text(
+                        text = notice,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = LocalPanelLook.current.secondary,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp),
+                    )
+                }
             }
 
             // Toistojonon pituus lukuna, ei linkkinä (Tommin päätös 9.9.2026): haaran
@@ -2256,17 +2424,11 @@ private fun LoadedBoard(
  * kuin [MiddleActionsRow]issa: siellä sanaa ei käännetä koska se on sivun oma sana, tässä
  * sivu ei tiedä koko asiasta mitään.
  *
- * **Yksi koti kaikilla näytöillä**, samalla päätöksellä kuin toimintorivillä 14.8.2026:
- * sisältö asuu laudan alla vierivässä sarakkeessa eikä sivupaneelissa. Paneeli näkyy vain
- * kun leveyttä jää yli, eli puhelimella ei useinkaan lainkaan, ja Tommin pyyntö oli
- * nimenomaan että tämä on käytettävissä. Kaksi kotia olisi kaksi ylläpidettävää
- * leveysehtoa, ja se on juuri se mikä nappien kanssa purettiin.
- *
- * **Kirjoituskenttä on suljettuna oletuksena, ja syy on korkeus.** Lauta kutistuu
- * korkeudesta, joten jokainen pysyvästi näkyvä rivi laudan alla maksaa nappulan kokoa.
- * Suljettuna tämä on yksi nappirivi, ja auki vain silloin kun käyttäjä kirjoittaa.
- * Pikanappi on silti näkyvissä suljettunakin: se on kohdan 25 tavallisin tapaus
- * (`SUBSTANSSI.md`), eikä sitä kannata piilottaa kirjoituskentän taakse.
+ * **Yksi koti kaikilla näytöillä**, samalla päätöksellä kuin toimintorivillä 14.8.2026. Koti
+ * oli laudan alla 23.8.–7.11.2026 ja on nyt luettelo laudan päällä ([ReminderDialog]), jonka
+ * `Reminders`-linkki avaa. Syy on korkeus: lauta kutistuu korkeudesta, ja jokainen rivi
+ * laudan alla maksoi nappulan kokoa koko pelin ajan (Tommi 7.11.2026, Pixelin vaakalauta).
+ * Linkin lukumäärä ja syke ([ReminderActions]) kertovat että muistutus on olemassa.
  *
  * **Muistutus ei kutsu pelaamaan** (`SUBSTANSSI.md` kohta 94). Se näkyy kun pelaaja avaa
  * laudan itse, eikä sovellus ilmoita siitä missään muualla. Hetken valinta on ainoa laadun
@@ -2278,7 +2440,55 @@ private fun LoadedBoard(
  * virhe. Jo kirjoitetut rivit näkyvät silti, koska ne on luettu oikealla tunnisteella.
  */
 @Composable
-private fun ReminderStrip(
+private fun ReminderDialog(
+    reminders: List<Reminder>,
+    gameKnown: Boolean,
+    composing: Boolean,
+    onCompose: () -> Unit,
+    draft: String,
+    onDraftChange: (String) -> Unit,
+    onAdd: (String) -> Unit,
+    onRemove: (Long) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val panelLook = LocalPanelLook.current
+    // Laudan oma tumma paletti eikä teeman pinta, koska rivit ja kenttä on värjätty sillä.
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = panelLook.background,
+        titleContentColor = panelLook.text,
+        textContentColor = panelLook.text,
+        title = { Text(stringResource(R.string.board_reminders_title)) },
+        text = {
+            ReminderList(
+                reminders = reminders,
+                composing = composing,
+                draft = draft,
+                onDraftChange = onDraftChange,
+                onAdd = onAdd,
+                onRemove = onRemove,
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.board_chat_close), color = panelLook.accent)
+            }
+        },
+        // Uusi rivi on oma painalluksensa kun luettelossa on jo rivejä: luettelon avaaminen
+        // lukemista varten ei saa kääntää ruutua pystyyn, ja kenttä tekee sen.
+        dismissButton = if (!composing && gameKnown) {
+            {
+                TextButton(onClick = onCompose) {
+                    Text(stringResource(R.string.board_reminder_new), color = panelLook.accent)
+                }
+            }
+        } else null,
+    )
+}
+
+/** Luettelon sisältö: rivit poistonappeineen ja kirjoitustilassa kenttä, ks. [ReminderDialog]. */
+@Composable
+private fun ReminderList(
     reminders: List<Reminder>,
     composing: Boolean,
     draft: String,
@@ -2286,13 +2496,9 @@ private fun ReminderStrip(
     onAdd: (String) -> Unit,
     onRemove: (Long) -> Unit,
 ) {
-    // **Tyhjänä tämä ei ole mitään, eikä vie riviä.** Ennen 24.8.2026 tässä oli aina
-    // nappirivi, ja se maksoi laudalta korkeutta myös silloin kun muistutuksia ei ollut.
-    if (reminders.isEmpty() && !composing) return
-
     val panelLook = LocalPanelLook.current
     Column(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 2.dp),
+        modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         reminders.forEach { reminder ->
@@ -2455,6 +2661,12 @@ private fun ReminderActions(
     onRefresh: () -> Unit = {},
     /** Epätosi kun lisälinkit on piilotettu ja paikalla on vain `Refresh`. */
     showReminders: Boolean = true,
+    /**
+     * Kirjoitettujen muistutusten määrä ilman kuutiomuistutusta. Nollasta poikkeava näkyy
+     * linkissä (`Reminders (2)`) ja käynnistää sykkeen, koska rivit eivät ole enää laudan
+     * alla (Tommin valinta 7.11.2026, `docs/UI.md`).
+     */
+    reminderCount: Int = 0,
 ) {
     // **Painettava ei saa näyttää samalta kuin luettava** (Tommin päätös 27.8.2026,
     // `docs/UI.md`): sivupaneelissa nämä olivat samanvärisiä kuin ottelun staattiset
@@ -2490,13 +2702,28 @@ private fun ReminderActions(
             LinkText(stringResource(R.string.top_refresh), fill = !compact)
         }
     }
+    // **Syke korvaa rivin** (7.11.2026): avattu lauta kertoo että muistutus on olemassa,
+    // vaikka tekstiä ei näy. Sama kuusi pulssia ja purppura lepokehys kuin kuutiolla ja
+    // asetusten `Update Preferences`illa, ks. [reminderAttention].
+    val ring = reminderAttention(reminderCount > 0).ring
     val reminders: @Composable () -> Unit = {
         TextButton(
             onClick = onToggleComposing,
-            modifier = link,
+            modifier = link.then(
+                if (reminderCount > 0) {
+                    Modifier.border(
+                        BorderStroke(1.dp * (1f + 2f * ring), DgBoard.Palette.CubeLaser),
+                        RoundedCornerShape(4.dp),
+                    )
+                } else Modifier,
+            ),
             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
         ) {
-            LinkText(stringResource(R.string.board_reminders_title), fill = !compact)
+            LinkText(
+                if (reminderCount > 0) stringResource(R.string.board_reminders_count, reminderCount)
+                else stringResource(R.string.board_reminders_title),
+                fill = !compact,
+            )
         }
     }
     val cube: @Composable () -> Unit = {
@@ -2545,7 +2772,7 @@ private fun ReminderActions(
 /**
  * Merkin kirjoituskenttä laudan alla.
  *
- * **Samaa lajia kuin [ReminderStrip] mutta eri elinkaarta** (Tommin toive 15.9.2026 illalla).
+ * **Samaa lajia kuin [ReminderList] mutta eri elinkaarta** (Tommin toive 15.9.2026 illalla).
  * Kannassa merkki elää ottelun yli ja luetaan otteluluettelon linkistä (`MarksScreen`).
  *
  * **Tehty merkki ei jää laudan alle riviksi 30.9.2026 alkaen** (Tommi Pixel 8a:n
@@ -2659,12 +2886,13 @@ private fun ReminderRow(reminder: Reminder, onRemove: (Long) -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        Text(
-            text = reminder.text,
-            style = MaterialTheme.typography.bodySmall,
-            color = LocalPanelLook.current.accent,
-            modifier = Modifier.weight(1f),
-        )
+        SelectionContainer(modifier = Modifier.weight(1f)) {
+            Text(
+                text = reminder.text,
+                style = MaterialTheme.typography.bodySmall,
+                color = LocalPanelLook.current.accent,
+            )
+        }
         TextButton(
             onClick = { onRemove(reminder.id) },
             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
@@ -2797,6 +3025,8 @@ private fun MiddleActionsRow(
     busy: Boolean = false,
     /** Kaaren värit tältä laudalta, ks. [BusyArc]. */
     arc: ArcLook = ArcLook.X22,
+    /** Kaistan väri, kiilojen päälle kasvavan ryhmän yhteistä taustaa varten. */
+    band: Color = Color.Unspecified,
 ) {
     val form = if (showSubmits) board.form else null
     // Korkeus luetaan kaistasta eika kirjoiteta vakioksi: kaista on kaksi nappulaa
@@ -2836,6 +3066,7 @@ private fun MiddleActionsRow(
         if (!busy) trailing()
     }
     val scroll = rememberScrollState()
+    val panelLook = LocalPanelLook.current
 
     // **Rivi jakautuu kahdeksi ennen kuin se vierii** (Tommin valinta 20.10.2026 kolmesta
     // kuorikaappauksesta, `docs/UI.md` › Keskikaistan rivi jakautuu). Kapealla tabletilla
@@ -2866,6 +3097,38 @@ private fun MiddleActionsRow(
         }.first().measure(Constraints(maxWidth = constraints.maxWidth))
         if (flow.height <= constraints.maxHeight) {
             return@SubcomposeLayout layout(flow.width, flow.height) { flow.place(0, 0) }
+        }
+        // **Rivit saavat kasvaa kaistan yli kiilojen päälle** (Tommin päätös 7.11.2026:
+        // napit rivittyvät eivätkä vieri). Puoliskon levyisessä tilassa Pixel 8a:lla ilman
+        // paneelia neljä tekoa ei mahtunut kahdelle kaistan korkuiselle riville, ja rivi jäi
+        // vierimään `Verify` katkenneena. Kaista piirtyy puoliskojen päälle (`zIndex`), ja
+        // ylitys jakautuu tasan ylös ja alas kuten tilariveillä. Raja on kaista ja kiilojen
+        // korkeus (kumpaankin suuntaan puolet), eli ryhmä pysyy laudalla; vieritys jää vain
+        // sitä varten, ettei se mahdu sinnekään. Kahden kaistan raja ei riittänyt, kun
+        // `Players` tuli mukaan (Pixel 8a, 7.11.2026).
+        if (flow.height <= constraints.maxHeight + metrics.wedgeHeight.roundToPx()) {
+            // **Yksi tausta koko ryhmälle** (Tommin havainto 7.11.2026: *"rauhaton"*). Kiilojen
+            // päällä linkkien omat kaistanväriset taustat ([PanelLook.textBacking]) näkyivät
+            // erillisinä laikkuina. Ryhmä saa nyt yhden pyöristetyn kaistanvärisen pohjan,
+            // ja linkkien omat taustat jäävät pois sen sisällä.
+            val backing = band.takeIf { it.isSpecified } ?: panelLook.textBacking
+            val over = subcompose("yli") {
+                CompositionLocalProvider(
+                    LocalMinimumInteractiveComponentSize provides 0.dp,
+                    LocalPanelLook provides panelLook.copy(textBacking = Color.Unspecified),
+                ) {
+                    FlowRow(
+                        modifier = Modifier
+                            .then(if (backing.isSpecified) Modifier.background(backing, RoundedCornerShape(8.dp)) else Modifier)
+                            .padding(horizontal = 6.dp, vertical = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
+                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                        itemVerticalAlignment = Alignment.CenterVertically,
+                    ) { items(twoRowHeight) }
+                }
+            }.first().measure(Constraints(maxWidth = constraints.maxWidth))
+            val h = constraints.maxHeight
+            return@SubcomposeLayout layout(over.width, h) { over.place(0, (h - over.height) / 2) }
         }
         val scrolled = subcompose("vierii") {
             Row(
@@ -4004,12 +4267,34 @@ private fun MatchCard(
                 )
             }
             tail?.let {
-                Text(
-                    text = it,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = LocalPanelLook.current.secondary,
-                    maxLines = 1,
-                )
+                // **Siirtolista hännän perään** (jebediasmien toive 7.11.2026, Tommin valinta
+                // 8.11.2026: luettelon riville ja tähän). Polku on laudan oma `<<Review Game`.
+                // Samalla rivillä eikä omanaan, koska ahtaan paneelin kortti on mitoitettu
+                // riveittäin; häntä katkeaa ensin ja linkki jää näkyviin. Linkin napautus
+                // avaa siirtolistan, muu kortti yhä turnauksen.
+                val reviewPath = board.reviewPath?.substringBefore('#')?.takeIf { p -> p.startsWith("/bg/game/") }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = it,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = LocalPanelLook.current.secondary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
+                    if (reviewPath != null) {
+                        Text(
+                            text = stringResource(R.string.top_review),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = LocalPanelLook.current.secondary,
+                            textDecoration = TextDecoration.Underline,
+                            maxLines = 1,
+                            modifier = Modifier
+                                .padding(start = 8.dp)
+                                .clickable { onOpenPage(reviewPath) },
+                        )
+                    }
+                }
             }
         }
     }
@@ -4200,30 +4485,34 @@ private fun SidePanel(
         // kuittauksen joka kerta. Rivi on tilannetekstin yläpuolella samassa asussa, koska
         // se on samaa lajia: sivun oma sana siitä missä mennään.
         if (showNotes && board.rolledBack) {
-            Text(
-                text = stringResource(R.string.board_rolled_back),
-                style = MaterialTheme.typography.labelSmall,
-                color = LocalPanelLook.current.faint,
-                textAlign = TextAlign.Center,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(LocalPanelLook.current.card)
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
-            )
+            SelectionContainer {
+                Text(
+                    text = stringResource(R.string.board_rolled_back),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = LocalPanelLook.current.faint,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(LocalPanelLook.current.card)
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                )
+            }
         }
         if (showNotes) board.situation?.let {
-            Text(
-                text = it,
-                style = MaterialTheme.typography.labelSmall,
-                color = LocalPanelLook.current.faint,
-                textAlign = TextAlign.Center,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(LocalPanelLook.current.card)
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
-            )
+            SelectionContainer {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = LocalPanelLook.current.faint,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(LocalPanelLook.current.card)
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                )
+            }
         }
 
         // Pip-vahti oli 10.8.2026 asti keskitilassa muurin kohdalla. Se siirtyi tänne kun
@@ -4604,12 +4893,6 @@ private fun Board(
      */
     ownedCubeInPanel: Boolean = false,
     /**
-     * Piirretäänkö pelaajien pipit muurin päihin ([BarPips]). Tosi kun sivupaneeli on, eli
-     * pelaajakortit ovat ruudulla; ilman paneelia pipit ovat lokerosarakkeessa
-     * ([TrayPlayerFacts]) ja muurin pää kuuluu omistetulle kuutiolle ([BarSegment]).
-     */
-    pipsOnBar: Boolean = false,
-    /**
      * Sivun pip-luvut paneelien järjestyksessä, korostusta varten ([pipMoved]). [board] kantaa
      * kokoamisen aikana kootun aseman luvut (`LocalComposition.livePips`), ja tämä on se mihin
      * niitä verrataan. Tyhjä kun mitään ei korosteta.
@@ -4650,6 +4933,8 @@ private fun Board(
      * (Tommin päätös 2.9.2026, [PanelActionStack]); kaista on silloin pelkät nopat.
      */
     middleShowActions: Boolean = true,
+    /** Avausheiton aloittaja kun nopat kootaan yhdelle puoliskolle, ks. [MiddleStrip]. */
+    middleOpeningStarter: CheckerColor? = null,
     /** `Next Game` ja `To Top` omien noppien paikalla, ks. [nextOnDiceFor] ja [MiddleStrip]. */
     middleNextOnDice: Boolean = false,
 ) {
@@ -4800,10 +5085,6 @@ private fun Board(
                     Column(modifier = Modifier.weight(1f)) {
                         HalfBoard(
                             board, roles, metrics, touch, top = true,
-                            cube = shownCube.takeIf { !cubeOnStrip && !ownedCubeInPanel && it?.position == CubePosition.TOP },
-                            onDouble = onCube,
-                            cubeAttention = cubeReminder,
-                            pipsOnBar = pipsOnBar,
                             pagePips = pagePips,
                         )
                         MiddleStrip(
@@ -4817,6 +5098,7 @@ private fun Board(
                             showSubmits = middleShowSubmits,
                             busy = busy,
                             showActions = middleShowActions,
+                            openingStarter = middleOpeningStarter,
                             nextOnDice = middleNextOnDice,
                             verify = verify,
                             onDiceTap = onDiceTap,
@@ -4834,10 +5116,6 @@ private fun Board(
                         )
                         HalfBoard(
                             board, roles, metrics, touch, top = false,
-                            cube = shownCube.takeIf { !cubeOnStrip && !ownedCubeInPanel && it?.position == CubePosition.BOTTOM },
-                            onDouble = onCube,
-                            cubeAttention = cubeReminder,
-                            pipsOnBar = pipsOnBar,
                             pagePips = pagePips,
                         )
                     }
@@ -4867,16 +5145,17 @@ private fun Board(
                         metrics,
                         awayOf,
                         playerFactsInTray,
-                        // Omistamaton aina (29.9.2026), tarjottu kun kaistalla on napit;
-                        // omistettu on kortissa tai muurilla ([BarSegment]).
+                        // Omistamaton aina (29.9.2026), tarjottu kun kaistalla on napit.
+                        // Omistettu on kortissa kun paneeli on, muuten tässä omistajan
+                        // päässä (Tommin valinta 7.11.2026: muurin pää on pipien).
                         cube = when {
                             cubeUnowned -> shownCube
-                            cubeOnStrip || cubeOwned -> null
+                            cubeOnStrip -> null
+                            cubeOwned && ownedCubeInPanel -> null
                             else -> shownCube
                         },
                         onDouble = onCube,
                         cubeReminder = cubeReminder,
-                        pagePips = pagePips,
                     )
                 }
 
@@ -4967,8 +5246,18 @@ private data class BoardMetrics(
  * keskitila ja lokerot jakavat nappulat pelaajan mukaan molemmissa tiloissa; vain maali
  * vaihtuu. Roolivärin menetys on siinä tilassa tarkoitus eikä regressio.
  */
-private class BoardRoles(self: CheckerColor?, val look: BoardLook) {
+private class BoardRoles(
+    self: CheckerColor?,
+    val look: BoardLook,
+    /**
+     * Kenen väri saa roolivärin "oma". Oletus on alempi paneeli eli [self], ja se pätee
+     * pelattavalla sivulla. Katselulaudalla alhaalla on sivun valitsema pelaaja eikä aina
+     * katsoja (mitattu 8.11.2026), joten maali erotetaan paikasta, ks. [ViewerBoard].
+     */
+    paintSelf: CheckerColor? = self,
+) {
     val selfColor: CheckerColor = self ?: CheckerColor.YELLOW
+    private val paintSelfColor: CheckerColor = paintSelf ?: CheckerColor.YELLOW
     val opponentColor: CheckerColor = CheckerColor.entries.first { it != selfColor }
 
     fun selfPaint() = paint(selfColor)
@@ -4980,8 +5269,11 @@ private class BoardRoles(self: CheckerColor?, val look: BoardLook) {
     }
 
     // Roolivärit tulevat tyylistä 13.9.2026 alkaen, koska Monte Carlo variant on
-    // valkoinen ja musta eikä kerma ja punainen.
-    private fun rolePaint(color: CheckerColor): CheckerPaint = if (color == selfColor) {
+    // valkoinen ja musta eikä kerma ja punainen. Sivuston puolen mukaan 8.11.2026 alkaen
+    // valittaessa ([BoardLook.siteSides]): keltainen vaalea, sininen tumma.
+    private fun rolePaint(color: CheckerColor): CheckerPaint = if (
+        if (look.siteSides) color == CheckerColor.YELLOW else color == paintSelfColor
+    ) {
         look.roleSelf
     } else {
         look.roleOpponent
@@ -4999,12 +5291,6 @@ private fun HalfBoard(
     metrics: BoardMetrics,
     touch: BoardTouch,
     top: Boolean,
-    /** Tämän puoliskon omistama kuutio muurin päähän, tai null; ks. [BarSegment]. */
-    cube: Cube? = null,
-    onDouble: (() -> Unit)? = null,
-    cubeAttention: Boolean = false,
-    /** Ks. [Board]in `pipsOnBar`. */
-    pipsOnBar: Boolean = false,
     /** Ks. [Board]in `pagePips`. */
     pagePips: List<Int?> = emptyList(),
 ) {
@@ -5016,10 +5302,6 @@ private fun HalfBoard(
         BarSegment(
             board, roles, metrics, touch, top = top,
             modifier = Modifier.weight(1f),
-            cube = cube,
-            onDouble = onDouble,
-            cubeAttention = cubeAttention,
-            pipsOnBar = pipsOnBar,
             pagePips = pagePips,
         )
         WedgeRow(board, roles, metrics, touch, right, pointsDown = top, modifier = Modifier.weight(6f))
@@ -5445,18 +5727,9 @@ private fun BarSegment(
     touch: BoardTouch,
     top: Boolean,
     modifier: Modifier = Modifier,
-    /**
-     * Omistettu kuutio segmentin ulkopäässä (Tommin tilaus 14.9.2026 illalla: *"tuplauskuutio
-     * ei numeroiden sekaan tilaa viemään vaan muurin ylä- tai alaosaan"*, ja peruste:
-     * *"nappulalokero olisi poistetuille pyhitetty"*). Muurin nappulat pinoutuvat keskeltä
-     * ulospäin, joten pää on vapaa, ja kuutio ei maksa korkeutta eikä leveyttä. Ylhäällä
-     * vastustajan kuutio, alhaalla oma, sama jako kuin lokerossa 9.8.–14.9.2026.
-     */
-    cube: Cube? = null,
-    onDouble: (() -> Unit)? = null,
-    cubeAttention: Boolean = false,
-    /** Ks. [Board]in `pipsOnBar` ja [BarPips]. */
-    pipsOnBar: Boolean = false,
+    // Omistettu kuutio oli segmentin ulkopäässä 14.9.2026–7.11.2026 silloin kun sivupaneelia
+    // ei ollut. Pää on nyt aina pipien ([BarPips]), ja kuutio on lokerosarakkeessa omistajan
+    // päässä ([OffTrayColumn], Tommin valinta 7.11.2026 kahdesta laitekaappauksesta).
     /** Ks. [Board]in `pagePips`. */
     pagePips: List<Int?> = emptyList(),
     // Pino väisti 23.9.–29.9.2026 muurilla makaavaa kuutiota (`cubeGap`). Omistamaton kuutio
@@ -5491,7 +5764,11 @@ private fun BarSegment(
     ) {
         // Pipit ensin, jotta muurille lyöty nappula piirtyy niiden päälle eikä alle: pino
         // kasvaa keskeltä ulospäin ja ulottuu pippeihin vasta neljästä nappulasta.
-        if (pipsOnBar) {
+        //
+        // **Aina, ei vain paneelin kanssa** (Tommin päätös 7.11.2026). Ilman paneelia pipit
+        // olivat lokerosarakkeessa, joka puhelimen vaakalaudalla on liian kapea niille, joten
+        // pipit katosivat ruudulta (pelaajan havainto palstalla 6.11.2026).
+        run {
             // Ylhäällä vastustaja, alhaalla oma, sama jako kuin pelaajakorteilla.
             val self = board.players.getOrNull(1)
             val opponent = board.players.getOrNull(0)
@@ -5504,6 +5781,8 @@ private fun BarSegment(
                 BarPips(
                     pips = pips,
                     lead = DgBoard.pipLead(pips, otherPips),
+                    otherPips = otherPips,
+                    otherLead = DgBoard.pipLead(otherPips, pips),
                     pipsMoved = moved.pips,
                     leadMoved = moved.lead,
                     modifier = Modifier
@@ -5518,21 +5797,6 @@ private fun BarSegment(
             metrics = metrics,
             growUp = top,
         )
-        if (cube != null) {
-            // Kuutio kutistuu muurin levyiseksi kapealla laudalla: muuri on yksi sarake
-            // kolmestatoista ja kuutio on nappulaa leveämpi, joten ilman tätä se
-            // valuisi kiilojen päälle. Leveällä laudalla koko on sama kuin kaistalla.
-            BoxWithConstraints(
-                modifier = Modifier
-                    .align(if (top) Alignment.TopCenter else Alignment.BottomCenter)
-                    .fillMaxWidth()
-                    .padding(vertical = 6.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                val fitted = if (maxWidth < metrics.cubeSize) metrics.cubeSize.coerceAtMost(maxWidth) else metrics.cubeSize
-                CubeFace(cube, metrics.copy(cubeSize = fitted), onDouble, cubeAttention)
-            }
-        }
     }
 }
 
@@ -5557,22 +5821,41 @@ private fun BarSegment(
 private fun BarPips(
     pips: Int,
     lead: String,
+    /**
+     * Muurin toisen pään luvut, vain mittaamista varten. Sanan pudotus ja koko päätetään
+     * molempien päiden leveimmästä rivistä, jotta päät ovat samanlaiset: `(+42)` on leveämpi
+     * kuin `(-42)`, ja omin päin vain toinen pää pudotti sanan (Pixel 8a, 7.11.2026).
+     */
+    otherPips: Int,
+    otherLead: String,
     modifier: Modifier = Modifier,
     /** Luku poikkeaa sivun luvusta, eli kuvaa koottua siirtoa ([pipMoved]). */
     pipsMoved: Boolean = false,
     /** Etumatka poikkeaa sivun etumatkasta. */
     leadMoved: Boolean = false,
 ) {
-    val lines = listOf(
-        stringResource(R.string.board_pips_word) to false,
+    val word = stringResource(R.string.board_pips_word) to false
+    val numbers = listOf(
         pips.toString() to pipsMoved,
         stringResource(R.string.board_pips_paren, lead) to leadMoved,
+    )
+    val otherNumbers = listOf(
+        otherPips.toString() to false,
+        stringResource(R.string.board_pips_paren, otherLead) to false,
     )
     val base = MaterialTheme.typography.bodyLarge
     val measurer = rememberTextMeasurer()
     BoxWithConstraints(modifier = modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
         val room = constraints.maxWidth
-        val widest = lines.maxOf { (text, _) -> measurer.measure(text, base, maxLines = 1, softWrap = false).size.width }
+        fun widestOf(rows: List<Pair<String, Boolean>>) =
+            rows.maxOf { (text, _) -> measurer.measure(text, base, maxLines = 1, softWrap = false).size.width }
+        // **Sana jää pois kun muuri on ahdas** (Tommin valinta 7.11.2026): jos kolme riviä
+        // eivät mahdu täysikokoisina, `Pips` pudotetaan ja luku ja etumatka jäävät. Sijainti
+        // muurilla kertoo jo mitä luku on, joten sana on mukavuus eikä tieto. Luvut eivät
+        // tästä suurene, koska etumatkan rivi on leveämpi kuin sana; muurille jää tilaa.
+        val roomy = widestOf(listOf(word) + numbers + otherNumbers) <= room
+        val lines = if (roomy) listOf(word) + numbers else numbers
+        val widest = widestOf(numbers + otherNumbers + if (roomy) listOf(word) else emptyList())
         val style = if (widest <= room || widest == 0) base else {
             val scale = room.toFloat() / widest
             base.copy(
@@ -5660,6 +5943,11 @@ private fun MiddleStrip(
     /** Epätosi kun napit ovat sivupaneelissa ([PanelActionStack]); kaista on silloin vain nopat. */
     showActions: Boolean = true,
     /**
+     * Avausheiton aloittaja, tai null. Kun annettu, kaikki nopat piirretään yhtenä ryhmänä
+     * tämän pelaajan puoliskolle värejään vaihtamatta, ks. noppien jako alla.
+     */
+    openingStarter: CheckerColor? = null,
+    /**
      * Sivun lomakkeen napit omien noppien paikalla (kytkin 17.10.2026, [nextOnDiceFor]).
      * Tosi vain kun [showActions] on epätosi, eli kun napit muuten olisivat paneelissa.
      */
@@ -5743,8 +6031,12 @@ private fun MiddleStrip(
         // paneelia), varaus pysyy neljässä kuten 26.8.2026 alkaen.
         val groupPoints = if (showActions) DICE_GROUP_POINTS else HALF_POINTS
         val group = metrics.checkerSize / DgBoard.CHECKER_PER_COLUMN * groupPoints
-        val opponentDice = board.dice.filter { it.owner == roles.opponentColor }
-        val selfDice = board.dice.filter { it.owner == roles.selfColor }
+        // **Ahtaassa avausheitossa nopat voittajan puoliskolle** (Tommin valinta 12.11.2026,
+        // palstan pelaajan XA2). Avausheiton esitys (14.9.2026, `docs/UI.md` › Avausheitto) jakaa nopat
+        // kummallekin puoliskolle, ja kun napit ovat kaistalla, niille ei jäänyt vapaata
+        // puoliskoa: rivi piirtyi oman nopan päälle. Nopat pitävät värinsä, joten kumpi heitti
+        // mitä näkyy yhä; vain paikka on aloittajan, kuten tavallisessa heitossa.
+        val (opponentDice, selfDice) = stripDiceSides(board.dice, roles.selfColor, roles.opponentColor, openingStarter)
 
         // **Tyhjä noppalokero ei varaa leveyttä** (Tommi 26.8.2026). Nopat ovat aina vain
         // toisella puolella, joten toinen lokero on koko ajan tyhjä, ja se varasi silti
@@ -5783,7 +6075,7 @@ private fun MiddleStrip(
                 modifier = Modifier.align(Alignment.CenterEnd).width(group),
                 contentAlignment = Alignment.Center,
             ) {
-                MiddleActionsRow(board, metrics, onFollow, onPress, showSkip = false, verify = verify, busy = busy, arc = arcLookOf(roles))
+                MiddleActionsRow(board, metrics, onFollow, onPress, showSkip = false, verify = verify, busy = busy, arc = arcLookOf(roles), band = roles.look.band)
             }
         } else if (selfDice.isNotEmpty()) {
             // Puoliskon keskelle kuten 2.9.2026 alkaen; laita 13.9.2026 kumottiin 14.9.2026.
@@ -5860,44 +6152,35 @@ private fun MiddleStrip(
                 hintHere?.let { StripNote(it, onTap = onDismissVerifyHint) }
             }
         }
-        // **Napit väistävät nopat, eivät piirry niiden päälle** (Tommin pyyntö 26.8.2026).
-        // Aiemmin rivi sai koko kaistan leveyden ja piirtyi viimeisenä, joten isolla
-        // järjestelmäfontilla teksti tuli noppien päälle: `Reminders` 320 dp:llä ja
-        // fontScale 1.3:lla, `Cube reminder` fontScale 2.0:lla (mitattu laitteella).
-        // Piirtojärjestys oli tietoinen valinta, mutta se nojasi siihen että peittyminen
-        // on reunatapaus; iso fontti teki siitä tavallisen tilanteen, ja peitetty noppa on
-        // pelitietoa jonka voi lukea väärin ilman että mikään kertoo siitä.
-        //
-        // Varaus on sen lokeron levyinen jossa nopat ovat, eikä molempien: tyhjä lokero ei
-        // varaa leveyttä muutenkaan (ks. yllä), joten rivi saa käyttää sen tilan.
-        //
-        // **Napit pysyvät laudan keskellä niin kauan kuin ne mahtuvat sinne** peittämättä
-        // noppia, ja siirtyvät vasta sitten sen verran kuin on pakko. Sijoittelu on siksi
-        // oma `Layout` eikä kohdistus: kohdistus keskittäisi rivin jäljelle jääneen tilan
-        // keskelle heti, eli veisi napit sivuun myös silloin kun ne mahtuisivat keskelle.
-        // Se oli juuri se vika joka korjattiin aiemmin samana päivänä.
-        //
-        // Jos rivi ei mahdu varauksen jälkeenkään, se jakautuu kahdeksi riviksi (20.10.2026)
-        // ja vasta sitten vierii vaakasuunnassa, ks. [MiddleActionsRow]. Nappi jää siis
-        // pahimmillaan vierityksen taakse, ja se on korjattavissa vierittämällä; peitetty
-        // noppa ei ollut.
-        val diceReserveStart = if (opponentDice.isNotEmpty()) group else 0.dp
-        val diceReserveEnd = if (selfDice.isNotEmpty()) group else 0.dp
+        // **Napit väistävät nopat** (Tommin pyyntö 26.8.2026: isolla järjestelmäfontilla
+        // teksti tuli noppien päälle) **ja muurin** (Tommin valinta 7.11.2026). 26.8.–7.11.
+        // rivi oli laudan keskellä ja väisti vain noppalokeroa, joten se oli aina muurin
+        // päällä. Nyt se on noppien vastakkaisella puoliskolla, ks. [middleActionsSpan].
         if (showActions) Layout(
             modifier = Modifier.fillMaxWidth(),
             content = {
-                MiddleActionsRow(board, metrics, onFollow, onPress, trailing, showSkip, showSubmits, verify, busy, arcLookOf(roles))
+                MiddleActionsRow(board, metrics, onFollow, onPress, trailing, showSkip, showSubmits, verify, busy, arcLookOf(roles), band = roles.look.band)
             },
         ) { measurables, constraints ->
-            val start = diceReserveStart.roundToPx()
-            val end = diceReserveEnd.roundToPx()
             val width = constraints.maxWidth
-            val available = (width - start - end).coerceAtLeast(0)
+            // **Napit eivät ylitä muuria** (Tommin valinta 7.11.2026, Pixel 8a ilman
+            // paneelia: rivi oli keskellä muurin päällä ja `Skip Game` katkesi laitaan).
+            // Ne ovat sillä puoliskolla jolla noppia ei ole, ja rivittyvät siellä
+            // ([MiddleActionsRow]: yksi rivi, sitten kaksi, viimeisenä vieritys). Ilman
+            // noppia puolisko on oikea. Muurin leveys on yksi [DgBoard.PLAY_COLUMNS]:sta
+            // koko kaistasta, johon kuuluu myös tämän sisällön sivupehmuste.
+            val (from, to) = middleActionsSpan(
+                width = width,
+                pad = 8.dp.roundToPx(),
+                gap = 4.dp.roundToPx(),
+                leftHalf = selfDice.isNotEmpty() && opponentDice.isEmpty(),
+            )
+            val available = (to - from).coerceAtLeast(0)
             val row = measurables.first().measure(
                 constraints.copy(minWidth = 0, maxWidth = available),
             )
             layout(width, row.height) {
-                row.place(middleActionsX(width, row.width, start, end), 0)
+                row.place(from + ((available - row.width) / 2).coerceAtLeast(0), 0)
             }
         }
         // Viimeisenä, jotta se on kuution ja nappirivin päällä; kaistan Box keskittää sen.
@@ -5907,24 +6190,49 @@ private fun MiddleStrip(
 }
 
 /**
- * Nappirivin vasen reuna keskikaistalla, kun noppalokerolle on varattava tila.
+ * Keskikaistan noppien jako puoliskoille: (vastustajan, omat).
  *
- * Sääntö on kaksiosainen ja järjestys on se joka merkitsee: rivi on **laudan keskellä**
- * niin kauan kuin se mahtuu sinne peittämättä noppia, ja väistää vasta sitten sen verran
- * kuin on pakko. Pelkkä kohdistus jäljelle jäävään tilaan olisi siirtänyt rivin sivuun myös
- * silloin kun se olisi mahtunut keskelle, ja se oli juuri se vika joka korjattiin
- * 26.8.2026 aiemmin.
+ * Tavallisesti omistajan mukaan. [openingStarter] annettuna kaikki nopat ovat aloittajan
+ * puoliskolla värejään vaihtamatta (Tommin valinta 12.11.2026, ahdas avausheitto), jolloin
+ * toinen puolisko jää nappiriville ([middleActionsSpan]).
+ */
+/**
+ * Lauta sellaisena kuin se piirretään: sivun `Swap Dice` (myös kokoamisen paikallinen
+ * vastine, sama nimi) ja `Skip Game` pois kun kytkin sanoo niin. Muu lauta ennallaan.
+ */
+internal fun boardShown(board: BoardState, swapDiceShown: Boolean, skipGameShown: Boolean): BoardState {
+    if (swapDiceShown && skipGameShown) return board
+    return board.copy(
+        commands = if (swapDiceShown) board.commands else board.commands.filterNot { it.label == CompositionSession.SWAP_DICE },
+        skipHref = if (skipGameShown) board.skipHref else null,
+    )
+}
+
+internal fun stripDiceSides(
+    dice: List<Die>,
+    selfColor: CheckerColor,
+    opponentColor: CheckerColor,
+    openingStarter: CheckerColor?,
+): Pair<List<Die>, List<Die>> = when (openingStarter) {
+    null -> dice.filter { it.owner == opponentColor } to dice.filter { it.owner == selfColor }
+    selfColor -> emptyList<Die>() to dice
+    else -> dice to emptyList()
+}
+
+/**
+ * Keskikaistan nappirivin vaakaväli: muurin se puolisko jolla noppia ei ole (Tommin valinta
+ * 7.11.2026). Rivi keskitetään tähän väliin ja rivittyy sen leveyteen.
  *
- * Varaus koskee vain sitä laitaa jossa nopat ovat: tyhjä lokero ei varaa leveyttä.
+ * [width] on kaistan sisältöleveys ja [pad] sen sivupehmuste: muuri on yksi
+ * [DgBoard.PLAY_COLUMNS]:sta koko kaistasta, ja sen keskikohta on sisällönkin keskikohta.
+ * [gap] on väli muuriin. Ilman noppia tai omilla nopilla oikealla ([leftHalf] epätosi)
+ * puolisko on oikea.
  *
  * Luvut ovat pikseleitä, koska mittaus tehdään `Layout`issa.
  */
-internal fun middleActionsX(width: Int, rowWidth: Int, start: Int, end: Int): Int {
-    // Jos varaukset syövät koko kaistan, viimeinen sallittu kohta on alkuvaraus: napit
-    // väistävät niin pitkälle kuin voivat, eikä lokeron päälle mennä kummassakaan
-    // tapauksessa.
-    val last = (width - end - rowWidth).coerceAtLeast(start)
-    return ((width - rowWidth) / 2).coerceIn(start, last)
+internal fun middleActionsSpan(width: Int, pad: Int, gap: Int, leftHalf: Boolean): Pair<Int, Int> {
+    val barHalf = (width + 2 * pad) / DgBoard.PLAY_COLUMNS / 2
+    return if (leftHalf) 0 to (width / 2 - barHalf - gap) else (width / 2 + barHalf + gap) to width
 }
 
 /** Kuinka paljon kokonaan pelattu noppa himmenee; 0,65 jättää silmät luettaviksi. */
@@ -6041,9 +6349,10 @@ private fun OffTrayColumn(
      * muuta mittojaan sen mukaan missä kuutio on.
      */
     cube: Cube? = board.cube,
-    /** Ks. [Board]in `pagePips`. */
-    pagePips: List<Int?> = emptyList(),
 ) {
+    // Omistettu kuutio omistajan päässä, omistamaton ja tuntematon keskellä ([CubeBadge]).
+    val ownedTop = cube?.takeIf { it.position == CubePosition.TOP }
+    val ownedBottom = cube?.takeIf { it.position == CubePosition.BOTTOM }
     Column(
         modifier = Modifier
             .width(metrics.trayWidth)
@@ -6056,13 +6365,11 @@ private fun OffTrayColumn(
                 board.players.getOrNull(0),
                 awayOf,
                 roles.opponentPaint(),
-                otherPips = board.players.getOrNull(1)?.pips,
-                pagePips = pagePips.getOrNull(0),
-                pageOtherPips = pagePips.getOrNull(1),
             )
         }
-        // Lokero on poistetuille pyhitetty 14.9.2026 alkaen (Tommin tilaus): omistettu
-        // kuutio siirtyi muurin päähän ([BarSegment]), ja `CubeSlot` poistui.
+        // Lokero on poistetuille pyhitetty 14.9.2026 alkaen (Tommin tilaus), joten omistettu
+        // kuutio on sarakkeen päässä eikä lokerossa. 14.9.–7.11.2026 se oli muurin päässä.
+        if (ownedTop != null) CubeBadge(ownedTop, metrics, onDouble, cubeReminder)
         OffTray(
             board,
             roles.opponentColor,
@@ -6089,14 +6396,12 @@ private fun OffTrayColumn(
                 cubeBelow = false,
             )
         }
+        if (ownedBottom != null) CubeBadge(ownedBottom, metrics, onDouble, cubeReminder)
         if (playerFacts) {
             TrayPlayerFacts(
                 board.players.getOrNull(1),
                 awayOf,
                 roles.selfPaint(),
-                otherPips = board.players.getOrNull(0)?.pips,
-                pagePips = pagePips.getOrNull(1),
-                pageOtherPips = pagePips.getOrNull(0),
             )
         }
     }
@@ -6129,11 +6434,6 @@ private fun TrayPlayerFacts(
     panel: PlayerPanel?,
     awayOf: (PlayerPanel) -> Int?,
     paint: CheckerPaint,
-    /** Toisen pelaajan pip-luku etumatkaa varten, ks. [PlayerPanelView]. */
-    otherPips: Int?,
-    /** Sivun luvut korostusta varten, ks. [pipMoved]. Null kun mitään ei korosteta. */
-    pagePips: Int? = null,
-    pageOtherPips: Int? = null,
 ) {
     if (panel == null) return
     Column(
@@ -6168,22 +6468,8 @@ private fun TrayPlayerFacts(
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        // Pipit kolmantena rivinä kuten paneelissa, mutta ilman sanaa: sarake on kapea, ja
-        // luku etumatkoineen on se osa joka kantaa tiedon. Muurin väli on tyhjä 14.9.2026
-        // alkaen, joten ilman tätä puhelin jäisi ilman pippejä kokonaan.
-        val pips = panel.pips
-        if (pips != null && otherPips != null) {
-            // Yksi rivi kantaa sekä luvun että etumatkan, joten korostus on koko rivin.
-            val moved = pipMoved(pips, otherPips, pagePips, pageOtherPips)
-            Text(
-                text = stringResource(R.string.board_pips_short, pips, DgBoard.pipLead(pips, otherPips)),
-                style = MaterialTheme.typography.labelSmall,
-                color = Palette.Accent,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = if (moved.pips || moved.lead) Modifier.pipMovedMark() else Modifier,
-            )
-        }
+        // Pipit olivat tässä kolmantena rivinä 14.9.–7.11.2026. Ne ovat nyt aina muurilla
+        // ([BarPips]), joten sarake kantaa vain nimen ja pisteet.
     }
 }
 
@@ -6224,18 +6510,20 @@ private fun StripNote(
     color: Color = Palette.TextMuted,
     bold: Boolean = false,
 ) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.labelSmall,
-        fontWeight = if (bold) FontWeight.Bold else null,
-        color = color,
-        textAlign = TextAlign.Center,
-        modifier = Modifier
-            .clip(RoundedCornerShape(6.dp))
-            .background(Palette.Felt)
-            .then(if (onTap != null) Modifier.clickable(onClick = onTap) else Modifier)
-            .padding(horizontal = 8.dp, vertical = 4.dp),
-    )
+    SelectionContainer {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = if (bold) FontWeight.Bold else null,
+            color = color,
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .clip(RoundedCornerShape(6.dp))
+                .background(Palette.Felt)
+                .then(if (onTap != null) Modifier.clickable(onClick = onTap) else Modifier)
+                .padding(horizontal = 8.dp, vertical = 4.dp),
+        )
+    }
 }
 
 /**
@@ -6261,18 +6549,20 @@ private fun StripNote(
  */
 @Composable
 private fun VerifyHintRow(text: String, onDismiss: () -> Unit, modifier: Modifier = Modifier) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.labelSmall,
-        color = Palette.TextMuted,
-        textAlign = TextAlign.Center,
-        modifier = modifier
-            .padding(top = 8.dp)
-            .clip(RoundedCornerShape(6.dp))
-            .background(Palette.Felt)
-            .clickable(onClick = onDismiss)
-            .padding(horizontal = 8.dp, vertical = 4.dp),
-    )
+    SelectionContainer {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelSmall,
+            color = Palette.TextMuted,
+            textAlign = TextAlign.Center,
+            modifier = modifier
+                .padding(top = 8.dp)
+                .clip(RoundedCornerShape(6.dp))
+                .background(Palette.Felt)
+                .clickable(onClick = onDismiss)
+                .padding(horizontal = 8.dp, vertical = 4.dp),
+        )
+    }
 }
 
 @Composable
@@ -7330,6 +7620,13 @@ private fun cubeFontSize(chars: Int, cubeSize: Dp) =
 
 private val SIDE_PANEL_MIN = 150.dp
 private val SIDE_PANEL_MAX = 240.dp
+
+/**
+ * Kuinka kauan reunapyyhkäisyllä tuotu paneeli pysyy laudan päällä viimeisestä kosketuksesta
+ * (7.11.2026). Arvio eikä mittaus: tarpeeksi nimen ja pisteiden lukemiseen ja napin
+ * painamiseen, mutta lyhyt niin ettei se jää peittämään lautaa.
+ */
+private const val PANEL_PEEK_MS = 5000L
 private val SIDE_PANEL_GAP = 8.dp
 
 /**
@@ -7500,6 +7797,159 @@ internal fun PreviewBoardWithPanel(
         }
     }
 }
+
+/**
+ * Katselulaudan lauta ja pelaajapaneeli (8.11.2026, Tommin suunta A ja näkökulma B).
+ *
+ * **Lauta piirretään niin kuin sivusto sen piirtää** (Tommin valinta B 8.11.2026): sivu
+ * pitää yhden pelaajan alhaalla koko ottelun ajan, eikä se ole aina katsoja. Pistenumerot
+ * ovat sivun omat, eikä niitä käännetä. Geometria (muuri, lokerot, nopat) seuraa siis
+ * alempaa paneelia kuten pelattavalla sivulla.
+ *
+ * Roolivärin "oma" saa kuitenkin kirjautunut pelaaja nimen perusteella eikä alempi paneeli,
+ * muuten vastustaja piirtyisi omalla värillä aina kun sivu on nostanut katsojan ylös.
+ * Tuntematon nimi jättää maalin sivuston värin varaan kuten [BoardRoles] muutenkin.
+ *
+ * Kosketus on tyhjä eikä toimintoriviä ole: katselusivulla ei ole lomaketta eikä tekoja.
+ */
+@Composable
+internal fun ViewerBoard(
+    board: BoardState,
+    selfName: String?,
+    style: BoardStyle,
+    siteSettings: SiteBoardSettings,
+    checkersBySite: Boolean,
+    /** Pelaajan nimi profiiliin ja ottelukortti turnaukseen, kuten pelilaudalla. */
+    onOpenPage: (String) -> Unit,
+    /** Sivun navigointinapit rivinä: pystyssä oman kortin alla, vaakana laudan alla. */
+    navigation: @Composable () -> Unit,
+    /** Kätisyys kuten pelilaudalla: vasenkätisellä paneeli on oikealla. */
+    panelOnRight: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    val pips = board.reconcilePips()
+    val look = BoardLook.of(style, siteSettings, board.scheme, decoLight = decoLightBoard(), checkersBySite = checkersBySite)
+    val viewer = selfName?.let { name ->
+        board.players.firstOrNull { it.player.name.equals(name, ignoreCase = true) }?.checkerColor
+    }
+    val roles = BoardRoles(selfCheckerColor(board, pips), look, paintSelf = viewer)
+    val panelCube = shownCube(board)?.takeIf { it.position == CubePosition.TOP || it.position == CubePosition.BOTTOM }
+    val numberRow = numberRowHeight()
+    val boardView: @Composable (Dp, Dp, Boolean) -> Unit = { width, height, panelShown ->
+        Board(
+            board,
+            roles = roles,
+            pips = pips,
+            awayOf = board::awayOf,
+            touch = BoardTouch(movable = emptyMap(), onFollow = {}),
+            onFollow = {},
+            onPress = { _, _ -> },
+            modifier = Modifier.width(width).height(height),
+            playerFactsInTray = !panelShown,
+            ownedCubeInPanel = panelShown && panelCube != null,
+            middleShowSkip = false,
+            middleShowSubmits = false,
+            middleShowActions = false,
+        )
+    }
+    val playerCard: @Composable (Int, Modifier) -> Unit = { index, cardModifier ->
+        board.players.getOrNull(index)?.let {
+            val other = board.players.getOrNull(1 - index)
+            Box(modifier = cardModifier) {
+                PlayerPanelView(
+                    it,
+                    board.awayOf(it),
+                    if (index == 0) roles.opponentPaint() else roles.selfPaint(),
+                    other = other,
+                    otherAway = other?.let { p -> board.awayOf(p) },
+                    matchLength = board.matchLength,
+                    onOpen = it.player.profilePath?.let { path -> { onOpenPage(path) } },
+                    cube = panelCube?.takeIf { c -> c.position == if (index == 0) CubePosition.TOP else CubePosition.BOTTOM },
+                )
+            }
+        }
+    }
+    CompositionLocalProvider(LocalPanelLook provides panelLookFor(style), LocalCubeLook provides CubeLook.of(style)) {
+        BoxWithConstraints(modifier = modifier, contentAlignment = Alignment.TopCenter) {
+            if (maxWidth < maxHeight) {
+                // **Pystyssä sama järjestys kuin pelilaudalla** (Tommin pyyntö 8.11.2026:
+                // *"järjestele elementit kuten nyt pixel-näytöllä"*): ottelukortti ylälaitaan,
+                // ylemmän paneelin pelaaja laudan yläpuolelle ja alemman alapuolelle, ks.
+                // pelilaudan `panelBelow`. Kortit mitataan ensin, ja lauta saa jäljelle
+                // jäävän korkeuden (`weight`), leveysrajattuna kuten [DgBoard.frameHeight].
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(SIDE_PANEL_GAP),
+                ) {
+                    MatchCard(board, board.round, false, onOpenPage, modifier = Modifier.fillMaxWidth())
+                    playerCard(0, Modifier.fillMaxWidth())
+                    BoxWithConstraints(
+                        modifier = Modifier.fillMaxWidth().weight(1f, fill = false),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        val width = DgBoard.frameWidth(availableWidth = maxWidth, availableHeight = maxHeight, numberRowHeight = numberRow)
+                        val height = minOf(maxHeight, DgBoard.frameHeight(width, numberRow))
+                        boardView(width, height, true)
+                    }
+                    playerCard(1, Modifier.fillMaxWidth())
+                    navigation()
+                }
+            } else {
+                // **Napit rivinä laudan alla** (Tommin pyyntö 8.11.2026): rivin korkeus
+                // vähennetään ensin, ja lauta mitoitetaan jäljelle jäävään korkeuteen.
+                val boardMaxHeight = maxHeight - VIEWER_NAV_ROW
+                val alone = DgBoard.frameWidth(availableWidth = maxWidth, availableHeight = boardMaxHeight, numberRowHeight = numberRow)
+                // Paneeli vain ylijäävään leveyteen, sama sääntö kuin pelattavalla laudalla.
+                val panelWidth = (maxWidth - alone - SIDE_PANEL_GAP).coerceAtMost(SIDE_PANEL_MAX)
+                val withPanel = panelWidth >= VIEWER_PANEL_MIN
+                val height = minOf(boardMaxHeight, DgBoard.frameHeight(alone, numberRow))
+                // **Vaakana sama järjestys kuin pelilaudalla** (Tommin pyyntö 8.11.2026):
+                // lauta ja paneeli kätisyyden puolella, paneelissa vastustaja ylhäällä,
+                // ottelukortti keskellä ja oma kortti alhaalla.
+                val panel: @Composable () -> Unit = {
+                    SidePanel(
+                        board = board,
+                        compact = false,
+                        roundLabel = board.round,
+                        roles = roles,
+                        pips = pips,
+                        checkers = board.reconcileCheckers(),
+                        awayOf = board::awayOf,
+                        onOpenPage = onOpenPage,
+                        panelCube = panelCube,
+                        modifier = Modifier.width(panelWidth).fillMaxHeight(),
+                        showNotes = false,
+                    )
+                }
+                // Paneeli laudan korkuinen eikä rivin kanssa yhteensä (Tommin pyyntö 8.11.2026):
+                // alempi pelaajakortti päättyy laudan alareunaan.
+                Row(verticalAlignment = Alignment.Top) {
+                    if (withPanel && !panelOnRight) {
+                        Box(modifier = Modifier.height(height)) { panel() }
+                        Spacer(modifier = Modifier.width(SIDE_PANEL_GAP))
+                    }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        boardView(alone, height, withPanel)
+                        Box(modifier = Modifier.width(alone).height(VIEWER_NAV_ROW), contentAlignment = Alignment.Center) {
+                            navigation()
+                        }
+                    }
+                    if (withPanel && panelOnRight) {
+                        Spacer(modifier = Modifier.width(SIDE_PANEL_GAP))
+                        Box(modifier = Modifier.height(height)) { panel() }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** Vaaka-asennon navigointirivi laudan alla: napin minimikorkeus ja väli laudasta. */
+private val VIEWER_NAV_ROW = 56.dp
+
+/** Kapeampi paneeli ei mahduta pelaajakortteja, jolloin nimet ja pisteet ovat lokerosarakkeessa. */
+private val VIEWER_PANEL_MIN = 96.dp
 
 /** Esikatselun nopat laudan huovalla, samalla [DiceGroup]illa kuin laudalla. */
 @Composable

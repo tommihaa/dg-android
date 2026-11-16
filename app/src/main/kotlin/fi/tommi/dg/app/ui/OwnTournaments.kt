@@ -615,14 +615,8 @@ private fun OwnTournamentsList(
     // leipätekstille 1,4–1,8:1 ja vaalean oikea tahko 3,4:1. Mitattu 13.9.2026 pelisession
     // jälkeen Tommin havainnosta "jotkin taustat ovat todella kirkkaita".
     DgLazyColumn(modifier = Modifier.fillMaxSize()) {
-        item {
-            Text(
-                text = stringResource(R.string.own_tournaments_heading, page.rows.size),
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-            )
-        }
+        // Otsikkorivi *Your active tournaments (n)* poistui 12.11.2026 (Tommin tilaus): luku
+        // on segmentin nimessä `Tournaments (n)`, joten rivi sanoi saman toiseen kertaan.
         item {
             // Ikä sanotaan kerran listan yllä eikä joka rivillä (Tommin kuittaus 15.9.2026:
             // "tieto voi olla vanhaa, ja ruudun on sanottava se"). Hetki on muistin uusin
@@ -642,7 +636,7 @@ private fun OwnTournamentsList(
                 },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 4.dp),
             )
         }
         if (page.rows.isEmpty()) {

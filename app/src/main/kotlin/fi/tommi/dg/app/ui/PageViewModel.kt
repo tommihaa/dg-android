@@ -16,6 +16,7 @@ import fi.tommi.dg.domain.ResignPage
 import fi.tommi.dg.domain.Match
 import fi.tommi.dg.domain.MatMatch
 import fi.tommi.dg.domain.MatchExport
+import fi.tommi.dg.domain.GameViewerPage
 import fi.tommi.dg.domain.MatchLogPage
 import fi.tommi.dg.domain.MessageSource
 import fi.tommi.dg.domain.PlayerTournaments
@@ -30,6 +31,7 @@ import fi.tommi.dg.domain.write
 import fi.tommi.dg.net.DgResponse
 import fi.tommi.dg.scrape.DgPages
 import fi.tommi.dg.scrape.EventParser
+import fi.tommi.dg.scrape.GameViewerParser
 import fi.tommi.dg.scrape.MatchLogParser
 import fi.tommi.dg.scrape.PlayerTournamentsParser
 import fi.tommi.dg.scrape.ProfileParser
@@ -74,6 +76,13 @@ sealed interface PageContent {
      * päättyneen ottelun linkki viestiruudusta tarvitsi kohteen). Ks. [MatchLogPage].
      */
     data class MatchLog(val page: MatchLogPage) : PageContent
+
+    /**
+     * Katselulauta `/bg/game/<id>/<n>/<laskuri>` (8.11.2026, Tommin suunta A). Avataan
+     * siirtolistan riviltä, ja `First`/`Prev`/`Next`/`Last` vaihtavat aseman samassa
+     * ruudussa, ks. [PageViewModel.step]. Ks. [GameViewerPage].
+     */
+    data class GameViewer(val page: GameViewerPage) : PageContent
 
     /**
      * Tournament Hall `/bg/thall`, koko sivuston turnauslista (3.9.2026). Oli Loungen
@@ -441,6 +450,22 @@ class PageViewModel(
 
     fun onDraftChange(text: String) {
         _draft.value = text
+    }
+
+    /**
+     * Katselulaudan askel sivun omaan navigointilinkkiin, samassa ruudussa.
+     *
+     * **Jäsenyys tarkistetaan täällä**, kuten laudan `follow`issa: ainoa hyväksytty osoite on
+     * ruudulla olevan sivun oma `First`/`Prev`/`Next`/`Last`-linkki sellaisenaan. Osoitetta
+     * ei koota laskurista. Askel ei pinoa reittejä, joten Back palaa siirtolistaan yhdellä
+     * painalluksella riippumatta siitä montako asemaa selattiin.
+     */
+    fun step(href: String) {
+        val viewer = ((_state.value as? PageUiState.Loaded)?.content as? PageContent.GameViewer)?.page ?: return
+        val own = listOfNotNull(viewer.firstPath, viewer.prevPath, viewer.nextPath, viewer.lastPath)
+        if (href !in own) return
+        currentPath = href
+        fetch()
     }
 
     fun refresh() {
@@ -868,6 +893,7 @@ private val READERS: List<(String) -> PageContent?> = listOf(
     { html -> SiteHelpParser.parse(html)?.let(PageContent::SiteHelp) },
     { html -> SiteLinksParser.parse(html)?.let(PageContent::SiteLinks) },
     { html -> MatchLogParser.parse(html)?.let(PageContent::MatchLog) },
+    { html -> GameViewerParser.parse(html)?.let(PageContent::GameViewer) },
     { html -> TournamentHallParser.parse(html)?.let(PageContent::Hall) },
     { html -> ResignParser.parse(html)?.let(PageContent::Resign) },
 )

@@ -56,6 +56,10 @@ import fi.tommi.dg.app.session.WallpaperStore
 import fi.tommi.dg.app.session.SharedPrefsWallpaper
 import fi.tommi.dg.app.session.MatchOrderStore
 import fi.tommi.dg.app.session.FinishedDaysStore
+import fi.tommi.dg.app.session.ProfileFoldStore
+import fi.tommi.dg.app.session.SharedPrefsTournamentCount
+import fi.tommi.dg.app.session.TournamentCountStore
+import fi.tommi.dg.app.session.SharedPrefsProfileFold
 import fi.tommi.dg.app.session.SharedPrefsFinishedDays
 import fi.tommi.dg.app.session.LoungeFoldStore
 import fi.tommi.dg.app.session.MessageFilterStore
@@ -251,6 +255,9 @@ class AppContainer(context: Context) {
     /** Profiilin päättyneiden päiväraja, samaa lajia kuin [matchOrder]. */
     val finishedDays: FinishedDaysStore by lazy { SharedPrefsFinishedDays(appContext) }
 
+    /** Profiilin Active games- ja Finished matches -otsikoiden taitto, ks. [ProfileFoldStore]. */
+    val profileFolds: ProfileFoldStore by lazy { SharedPrefsProfileFold(appContext) }
+
     /** Viestiruudun pelaajasuodatin, samaa lajia kuin [matchOrder]. */
     val messageFilter: MessageFilterStore by lazy { SharedPrefsMessageFilter(appContext) }
 
@@ -279,9 +286,15 @@ class AppContainer(context: Context) {
      * Omien turnausten lukumäärä viimeksi ladatulta listalta, ks. [OwnTournamentCount].
      * Containerissa eikä näkymämallissa, koska kirjoittaja (otteluluettelon reitti) ja
      * lukija (pelaajasivun reitti) ovat eri reittejä eikä kummankaan malli näe toista.
-     * Prosessin muisti riittää: lukema on korvattavissa avaamalla Tournaments-välilehti.
+     * Alkuarvo luetaan laitteelta 12.11.2026 alkaen ([TournamentCountStore]), jotta Top
+     * Pagen segmentti kantaa viimeisimmän luvun myös uudelleenkäynnistyksen jälkeen.
+     * `MainActivity` kirjoittaa jokaisen uuden arvon takaisin.
      */
-    val ownTournamentCount = MutableStateFlow<OwnTournamentCount?>(null)
+    val tournamentCount: TournamentCountStore by lazy { SharedPrefsTournamentCount(appContext) }
+
+    val ownTournamentCount: MutableStateFlow<OwnTournamentCount?> by lazy {
+        MutableStateFlow(tournamentCount.get())
+    }
 
     /**
      * Arkiston näkyvän varmuuskopion kohde ja aika. Samaa lajia kuin [matchOrder]: tämän

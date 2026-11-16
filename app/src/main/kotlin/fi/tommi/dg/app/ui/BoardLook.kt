@@ -93,7 +93,21 @@ internal class BoardLook private constructor(
     val feltGrain: Color? = null,
     /** Puun syy kehyksellä ja muurilla. */
     val frameGrain: Color? = null,
+    /**
+     * Roolimaalit sivuston puolen mukaan (8.11.2026): sivun keltainen saa vaalean
+     * ([roleSelf]) ja sininen tumman ([roleOpponent]) riippumatta siitä kumpi on käyttäjä.
+     * Keltainen on kummassakin tuetussa skeemassa vaaleampi (`SiteClassic` `#FFCC33`
+     * vastaan `#3333FF`, `SiteBlueWhite` valkoinen vastaan `#0066CC`), joten pelaaja joka
+     * on selaimessa valkoinen on tässäkin vaalea. Ks. `BoardStyleStore.checkersBySite`.
+     */
+    val siteSides: Boolean = false,
 ) {
+
+    /** Sama lauta, roolimaalit sivuston puolen mukaan. */
+    private fun withSiteSides(): BoardLook = BoardLook(
+        wedgeEven, wedgeOdd, siteCheckers, mirrored, felt, frame, tray, trayOutline,
+        trayColumn, band, roleSelf, roleOpponent, feltGrain, frameGrain, siteSides = true,
+    )
 
     /** Sivun väriin sidottu maali, tai null kun tässä tilassa väri on rooli. */
     fun sitePaint(color: CheckerColor): CheckerPaint? = siteCheckers?.getValue(color)
@@ -239,6 +253,18 @@ internal class BoardLook private constructor(
             site: SiteBoardSettings,
             pageScheme: BoardScheme?,
             decoLight: Boolean = false,
+            /** Ks. [siteSides]. Ei vaikuta sivustouskolliseen, jolla väri on jo sivun. */
+            checkersBySite: Boolean = false,
+        ): BoardLook {
+            val look = ofStyle(style, site, pageScheme, decoLight)
+            return if (checkersBySite && style != BoardStyle.SITE) look.withSiteSides() else look
+        }
+
+        private fun ofStyle(
+            style: BoardStyle,
+            site: SiteBoardSettings,
+            pageScheme: BoardScheme?,
+            decoLight: Boolean,
         ): BoardLook {
             // Peilaus luetaan ennen tyylihaaraa, koska se koskee molempia tyylejä. Ks.
             // [x22]: ennen 9.9.2026 tämä haara palasi ennen kuin asetusta oli katsottu.

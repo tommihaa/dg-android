@@ -839,6 +839,25 @@ Viesteistä ja siirroista (Tommin havainnot ja kuvakaappaukset 29.7.2026):
   asemassa `Next` ja `Last` ovat tekstiä eivätkä linkkejä), linkki `Move` pelattavalle sivulle,
   linkki `List of Moves` siirtolistalle sekä muistutuslomake.
 
+  **Mitattu uudelleen 8.11.2026 sovellusta varten** (`ViewerCaptureLiveTest`,
+  `raakasivut/katselulauta-8-11`). Neljä havaintoa:
+
+  - **Haku ei kuluta jonoa.** Top Page ennen ja jälkeen oli sama (15 ottelua, samat
+    Play-linkit; ainoa ero oli aikarajakellon minuutti), sekä vastustajan vuorolla olevalle
+    ottelulle että omalla vuorolla olevalle. Sivulla ei ole viestiä, joten luku ei voi
+    hävittää viestiä.
+  - **Asemaosoite on `/bg/game/<id>/0/<laskuri>`**, ja siirtolistan solut osoittavat samaan
+    muotoon. Viimeisen aseman `Last` on `/bg/game/<id>/0` ilman laskuria.
+  - **`Move`-linkki näkyy vain osassa tiloja.** Oman vuoron ottelun välitilassa navigoinnin
+    perässä on ` / Move` linkkinä pelattavaan sivuun (`/bg/move/<id>/<tunniste>`), mutta
+    viimeisessä asemassa ja vastustajan vuorolla sitä ei ollut. Muistutuslomaketta ei näkynyt
+    yhdessäkään kolmesta kaapatusta tilasta.
+  - **Alempi paneeli ei ole aina katsoja.** Toisin kuin pelattavalla sivulla (ks. alla
+    *Alempi pelaajapaneeli on aina katsoja itse*), katselusivu pitää saman pelaajan alhaalla
+    koko ottelun ajan: ottelussa 5316520 alhaalla oli vastustaja, ottelussa 5342567 katsoja.
+    Sovellus piirtää laudan kuten sivu (Tommin valinta B 8.11.2026) ja antaa roolivärin
+    kirjautuneelle nimen perusteella.
+
   **Domain-kommentti väitti tästä väärin 27.8.2026 alkaen** (`PlayerTournamentRow.activeMatchPath`,
   *"siirtolistan polku"*), ja väite oli kirjoitettu olettaen: turnauskaavion solut osoittavat
   `/bg/game/<id>/<n>/list`iin, ja sama muoto luettiin tähän ilman että osoitetta katsottiin.
@@ -2125,6 +2144,17 @@ Mittaukset jotka eivät ole pääteltävissä sivusta:
   tunnilla aiemmaksi kellojen kääntyessä. Mittaus ei erota UTC:tä Yhdysvaltain itäisestä
   ajasta, koska siellä kesäaika päättyy vasta 1.11.2026. Marraskuun mittaus ratkaisee sen:
   jos katko herää yhä noin 21.30 UTC, niin ajastin on UTC:ssä.
+- **Marraskuun mittaus 6.11.2026 ei antanut kiinteää heräämisaikaa kummassakaan ajassa.**
+  Tommin Brave näytti katkosivun kirjautuneena. Kuva tuli sessioon klo 0.11.38, ja Tommin
+  arvion mukaan se oli noin minuutin vanha. Sivusto siis nukkui noin klo 0.10 (22.10 UTC,
+  17.10 New Yorkin aikaa). Kirjautumaton haku 30 s välein sai klo 0.12.25–0.17.37 kaikilla
+  11 haulla login-sivun eikä kertaakaan katkosivua. Tommin uudelleenlataus palautti laudan
+  viimeistään klo 0.17.40, jolloin vastaus luettiin. Sen tarkempaa heräämisaikaa ei ole,
+  koska kirjautumattoman login-sivu ei 11.9. havainnon jälkeen yksin todista heräämistä.
+  Herääminen 21.30 UTC kumoutui, koska sivusto nukkui vielä 40 minuuttia sen jälkeen.
+  Kiinteä herääminen New Yorkin aikaan ei myöskään pidä: aiemmat olivat viimeistään 17.26
+  ja 17.31, nyt viimeistään 17.17. Sopiva selitys on alku Yhdysvaltain ajassa ennen klo 17.10
+  ja vaihteleva kesto. Selitys on nimetty eikä mitattu, koska alkua ei ole nähty kertaakaan.
 - **Otsakkeet ovat tavalliset**: `Content-Type: text/html` ilman charsetia, `Pragma:
   no-cache`, ei statuskoodia joka erottaisi katkon. Erottelu on rungossa.
 
@@ -2140,6 +2170,10 @@ Ruutu kehottaa painamaan Refresh, ja se on koko toipuminen.
 Mittaamatta: mitä lomakkeen lähetys (siirto, viesti) saa katkon aikana. Oletus on sama sivu,
 ja `Sleeping` kohtelee sitä toteutumattomana tekona kuten `ServerError`, ei epäselvänä kuten
 `Offline`. Oletus on nimetty, ei mitattu.
+
+Siirron kokoamisesta on yksi havainto 6.11.2026. `GET /bg/move/<ottelu>/<tila>?move=mq` ilman
+`submit`-osaa sai kirjautuneena katkosivun, ja uudelleenlataus heräämisen jälkeen palautti
+laudan. Lähetys (`submit`) on yhä mittaamatta. Osoite on luettu Tommin kuvakaappauksesta.
 
 ## Palstan viesti: tyhjä rivi säilyy, rivinvaihto ei (mitattu 5.9.2026)
 
@@ -2193,7 +2227,7 @@ Donations ei ole manuaalissa, koska sen rivit poistettiin Playn maksupolitiikan 
 | Mini-lautaskeema | Korttia ei voi valita. Sivustolla asetettu Mini säilyy, mutta Mini pudottaa pistenumerot, joten lautaruutu näyttää laudan sijaan neuvon vaihtaa skeemaa (`board_mini_scheme`). Aiempi kirjaus *"lauta piirtyy X-22:n väreillä"* kuvasi `BoardLook.of`in väripolkua, johon Mini-sivu ei koskaan päädy (korjattu 29.9.2026) | `docs/ASETUKSET.md`, `BoardViewModel` (`NotABoardKind.MiniScheme`) |
 | Change Password (`/bg/profile/pw`) | Jää sivustolle, lomakkeen yllä oleva rivi avaa `/bg/profile`-sivun selaimessa | `docs/ASETUKSET.md` luku 5 (päätös 22.9.2026) |
 | Public Profile (`/bg/profile/pub`) | Sama kuin Change Password | `docs/ASETUKSET.md` luku 5 |
-| Active Game eli ottelun läpikäynti asema kerrallaan | Rajattu pois. Linkki jäsennetään, mutta sitä ei näytetä | `docs/AVOIMET.md` (päätös 1.9.2026) |
+| Active Game eli ottelun läpikäynti asema kerrallaan | **Tehty 8.11.2026** (rajaus 1.9.2026 purettu, Tommin suunta A): siirtolistan rivin puolen napautus avaa sivun oman katselulaudan, ja First, Prev, Next ja Last selaavat sivun linkeillä. Turnauslistojen `Active Game` -linkki avaa saman katselulaudan viimeiseen asemaan: rivin ottelukuvaus on linkki, muu rivi avaa yhä turnaussivun (Tommin kuittaus samana päivänä) | `docs/AVOIMET.md` (päätös 1.9.2026 ja purku 8.11.2026), `GameViewerParser` |
 | Background Color | Lomakkeessa on kenttä, mutta arvo vaikuttaa vain selaimeen; sovellus pitää oman taustansa | `docs/ASETUKSET.md` |
 | Create Account (`/bg/create`) | Jää sivustolle (Tommin päätös 27.9.2026). Sivu on uuden tilin luonti eikä turnauksen perustaminen (luettu 27.9.2026): `POST /bg/create`, kentät `name` (enintään 20 merkkiä), `mail` ja `mail2` sekä piilokenttä `submit=1`. Salasana tulee sähköpostilla, ja sen saapuminen kesti Tommin muistin mukaan useita tunteja tai jopa päivän. Rekisteröityminen ei siis ole hetken teko, jonka voisi viedä sovellukseen, vaan odotus sähköpostin varassa. Kirjautumisruudun alla on rivi joka avaa sivun selaimessa (`NoAccountNote`, Tommin kuittaus samana päivänä). Todennettu puhelimella samana päivänä uloskirjautumalla: rivi näkyy `Log In` -napin alla, ja napautus avaa `/bg/create`-sivun laitteen selaimessa (`raakasivut/sessio-27-9-create/login-no-account-puhelin.png` ja `login-linkki-selaimessa-puhelin.png`). **Linkki poistettu 1.10.2026** (Tommin päätös): Play Consolen Data safety -lomake laskee ohjauksen tilinluontisivulle tilin luonniksi, ja se vaatisi tilin poistoreitin, jota sivuston tilille ei voi tarjota. Rivi sanoo nyt vain että tili luodaan osoitteessa dailygammon.com (`docs/KAUPPA.md` › Data safety) | `raakasivut/sessio-27-9-create/0005_bg_create.html`, `docs/AVOIMET.md` › *Jatkosuunta* |
 | Donations (`/bg/donate`) | **Ei sovelluksessa 29.9.2026 alkaen:** rivit poistettiin Play-kaupan maksupolitiikan vuoksi (`docs/UI.md` › Donations). Aiemmin avautui selaimessa (Tommin päätös 27.9.2026): Links-ruudun ylin osasto *DailyGammon* ja rivi sivuston Helpin kysymyksen *How can I contribute...* alla (`DonationsLinkRow`, kysymys tunnistetaan ankkurista `donate`). Sovellus ei ota maksuja. Todennettu puhelimella samana päivänä: rivit näkyvät, ja napautus avaa sivun selaimessa. **Sivu vaatii kirjautumisen**, joten kirjautumaton selain näyttää ensin sivuston login-lomakkeen (`raakasivut/sessio-27-9-donate/links-donations-puhelin.png`, `help-donations-puhelin.png` ja `links-donations-selaimessa-puhelin.png`). Sivu on pelkkä lahjoitusohje: PayPal-lomake (`POST https://www.paypal.com/cgi-bin/webscr`, vastaanottaja Jordanin osoite, `item_name` sisältää kirjautuneen käyttäjänimen ja `item_number` hänen tunnuksensa, valuutta USD, summan valitsee PayPalissa) ja sähköpostilinkki shekkiä varten. Sivu sanoo *"Donations are entirely voluntary. The site will remain free."* Tukijan tilaa, etuja tai merkintää ei ole. Sivun kuvaus palvelimen historiasta (Tokio 2000, Texas 2002) ja ylläpidosta (Jordan, Char, Glen, Mom) on samalla sivulla | `raakasivut/sessio-27-9-donate/0001_bg_donate.html` |

@@ -58,4 +58,11 @@ data class MatchLogTurn(
     val number: String,
     val left: String,
     val right: String,
+    /**
+     * Puolen viimeisen solun linkki, eli asema siirron (tai kuutiotoimen) jälkeen, esim.
+     * `/bg/game/<id>/<n>/2`. Katselulauta avataan tästä (8.11.2026). Null kun puolella ei
+     * ole linkkiä, kuten avausvuoron tyhjällä puolella.
+     */
+    val leftPath: String? = null,
+    val rightPath: String? = null,
 )

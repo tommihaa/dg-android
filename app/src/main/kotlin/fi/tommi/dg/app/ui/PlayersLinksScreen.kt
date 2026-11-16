@@ -2,6 +2,7 @@ package fi.tommi.dg.app.ui
 
 import androidx.annotation.StringRes
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -105,6 +106,13 @@ internal val PLAYERS_LINKS = listOf(
             // Ketjut 64121 ja 64144. Tekijän oma osoite; se ohjaa palvelimelle, jonka nimi
             // voi vaihtua.
             PlayersLink("Second Roll", "darkhelmet", "http://secondroll.de"),
+            // Tommin oma anti-backgammon-botti selaimessa (Tommin tilaus 8.11.2026, 2.0:aan).
+            // Projekti `Anti-Backgammon`, julkinen sivu `anti-backgammon-play` (GitHub Pages).
+            PlayersLink("Anti-Backgammon bot", "tommih", "https://tommihaa.github.io/anti-backgammon-play/"),
+            // Kolmen nappulan hypergammon täydellistä vastustajaa vastaan selaimessa (Tommin
+            // tilaus 10.11.2026). Sivuston Backgammon Drills ylläpitäjä on etusivun
+            // yhteystiedon mukaan Max Stockslager.
+            PlayersLink("Play Hypergammon", "Max Stockslager", "https://backgammondrills.com/hypergammon.html"),
         ),
     ),
     PlayersLinkGroup(
@@ -148,12 +156,14 @@ fun PlayersLinksScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
             contentPadding = PaddingValues(bottom = 16.dp),
         ) {
             item {
-                Text(
-                    text = stringResource(R.string.players_links_explain),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                )
+                SelectionContainer {
+                    Text(
+                        text = stringResource(R.string.players_links_explain),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    )
+                }
             }
             PLAYERS_LINKS.forEach { group ->
                 item {

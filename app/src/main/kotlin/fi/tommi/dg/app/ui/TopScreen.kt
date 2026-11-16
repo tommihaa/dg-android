@@ -1,6 +1,7 @@
 package fi.tommi.dg.app.ui
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.OutlinedButton
 import fi.tommi.dg.domain.PlayerRef
@@ -104,6 +105,8 @@ fun TopScreen(
     onSelectSegment: (MatchesSegment) -> Unit = {},
     /** Omien turnausten tila. Oletus on tyhjä, koska ruutu ei tiedä siitä ennen kuin se annetaan. */
     tournaments: OwnTournamentsUiState = OwnTournamentsUiState.NoPath,
+    /** Viimeksi luettu turnausmäärä laitteelta, ks. [fi.tommi.dg.app.session.TournamentCountStore]. */
+    lastTournamentCount: OwnTournamentCount? = null,
     /**
      * Ottelumuisti kannasta, ks. [fi.tommi.dg.data.MatchMemory]. Turnauslista lukee siitä
      * vastustajan ja kierroksen otteluille joita luettelo ei näytä. Oletus tyhjä, koska
@@ -196,7 +199,20 @@ fun TopScreen(
                 // sivusta: vanhentunut luku olisi väite jota ruutu ei enää tiedä.
                 val yourTurn = (state as? TopUiState.Loaded)
                     ?.takeUnless { it.matchesStale }?.page?.yourTurnCount ?: 0
-                SegmentRow(selected = segment, yourTurnCount = yourTurn, onSelect = onSelectSegment)
+                // Turnausten määrä samaan tapaan (Tommin tilaus 12.11.2026). Luku tulee
+                // ladatusta listasta, ja ennen segmentin avausta viimeksi luetusta, kun se on
+                // tämän tilin polulta (Tommi: "riittää viimeisin tieto"). Listaa ei haeta
+                // tätä varten.
+                val ownPath = (state as? TopUiState.Loaded)?.page?.activeTournamentsPath
+                val tournamentCount = (tournaments as? OwnTournamentsUiState.Loaded)?.page?.rows?.size
+                    ?: lastTournamentCount?.takeIf { ownPath != null && it.path == ownPath }?.count
+                    ?: 0
+                SegmentRow(
+                    selected = segment,
+                    yourTurnCount = yourTurn,
+                    tournamentCount = tournamentCount,
+                    onSelect = onSelectSegment,
+                )
             }
 
             if (segment == MatchesSegment.Tournaments && state !is TopUiState.SignedOut) {
@@ -303,11 +319,14 @@ internal fun ProfileAction(self: PlayerRef?, onOpenPage: (String) -> Unit) {
  * `Your turn` (27.9.2026 asti `Your turn`, 28.9.2026 asti `Playable`, 3.10.2026 asti `Your move`) kantaa odottavien määrän sulkeissa kun se on yli
  * nollan (Tommin tilaus 27.9.2026). Määrä oli 2.9.–27.9.2026 oma rivinsä listan yläpuolella (`It is your turn in N
  * matches`), mutta segmentin nimi sanoi jo saman asian, joten rivi poistui.
+ * `Tournaments` sai saman muodon 12.11.2026, ja listan otsikkorivi *Your active
+ * tournaments (n)* poistui samasta syystä.
  */
 @Composable
 private fun SegmentRow(
     selected: MatchesSegment,
     yourTurnCount: Int,
+    tournamentCount: Int,
     onSelect: (MatchesSegment) -> Unit,
 ) {
     SingleChoiceSegmentedButtonRow(
@@ -331,7 +350,11 @@ private fun SegmentRow(
                     } else {
                         stringResource(R.string.matches_segment_your_turn)
                     }
-                    MatchesSegment.Tournaments -> stringResource(R.string.matches_segment_tournaments)
+                    MatchesSegment.Tournaments -> if (tournamentCount > 0) {
+                        stringResource(R.string.matches_segment_tournaments_count, tournamentCount)
+                    } else {
+                        stringResource(R.string.matches_segment_tournaments)
+                    }
                 }
                 Text(text = label, maxLines = 1)
             }
@@ -376,14 +399,18 @@ private fun PendingActionNotice(action: PendingAction, onOpen: () -> Unit) {
         ),
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = stringResource(R.string.top_pending_title, action.submit),
-                style = MaterialTheme.typography.titleSmall,
-            )
-            Text(
-                text = stringResource(R.string.top_pending_explain),
-                style = MaterialTheme.typography.bodySmall,
-            )
+            SelectionContainer {
+                Text(
+                    text = stringResource(R.string.top_pending_title, action.submit),
+                    style = MaterialTheme.typography.titleSmall,
+                )
+            }
+            SelectionContainer {
+                Text(
+                    text = stringResource(R.string.top_pending_explain),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
             TextButton(onClick = onOpen, modifier = Modifier.padding(top = 8.dp)) {
                 Text(stringResource(R.string.top_pending_open))
             }
@@ -473,6 +500,7 @@ private fun MatchList(
                 MatchRow(
                     match = match,
                     onOpen = match.playPath?.let { { onOpenMatch(match) } },
+                    onReview = match.reviewPath?.let { path -> { onOpenPage(path) } },
                 )
                 HorizontalDivider()
             }
@@ -492,25 +520,27 @@ private fun MatchList(
  */
 @Composable
 private fun ArchiveEdgeLine(edge: ArchiveEdgeState) {
-    Text(
-        // Kolme tilaa eikä kaksi, 5.9.2026 alkaen. Lukematon kanta sanoo lukevansa eikä
-        // väitä arkistosta mitään, koska ennen tätä se sanoi arkiston olevan tyhjä.
-        text = when (edge) {
-            ArchiveEdgeState.Unknown -> stringResource(R.string.archive_edge_loading)
-            ArchiveEdgeState.Empty -> stringResource(R.string.archive_edge_empty)
-            is ArchiveEdgeState.Reaches -> {
-                // Haarukka alusta loppuun (Tommin tilaus 9.10.2026). Saman päivän haarukka
-                // sanotaan yhtenä päivänä, koska "9 Oct – 9 Oct" näyttäisi viallisuudelta.
-                val from = ArchiveEdge.formatDate(edge.fromEpochMillis)
-                val to = ArchiveEdge.formatDate(edge.storedAtEpochMillis)
-                if (from == to) stringResource(R.string.archive_edge, to)
-                else stringResource(R.string.archive_range, from, to)
-            }
-        },
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 8.dp),
-    )
+    SelectionContainer {
+        Text(
+            // Kolme tilaa eikä kaksi, 5.9.2026 alkaen. Lukematon kanta sanoo lukevansa eikä
+            // väitä arkistosta mitään, koska ennen tätä se sanoi arkiston olevan tyhjä.
+            text = when (edge) {
+                ArchiveEdgeState.Unknown -> stringResource(R.string.archive_edge_loading)
+                ArchiveEdgeState.Empty -> stringResource(R.string.archive_edge_empty)
+                is ArchiveEdgeState.Reaches -> {
+                    // Haarukka alusta loppuun (Tommin tilaus 9.10.2026). Saman päivän haarukka
+                    // sanotaan yhtenä päivänä, koska "9 Oct – 9 Oct" näyttäisi viallisuudelta.
+                    val from = ArchiveEdge.formatDate(edge.fromEpochMillis)
+                    val to = ArchiveEdge.formatDate(edge.storedAtEpochMillis)
+                    if (from == to) stringResource(R.string.archive_edge, to)
+                    else stringResource(R.string.archive_range, from, to)
+                }
+            },
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 8.dp),
+        )
+    }
 }
 
 /**
@@ -553,14 +583,18 @@ private fun MarksLine(count: Int, onOpen: () -> Unit) {
 private fun WaitingNotice(onOpenMessages: () -> Unit) {
     Card(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = stringResource(R.string.top_something_waiting),
-                style = MaterialTheme.typography.titleSmall,
-            )
-            Text(
-                text = stringResource(R.string.top_something_waiting_explain),
-                style = MaterialTheme.typography.bodySmall,
-            )
+            SelectionContainer {
+                Text(
+                    text = stringResource(R.string.top_something_waiting),
+                    style = MaterialTheme.typography.titleSmall,
+                )
+            }
+            SelectionContainer {
+                Text(
+                    text = stringResource(R.string.top_something_waiting_explain),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
             TextButton(
                 onClick = onOpenMessages,
                 modifier = Modifier.padding(top = 8.dp),
@@ -656,7 +690,16 @@ private fun MatchSortRow(order: MatchOrder, onSort: (MatchSortKey) -> Unit) {
  * toimintakehotus.
  */
 @Composable
-private fun MatchRow(match: Match, onOpen: (() -> Unit)?) {
+private fun MatchRow(
+    match: Match,
+    onOpen: (() -> Unit)?,
+    /**
+     * Sivuston oman `Review`-linkin avaus siirtolistan lukijaan, tai null kun rivillä ei ole
+     * linkkiä. Pyyntö jebediasmielta 7.11.2026: *"I miss the possibility to review my active
+     * matches"*. Polku luetaan riviltä eikä koota, ja haku on kuluttamaton GET.
+     */
+    onReview: (() -> Unit)? = null,
+) {
     // Pitkä painallus: vastustajan profiili, turnaus ja viestit avaamatta ottelua (`PlayerMenu.kt`).
     PlayerMenuBox(
         name = match.opponent.name,
@@ -665,23 +708,23 @@ private fun MatchRow(match: Match, onOpen: (() -> Unit)?) {
         onClick = onOpen,
         modifier = Modifier.fillMaxWidth(),
     ) {
-    Column(
+    // Pillerit omana sarakkeenaan oikeassa laidassa, pystysuunnassa koko rivin keskellä
+    // (Tommin valinta 8.11.2026, `docs/UI.md` › *Rivin teot ääriviivapillereinä*). Otsikko-
+    // rivillä ne kasvattivat otsikon korkeuden napin kosketusalueen mittaiseksi, ja otsikon
+    // ja `vs`-rivin väliin jäi tyhjää.
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 10.dp)
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
+    Column(modifier = Modifier.weight(1f)) {
             // Tapahtumanimi saa jaljelle jaavan tilan ja katkeaa itse. Ilman painoa se vei
             // koko leveyden ja puristi vuorotunnuksen kirjaimen levyiseksi pylvaaksi
             // (mitattu 26.8.2026, 320 dp ja fontScale 1.3). Nimi on toistuvaa tekstia
             // (`DG 8x8 2026 - C vs F - Div 1`), tunnus ei, joten katkaisu kuuluu nimelle.
             Text(
                 text = match.eventName,
-                modifier = Modifier.weight(1f, fill = false),
                 style = MaterialTheme.typography.titleMedium,
                 // Turnauksen rarity-väri kierrosmäärän mukaan, `Round 3/5` → 5 (2.10.2026).
                 color = tournamentRarityColor(match.eventId, match.eventName, roundsFromText(match.round))
@@ -690,11 +733,6 @@ private fun MatchRow(match: Match, onOpen: (() -> Unit)?) {
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
-            // Tunnusta jatetaan nayttamatta kokonaan kun sivu ei kerro vuoroa. Profiilisivun
-            // otteluista sita ei tieda kumpikaan vaihtoehto, ja odottaa olisi niista vaara
-            // juuri niissa joissa on vuoro.
-            match.myTurn?.let { myTurn -> TurnPill(myTurn) }
-        }
 
         // Vastustaja omalle rivilleen: han on se toinen osapuoli eika yksi luku muiden
         // joukossa, ja nimi on ainoa kentta jota ei lueta numerona.
@@ -756,6 +794,20 @@ private fun MatchRow(match: Match, onOpen: (() -> Unit)?) {
                 )
             }
         }
+    }
+    // `Review` ensin ja vuoro reunassa (Tommin valinta 8.11.2026). Oma napautusalue, joten
+    // rivin muu napautus avaa yhä laudan. Vuorotunnus jätetään pois kokonaan kun sivu ei
+    // kerro vuoroa: profiilisivun otteluista sitä ei tiedä kumpikaan vaihtoehto, ja odottaa
+    // olisi niistä väärä juuri niissä joissa on vuoro.
+    if (onReview != null || match.myTurn != null) Row(
+        modifier = Modifier.padding(start = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        onReview?.let {
+            RowPillButton(label = stringResource(R.string.top_review), onClick = it)
+        }
+        match.myTurn?.let { myTurn -> TurnPill(myTurn) }
+    }
     }
     }
 }

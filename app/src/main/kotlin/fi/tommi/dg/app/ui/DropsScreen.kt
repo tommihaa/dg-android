@@ -1,6 +1,7 @@
 package fi.tommi.dg.app.ui
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -70,19 +71,23 @@ fun DropsScreen(
             contentPadding = PaddingValues(bottom = 16.dp),
         ) {
             item {
-                Text(
-                    text = stringResource(R.string.drops_explain),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                )
+                SelectionContainer {
+                    Text(
+                        text = stringResource(R.string.drops_explain),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    )
+                }
             }
             if (drops.isEmpty()) {
                 item {
-                    Text(
-                        text = stringResource(R.string.drops_empty),
-                        modifier = Modifier.padding(16.dp),
-                    )
+                    SelectionContainer {
+                        Text(
+                            text = stringResource(R.string.drops_empty),
+                            modifier = Modifier.padding(16.dp),
+                        )
+                    }
                 }
                 return@DgLazyColumn
             }

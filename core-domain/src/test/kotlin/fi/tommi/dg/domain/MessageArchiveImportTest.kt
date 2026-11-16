@@ -61,6 +61,35 @@ class MessageArchiveImportTest {
         (readArchiveJson(json) as ArchiveImport.Read).file
 
     @Test
+    fun `vastauslomake kulkee tiedoston lapi eika muuta tunnistetta`() {
+        // Versio 7 (8.11.2026): toisella laitteella tuotuun viestiin voi vastata. Lomake ei
+        // ole tunnisteen tiivisteessä, joten sama viesti kahdelta laitteelta on yhä sama rivi.
+        val lomake = ReplyForm(action = "/bg/sendmsg/33060", method = FormMethod.POST, field = "text", maxLength = 80)
+        val viesti = msg().copy(replyForm = lomake)
+        val ilmanRajaa = msg(body = "toinen").copy(replyForm = lomake.copy(maxLength = null))
+
+        val luettu = luettu(listOf(viesti, ilmanRajaa, msg(body = "ilman")).toArchiveJson(1_000))
+
+        assertEquals(lomake, luettu.messages[0].replyForm)
+        assertEquals(msg().id, luettu.messages[0].id)
+        assertEquals(null, luettu.messages[1].replyForm?.maxLength)
+        assertEquals("/bg/sendmsg/33060", luettu.messages[1].replyForm?.action)
+        assertNull(luettu.messages[2].replyForm)
+    }
+
+    @Test
+    fun `tuntematon lomakkeen metodi pudottaa lomakkeen eika viestia`() {
+        val json = """{ "format": "$ARCHIVE_EXPORT_FORMAT", "version": 7, "messages": [
+            { "sender": "a", "body": "b", "receivedAtEpochMillis": 1, "source": "GAME_MESSAGE",
+              "replyAction": "/bg/sendmsg/1", "replyMethod": "PUT", "replyField": "text", "replyMaxLength": 80 } ] }"""
+
+        val tulos = readArchiveJson(json) as ArchiveImport.Read
+
+        assertEquals(0, tulos.unreadable)
+        assertNull(tulos.file.messages.single().replyForm)
+    }
+
+    @Test
     fun `vienti ja tuonti ovat toistensa kaanteet`() {
         // Viestin tunniste lasketaan kentistä, joten sama viesti saa saman id:n tuonnin
         // jälkeen ja kanta tunnistaa sen omakseen. Muistutuksen id ei kulje tiedostossa.

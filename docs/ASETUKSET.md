@@ -307,6 +307,13 @@ reitissä tekisi niistä eri mieliset. Suoja on kytkin joka on oletuksena pois.
 `NAME`, joka näyttää oman pistemäärän nimen perässä. `dg_board_extras` (`BoardExtrasStore`,
 oletus päällä) piilottaa laudan omat lisälinkit, ja se on lisätty asetusten siirtotiedostoon.
 
+**Sivun napit omille kytkimilleen 12.11.2026** (Tommin päätös, `docs/UI.md` › *Swap Dice ja
+Skip Game omille kytkimilleen*). Samassa `dg_board_extras`-tiedostossa avaimet `swap_dice` ja
+`skip_game` (`BoardExtrasStore`, oletus päällä), joten siirtotiedosto kattaa ne ilman uutta riviä.
+Kytkimet ovat Board-ryhmän *Links on the board* -osiossa. *Show Swap Dice* -selite kertoo
+yhteyden Playing-ryhmän *Swap the dice by tapping them* -kytkimeen, ja se kertoo saman toisin
+päin. Kytkimiä ei sidota toisiinsa.
+
 **Neljäs noppakytkin 17.10.2026: `next_on_dice`** samassa `dg_dice_tap`-tiedostossa
 (`NextOnDiceStore`, oletus pois). Se tuo `Next Game`n ja `To Top`in omien noppien paikalle
 keskikaistalle sivupaneelin sijaan. Tommin havainto pelatessa ja Fredericin huomio, oma kytkin
@@ -634,6 +641,34 @@ lautaruudulle ottelun laudan tallennetun tyylin sijaan. Ottelu pidetään muisti
 virhetilojen yli, jotta paneeli ei välähdä tallennetun laudan väreissä. Paneeli, kuutio ja
 vaalean Decon sääntö seuraavat arvottua lautaa samoin kuin valittua. Teema kirjoittaa yhä
 Board lookin, mutta kytkimen ollessa päällä ottelu piirtyy joukon laudalla.
+
+### Vaalea ja tumma sivuston puolen mukaan (toteutettu 8.11.2026)
+
+Testaaja jebediasmie kysyi 7.11.2026 Inboxissa: sivustolla hän on toisissa otteluissa musta ja
+toisissa valkoinen, mutta sovelluksen laudoilla (hänen esimerkkinsä Olive) aina valkoinen.
+Hän piti sovelluksen lautoja selaimen värejä nätimpinä ja toivoi niihin sivuston puolta.
+
+Tommin valinta 8.11.2026 monivalinnasta: **oma kytkin, oletus ennallaan.** Hylätyt: oletuksen
+muuttaminen (roolivärin menetys kaikilta) ja muuttamatta jättäminen.
+
+- Kytkin `Light and dark checkers as on DailyGammon` arvonnan kytkimen alla. Pois päältä väri
+  on rooli kuten tähänkin asti, joten luvun 4 ensimmäinen ero säilyy oletuksena.
+- Päällä sivun keltainen saa laudan vaalean maalin ja sininen tumman, kumpi tahansa on
+  käyttäjä. Keltainen on kummassakin tuetussa skeemassa vaaleampi (Classic `#FFCC33` vastaan
+  `#3333FF`, Blue/White valkoinen vastaan `#0066CC`), joten selaimen valkoinen on laudalla
+  vaalea. Väriä ei lueta skeemasta, joten tuntematon skeema ja Mini toimivat samoin.
+- Muuri, lokerot ja paneelit jakavat nappulat yhä roolin mukaan; vain maali vaihtuu, kuten
+  `SITE`-tilassa. `SITE`iin kytkin ei vaikuta.
+
+**Toteutus:** `BoardStyleStore.checkersBySite` (sama tiedosto kuin tyyli, joten asetusten
+siirto kattaa sen), `BoardLook.siteSides` ja `BoardRoles.rolePaint`. Asetusten esikatselut
+piirtyvät roolivärein, koska esikatselun ottelulla ei ole sivuston puolta jota näyttää.
+
+**Todennettu 8.11.2026.** Pixel 8a, Walnut-lauta: Pentamerous Nack #4239 (vs vastustaja A)
+piirtyi kytkin päällä tommihille tummana ja pois päältä vaaleana, Strawberry Stratifieds
+#1948 (vs vastustaja B) kytkin päällä vaaleana. Tommi katsoi samat ottelut selaimesta:
+vastustajaa A vastaan hän oli tumma ja vastustajaa B vastaan vaalea, eli sääntö "keltainen on
+vaalea" piti Tommin skeemalla.
 
 ### Vaalea lautaruutu (päätetty 27.9.2026)
 

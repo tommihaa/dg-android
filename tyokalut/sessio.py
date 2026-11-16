@@ -200,8 +200,13 @@ def portin_haltija():
     """
     if os.name != "nt":
         return []
+    # Kuuntelija tunnistetaan vastapuolen portista 0 eikä tilasta. Mitattu 8.11.2026
+    # (Windows 11 build 26300): proxyn kuunteleva pistoke 0.0.0.0:8899 näkyi tilalla 0
+    # ilman nimeä, eikä netstat listannut sitä LISTENING-rivinä. `-State Listen` palautti
+    # siksi tyhjän kahdessa sessiossa peräkkäin, vaikka tabletti oli kytkettynä proxyyn.
     komento = (
-        "Get-NetTCPConnection -State Listen -LocalPort %d -ErrorAction SilentlyContinue"
+        "Get-NetTCPConnection -LocalPort %d -ErrorAction SilentlyContinue"
+        " | Where-Object { $_.RemotePort -eq 0 }"
         " | Select-Object -ExpandProperty OwningProcess -Unique" % PORTTI
     )
     tulos = subprocess.run(

@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -45,33 +46,52 @@ import fi.tommi.dg.app.R
  * Järjestys on lukijan eikä lähteen: sovelluksen oma manuaali ja asetukset ensin,
  * sivuston omat tekstit niiden perässä.
  */
-enum class InfoSection(@StringRes val labelRes: Int, @StringRes val summaryRes: Int) {
+/**
+ * Rivin alkuperä nimen värinä (Tommin valinta 8.11.2026, mockupin vaihtoehto A): järjestys
+ * pysyy aakkosellisena, ja väri kertoo kenen kohde on. Teeman rooleista, jotta erottelu
+ * toimii jokaisessa teemassa: sivusto korostusvärillä, sovellus tekstin värillä ja pelaajat
+ * teeman kolmannella värillä. Rating-värejä ei käytetä, koska ne tarkoittavat jo muuta.
+ */
+enum class InfoOrigin { Site, App, Players }
+
+@Composable
+private fun InfoOrigin.color(): Color = when (this) {
+    InfoOrigin.Site -> MaterialTheme.colorScheme.primary
+    InfoOrigin.App -> MaterialTheme.colorScheme.onSurface
+    InfoOrigin.Players -> MaterialTheme.colorScheme.tertiary
+}
+
+enum class InfoSection(
+    @StringRes val labelRes: Int,
+    @StringRes val summaryRes: Int,
+    val origin: InfoOrigin,
+) {
     /**
      * **Asetukset eivät ole tällä listalla** (Tommin päätös 4.9.2026, *"Info ja
      * asetusnäkymä ja valinta ehdottomasti erikseen"*). Info on lukemista ja asetukset
      * ovat säätämistä, joten niillä on eri ruutu ja eri nappi. Rivi oli tässä 4.9.2026
      * asti, ja `SETTINGS_ROUTE` on nyt sen ainoa kohde.
      */
-    Help(R.string.info_help_label, R.string.info_help_summary),
+    Help(R.string.info_help_label, R.string.info_help_summary, InfoOrigin.App),
     /**
      * Katkohistoria (Tommin tilaus 18.9.2026). Heti manuaalin perässä, koska se on
      * sovelluksen omaa tietoa kuten manuaali, ja ennen sivuston sivuja.
      */
-    Drops(R.string.info_drops_label, R.string.info_drops_summary),
-    SiteHelp(R.string.info_site_help_label, R.string.info_site_help_summary),
-    SiteLinks(R.string.info_site_links_label, R.string.info_site_links_summary),
+    Drops(R.string.info_drops_label, R.string.info_drops_summary, InfoOrigin.App),
+    SiteHelp(R.string.info_site_help_label, R.string.info_site_help_summary, InfoOrigin.Site),
+    SiteLinks(R.string.info_site_links_label, R.string.info_site_links_summary, InfoOrigin.Site),
     /**
      * Pelaajien ylläpitämät linkit (Tommin tilaus 15.10.2026). Oma rivi erillään sivuston
      * Linksistä, koska lähde on pelaajat eikä DailyGammon; Players mapin rivi piirtyy
      * Linksin ja tämän väliin, joten pelaajien kohteet ovat peräkkäin.
      */
-    PlayersLinks(R.string.players_links_label, R.string.players_links_summary),
+    PlayersLinks(R.string.players_links_label, R.string.players_links_summary, InfoOrigin.Players),
     /**
      * Sivuston luovutussivu `/bg/resign` (3.9.2026, Tommin tilaus). Info-välilehden rivi
      * eikä otteluluettelon nappi, koska luovutus on sivustolla tavallinen valikkotoiminto
      * (`SUBSTANSSI.md` kohta 36) ja Top Pagen oma linkki on navigointipalkissa.
      */
-    Resign(R.string.info_resign_label, R.string.info_resign_summary),
+    Resign(R.string.info_resign_label, R.string.info_resign_summary, InfoOrigin.Site),
 }
 
 /**
@@ -108,6 +128,8 @@ fun InfoScreen(
     onLoadSiteHelp: () -> Unit = {},
     /** Kirjautuneen tilin nimi, jonka kohdalle pelaajien kartta avautuu (9.10.2026). */
     ownName: String? = null,
+    /** Näkyykö Connection drops; vain viimeaikaisten katkojen jälkeen (8.11.2026). */
+    showDrops: Boolean = true,
 ) {
     // Kenttä on ruudun omaa tilaa: haku ei lähetä mitään sivustolle App Helpin osalta, ja
     // DG Helpin nouto pyydetään erikseen ensimmäisellä merkillä.
@@ -154,10 +176,11 @@ fun InfoScreen(
             }
 
             val openMap = rememberPlayersMapOpener(ownName)
-            InfoSection.entries.forEach { section ->
+            InfoSection.entries.filter { it != InfoSection.Drops || showDrops }.forEach { section ->
                 InfoRow(
                     label = stringResource(section.labelRes),
                     summary = stringResource(section.summaryRes),
+                    origin = section.origin,
                     onClick = { onOpen(section) },
                 )
                 HorizontalDivider()
@@ -168,6 +191,7 @@ fun InfoScreen(
                     InfoRow(
                         label = stringResource(R.string.players_map_label),
                         summary = stringResource(R.string.players_map_summary),
+                        origin = InfoOrigin.Players,
                         onClick = openMap,
                     )
                     HorizontalDivider()
@@ -179,6 +203,8 @@ fun InfoScreen(
             InfoRow(
                 label = stringResource(R.string.action_sign_out),
                 summary = stringResource(R.string.action_sign_out_summary),
+                // Unohtaa tunnukset tältä laitteelta, joten teko on sovelluksen oma.
+                origin = InfoOrigin.App,
                 onClick = onSignOut,
             )
             HorizontalDivider()
@@ -192,7 +218,7 @@ fun InfoScreen(
  * yksisanaisia ja yksi sana ei kerro mitä rivin takaa löytyy.
  */
 @Composable
-private fun InfoRow(label: String, summary: String, onClick: () -> Unit) {
+private fun InfoRow(label: String, summary: String, origin: InfoOrigin, onClick: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -203,6 +229,7 @@ private fun InfoRow(label: String, summary: String, onClick: () -> Unit) {
         Text(
             text = label,
             style = MaterialTheme.typography.titleMedium,
+            color = origin.color(),
         )
         Text(
             text = summary,
@@ -294,15 +321,17 @@ private fun InfoSearchResults(query: String, siteHelp: SiteHelpSearchState, onRe
 
 @Composable
 private fun InfoSearchNote(text: String, onClick: (() -> Unit)? = null) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.bodyMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier
-            .fillMaxWidth()
-            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-    )
+    SelectionContainer {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier
+                .fillMaxWidth()
+                .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+        )
+    }
 }
 
 /**
@@ -323,37 +352,55 @@ private fun InfoHitRow(
     )
     val bold = helpBoldStyle()
     val heading = helpHeadingStyle()
+    // Suljettuna koko osuma avaa, avattuna vain otsake sulkee ja vastaus on maalattavissa
+    // (Tommin havainto 8.11.2026, sama kuin manuaalin `HelpItemView`).
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onToggle)
+            .then(if (open) Modifier else Modifier.clickable(onClick = onToggle))
             .animateContentSize()
             .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
-        Text(
-            text = when (hit.source) {
-                InfoHitSource.APP -> stringResource(R.string.info_search_source_app, hit.number)
-                InfoHitSource.SITE -> stringResource(R.string.info_search_source_site, hit.number)
-            },
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.primary,
+        Column(
+            modifier = if (open) Modifier.fillMaxWidth().clickable(onClick = onToggle) else Modifier,
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            Text(
+                text = when (hit.source) {
+                    InfoHitSource.APP -> stringResource(R.string.info_search_source_app, hit.number)
+                    InfoHitSource.SITE -> stringResource(R.string.info_search_source_site, hit.number)
+                },
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            Text(
+                text = highlighted(AnnotatedString(hit.question), words, highlight),
+                style = MaterialTheme.typography.titleMedium,
+            )
+        }
+        val answer = highlighted(
+            styledAnswer?.helpStyled(bold, heading, dgDark()) ?: AnnotatedString(hit.answer),
+            words,
+            highlight,
         )
-        Text(
-            text = highlighted(AnnotatedString(hit.question), words, highlight),
-            style = MaterialTheme.typography.titleMedium,
-        )
-        Text(
-            text = highlighted(
-                styledAnswer?.helpStyled(bold, heading) ?: AnnotatedString(hit.answer),
-                words,
-                highlight,
-            ),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = if (open) Int.MAX_VALUE else 2,
-            overflow = TextOverflow.Ellipsis,
-        )
+        if (open) {
+            SelectionContainer {
+                Text(
+                    text = answer,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        } else {
+            Text(
+                text = answer,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
     }
 }
 

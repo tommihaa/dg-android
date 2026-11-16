@@ -1,44 +1,71 @@
 package fi.tommi.dg.app.ui
 
+import fi.tommi.dg.domain.CheckerColor
+import fi.tommi.dg.domain.Die
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Nappirivin sijoittelu keskikaistalla, kun noppalokerolle varataan tila.
+ * Nappirivin väli keskikaistalla (Tommin valinta 7.11.2026): muurin puolisko jolla noppia ei
+ * ole, ei koskaan muurin päällä.
  *
- * Tämä vahtii kahta jo kertaalleen osunutta vikaa yhtä aikaa. Iso järjestelmäfontti ajoi
- * rivin noppien päälle (mitattu 26.8.2026, `Reminders` fontScale 1.3:lla ja `Cube reminder`
- * 2.0:lla), ja sitä ennen pelkkä kohdistus jäljelle jäävään tilaan vei napit sivuun myös
- * silloin kun ne mahtuivat laudan keskelle. Korjaus toiseen ei saa palauttaa toista.
+ * Aiempi sääntö (26.8.2026) keskitti rivin laudan keskelle ja väisti vain noppalokeroa, joten
+ * rivi oli aina muurin päällä, ja Pixel 8a:lla ilman paneelia `Skip Game` katkesi laitaan.
+ * Noppien väistö säilyy, koska nopat ovat aina vastakkaisella puoliskolla.
  *
- * Luvut ovat pikseleitä, kuten `Layout`issa.
+ * Luvut ovat pikseleitä, kuten `Layout`issa. Kaista 1300 px ilman pehmustetta: muuri on
+ * 100 px leveä ja kohdissa 600–700.
  */
 class MiddleActionsPlacementTest {
 
     @Test
-    fun `mahtuva rivi on laudan keskella eika jaljelle jaavan tilan keskella`() {
-        // Nopat vasemmalla, 200 px varattu. Keskikohta on 400, ei 500.
-        assertEquals(400, middleActionsX(width = 1000, rowWidth = 200, start = 200, end = 0))
-        // Sama oikealla päin.
-        assertEquals(400, middleActionsX(width = 1000, rowWidth = 200, start = 0, end = 200))
+    fun `ilman noppia tai vastustajan nopilla vali on oikea puolisko muurin jalkeen`() {
+        assertEquals(704 to 1300, middleActionsSpan(width = 1300, pad = 0, gap = 4, leftHalf = false))
     }
 
     @Test
-    fun `liian leveä rivi vaistaa noppia eika piirry niiden paalle`() {
-        // Vasen lokero varattu: rivi alkaa varauksen jälkeen.
-        assertEquals(200, middleActionsX(width = 1000, rowWidth = 700, start = 200, end = 0))
-        // Oikea lokero varattu: rivi loppuu varaukseen, eli 1000 - 200 - 700.
-        assertEquals(100, middleActionsX(width = 1000, rowWidth = 700, start = 0, end = 200))
+    fun `omilla nopilla oikealla vali on vasen puolisko ennen muuria`() {
+        assertEquals(0 to 596, middleActionsSpan(width = 1300, pad = 0, gap = 4, leftHalf = true))
     }
 
     @Test
-    fun `tayden levyinen rivi ei ylita kumpaakaan varausta`() {
-        // Rivi mitataan varausten jälkeen jäävällä leveydellä, joten tämä on sen raja.
-        assertEquals(200, middleActionsX(width = 1000, rowWidth = 800, start = 200, end = 0))
+    fun `vali ei koskaan ulotu muurin kohdalle`() {
+        listOf(300, 640, 1284, 2000).forEach { width ->
+            val pad = 21
+            val barHalf = (width + 2 * pad) / 13 / 2
+            val (_, leftEnd) = middleActionsSpan(width, pad, gap = 0, leftHalf = true)
+            val (rightStart, _) = middleActionsSpan(width, pad, gap = 0, leftHalf = false)
+            assertTrue("leveys $width", leftEnd <= width / 2 - barHalf)
+            assertTrue("leveys $width", rightStart >= width / 2 + barHalf)
+        }
+    }
+
+    // --- Ahdas avausheitto (Tommin valinta 12.11.2026, pelaajan XA2) ---------------------
+    //
+    // Avausheiton esitys antaa kummallekin puoliskolle yhden nopan, eikä nappiriville jäänyt
+    // vapaata puoliskoa: rivi piirtyi oman nopan päälle (kuorikaappaus 640x360 dp).
+
+    private val self = CheckerColor.YELLOW
+    private val opponent = CheckerColor.BLUE
+    private val opening = listOf(Die(5, self), Die(1, opponent))
+
+    @Test
+    fun `ilman aloittajaa nopat jakautuvat omistajan mukaan`() {
+        assertEquals(listOf(Die(1, opponent)) to listOf(Die(5, self)), stripDiceSides(opening, self, opponent, null))
     }
 
     @Test
-    fun `varaukseton kaista keskittaa kuten ennenkin`() {
-        assertEquals(400, middleActionsX(width = 1000, rowWidth = 200, start = 0, end = 0))
+    fun `oma avausheitto kokoaa nopat omalle puoliskolle varit sailyttaen`() {
+        val (opp, own) = stripDiceSides(opening, self, opponent, self)
+        assertTrue(opp.isEmpty())
+        assertEquals(opening, own)
+    }
+
+    @Test
+    fun `vastustajan avausheitto kokoaa nopat hanen puoliskolleen`() {
+        val (opp, own) = stripDiceSides(opening, self, opponent, opponent)
+        assertEquals(opening, opp)
+        assertTrue(own.isEmpty())
     }
 }

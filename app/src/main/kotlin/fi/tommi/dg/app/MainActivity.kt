@@ -74,6 +74,7 @@ import fi.tommi.dg.app.ui.BackupStatus
 import fi.tommi.dg.app.ui.BoardRoute
 import fi.tommi.dg.app.ui.PageRoute
 import fi.tommi.dg.app.ui.PageScreen
+import fi.tommi.dg.app.ui.PageContent
 import fi.tommi.dg.app.ui.PageUiState
 import fi.tommi.dg.app.ui.PageViewModel
 import fi.tommi.dg.app.ui.SessionExpiredState
@@ -147,6 +148,7 @@ import fi.tommi.dg.app.ui.SettingsScreen
 import fi.tommi.dg.app.ui.SettingsUiState
 import fi.tommi.dg.app.ui.SettingsViewModel
 import fi.tommi.dg.app.ui.SETTINGS_ROUTE
+import fi.tommi.dg.app.ui.HelpLink
 import fi.tommi.dg.app.ui.TOP_ROUTE
 import fi.tommi.dg.app.ui.TopScreen
 import fi.tommi.dg.app.ui.TopUiState
@@ -651,6 +653,14 @@ class MainActivity : FragmentActivity() {
                                 .collectAsStateWithLifecycle()
                             val tournaments by tournamentsModel.state
                                 .collectAsStateWithLifecycle()
+                            // Viimeksi luettu turnausmäärä segmentin nimeen (Tommin vastaus
+                            // 12.11.2026: "riittää viimeisin tieto"), ja jokainen uusi arvo
+                            // laitteelle, jotta se säilyy uudelleenkäynnistyksen yli.
+                            val lastTournamentCount by container.ownTournamentCount
+                                .collectAsStateWithLifecycle()
+                            LaunchedEffect(lastTournamentCount) {
+                                lastTournamentCount?.let { withContext(Dispatchers.IO) { container.tournamentCount.save(it) } }
+                            }
                             val opponentsRefresh by tournamentsModel.opponents
                                 .collectAsStateWithLifecycle()
                             // Turnauslistan katkennut istunto: sama uloskirjaus kuin
@@ -729,6 +739,7 @@ class MainActivity : FragmentActivity() {
                                     }
                                 },
                                 tournaments = tournaments,
+                                lastTournamentCount = lastTournamentCount,
                                 remembered = remembered,
                                 opponentsRefresh = opponentsRefresh,
                                 tournamentWaits = tournamentWaits,
@@ -771,6 +782,7 @@ class MainActivity : FragmentActivity() {
                                 marks = marks,
                                 remembered = remembered,
                                 onRemove = { id -> scope.launch { container.marks.remove(id) } },
+                                onOpenPath = { navController.navigate(PageRoute.of(it)) },
                                 onBack = { navController.popBackStack() },
                             )
                         }
@@ -1239,7 +1251,14 @@ class MainActivity : FragmentActivity() {
                             var openSection by rememberSaveable {
                                 mutableStateOf<InfoSection?>(null)
                             }
-                            BackHandler(enabled = openSection != null) { openSection = null }
+                            // App Helpin linkistä avattu Infon rivi palaa App Helpiin eikä
+                            // Infon listaan (8.11.2026), sekä Back-napista että järjestelmältä.
+                            var fromHelp by rememberSaveable { mutableStateOf(false) }
+                            fun closeSection() {
+                                openSection = if (fromHelp && openSection != InfoSection.Help) InfoSection.Help else null
+                                fromHelp = false
+                            }
+                            BackHandler(enabled = openSection != null) { closeSection() }
 
                             when (openSection) {
                                 null -> {
@@ -1249,7 +1268,16 @@ class MainActivity : FragmentActivity() {
                                         factory = InfoSearchViewModel.Factory(container.pages),
                                     )
                                     val siteHelp by searchModel.site.collectAsStateWithLifecycle()
+                                    // Connection drops näkyy vain kun viimeisen 30 päivän aikana on
+                                    // kirjattu katko (Tommin valinta 8.11.2026: viimeisin oli 30.9.).
+                                    // Kirjaus jatkuu joka tapauksessa.
+                                    val latestDrops by remember { container.drops.observeNewestFirst() }
+                                        .collectAsStateWithLifecycle(initialValue = emptyList())
+                                    val showDrops = latestDrops.firstOrNull()?.let {
+                                        System.currentTimeMillis() - it.atEpochMillis <= DROPS_VISIBLE_MILLIS
+                                    } ?: false
                                     InfoScreen(
+                                        showDrops = showDrops,
                                         ownName = container.credentials.get()?.login,
                                         siteHelp = siteHelp,
                                         onLoadSiteHelp = searchModel::load,
@@ -1272,6 +1300,20 @@ class MainActivity : FragmentActivity() {
                                 // sovelluksen omaa tekstiä.
                                 InfoSection.Help -> HelpScreen(
                                     onBack = { openSection = null },
+                                    // Korostus linkkinä (8.11.2026). Info-välilehti on jo auki,
+                                    // joten sen linkki palaa Infon listaan.
+                                    onOpenLink = { link ->
+                                        when (link) {
+                                            is HelpLink.Tab ->
+                                                if (link.tab == DgTab.Info) openSection = null else openTab(link.tab)
+                                            is HelpLink.Info -> {
+                                                fromHelp = true
+                                                openSection = link.section
+                                            }
+                                            HelpLink.Settings -> navController.navigate(SETTINGS_ROUTE)
+                                            is HelpLink.Section -> Unit
+                                        }
+                                    },
                                 )
 
                                 // Katkohistoria: kaksi virtaa kannasta, ei näkymämallia
@@ -1285,14 +1327,14 @@ class MainActivity : FragmentActivity() {
                                     DropsScreen(
                                         drops = drops,
                                         remembered = remembered,
-                                        onBack = { openSection = null },
+                                        onBack = { closeSection() },
                                     )
                                 }
 
                                 // Pelaajien linkit: kiinteä lista, ei verkkoa eikä
                                 // näkymämallia; rivi avaa selaimen.
                                 InfoSection.PlayersLinks -> PlayersLinksScreen(
-                                    onBack = { openSection = null },
+                                    onBack = { closeSection() },
                                 )
 
                                 /*
@@ -1383,6 +1425,7 @@ class MainActivity : FragmentActivity() {
                             // kuulu malliin joka kuvaa mitä sivustolla lukee.
                             var boardStyle by remember { mutableStateOf(container.boardStyle.get()) }
                             var boardShuffle by remember { mutableStateOf(container.boardShuffle.on()) }
+                            var checkersBySite by remember { mutableStateOf(container.boardStyle.checkersBySite()) }
                             var shufflePool by remember { mutableStateOf(container.boardShuffle.pool()) }
                             var diceStyle by remember { mutableStateOf(container.diceStyle.get()) }
                             var scoreStyle by remember { mutableStateOf(container.scoreStyle.get()) }
@@ -1396,6 +1439,8 @@ class MainActivity : FragmentActivity() {
                             var diceRollTap by remember { mutableStateOf(container.diceRoll.get()) }
                             var nextOnDice by remember { mutableStateOf(container.nextOnDice.get()) }
                             var boardExtras by remember { mutableStateOf(container.boardExtras.get()) }
+                            var swapDiceShown by remember { mutableStateOf(container.boardExtras.swapDice()) }
+                            var skipGameShown by remember { mutableStateOf(container.boardExtras.skipGame()) }
                             var moveArrows by remember { mutableStateOf(container.moveArrows.get()) }
                             var opponentArrows by remember { mutableStateOf(container.moveArrows.opponent()) }
                             var pointPress by remember { mutableStateOf(container.pointPress.get()) }
@@ -1436,6 +1481,11 @@ class MainActivity : FragmentActivity() {
                                 onBoardStyleChange = { style ->
                                     container.boardStyle.save(style)
                                     boardStyle = style
+                                },
+                                checkersBySite = checkersBySite,
+                                onCheckersBySiteChange = { on ->
+                                    container.boardStyle.saveCheckersBySite(on)
+                                    checkersBySite = on
                                 },
                                 boardShuffle = boardShuffle,
                                 onBoardShuffleChange = { on ->
@@ -1550,6 +1600,16 @@ class MainActivity : FragmentActivity() {
                                 onBoardExtrasChange = { shown ->
                                     container.boardExtras.save(shown)
                                     boardExtras = shown
+                                },
+                                swapDiceShown = swapDiceShown,
+                                onSwapDiceShownChange = { shown ->
+                                    container.boardExtras.saveSwapDice(shown)
+                                    swapDiceShown = shown
+                                },
+                                skipGameShown = skipGameShown,
+                                onSkipGameShownChange = { shown ->
+                                    container.boardExtras.saveSkipGame(shown)
+                                    skipGameShown = shown
                                 },
                                 portraitLock = portraitLock,
                                 onPortraitLockChange = { enabled ->
@@ -1706,6 +1766,7 @@ class MainActivity : FragmentActivity() {
                                 onExport = pageModel::export,
                                 finishedDays = finishedDays,
                                 onFinishedDays = pageModel::showFinishedDays,
+                                profileFolds = container.profileFolds,
                                 markCounts = markCounts,
                                 action = actionState,
                                 onInvite = pageModel::invite,
@@ -1713,6 +1774,17 @@ class MainActivity : FragmentActivity() {
                                 onDismissAction = pageModel::dismissAction,
                                 sections = sections,
                                 onOpenSection = pageModel::openSection,
+                                // Katselulauta (8.11.2026): sama tyyli kuin laudalla, myös
+                                // ottelukohtainen arvonta, jotta sama ottelu näyttää samalta.
+                                boardStyle = (((state as? PageUiState.Loaded)?.content as? PageContent.GameViewer)
+                                    ?.page?.board?.matchId
+                                    ?.takeIf { container.boardShuffle.on() }
+                                    ?.let { fi.tommi.dg.app.session.boardForMatch(it.value, container.boardShuffle.pool()) }
+                                    ?: container.boardStyle.get()),
+                                siteSettings = container.siteSettings.get(),
+                                checkersBySite = container.boardStyle.checkersBySite(),
+                                onStep = pageModel::step,
+                                panelOnRight = container.handedness.get(),
                             )
                         }
 
@@ -1914,6 +1986,7 @@ class MainActivity : FragmentActivity() {
                                 // asetusruudussa, ja lautaruutu koostuu aina uudestaan siihen
                                 // tullessa, joten tuore luku riittää ilman virtaa.
                                 style = shuffledStyle,
+                                checkersBySite = container.boardStyle.checkersBySite(),
                                 siteSettings = container.siteSettings.get(),
                                 diceStyle = container.diceStyle.get(),
                                 scoreStyle = container.scoreStyle.get(),
@@ -1925,6 +1998,8 @@ class MainActivity : FragmentActivity() {
                                 diceRollTap = container.diceRoll.get(),
                                 nextOnDice = container.nextOnDice.get(),
                                 boardExtras = container.boardExtras.get(),
+                                swapDiceShown = container.boardExtras.swapDice(),
+                                skipGameShown = container.boardExtras.skipGame(),
                                 moveArrows = container.moveArrows.get(),
                                 pointPress = container.pointPress.get(),
                                 // Kolahdus vain Wood-teemassa, ja silloinkin oma kytkin päättää.
@@ -2111,3 +2186,6 @@ private const val DgTabSlideMillis = 300
 
 /** NavHostin oletushäivytyksen kesto, kirjoitettu auki koska siirtymät annetaan nyt itse. */
 private const val NavFadeMillis = 700
+
+/** Kuinka kauan Connection drops -rivi näkyy Infossa viimeisimmän katkon jälkeen. */
+private const val DROPS_VISIBLE_MILLIS = 30L * 24 * 60 * 60 * 1000

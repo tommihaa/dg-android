@@ -80,9 +80,9 @@ object MatchLogParser {
                 continue
             }
 
-            val (left, right) = readSides(cells.drop(1))
-            if (left.isEmpty() && right.isEmpty()) continue
-            turns += MatchLogTurn(number, left, right)
+            val sides = readSides(cells.drop(1))
+            if (sides.left.isEmpty() && sides.right.isEmpty()) continue
+            turns += MatchLogTurn(number, sides.left, sides.right, sides.leftPath, sides.rightPath)
         }
         closeGame()
 
@@ -106,10 +106,12 @@ object MatchLogParser {
      * liitetään välilyönnillä, jolloin tulos on sivun oma rivi luettavana:
      * `61: 13/7 8/7`.
      */
-    private fun readSides(cells: List<Element>): Pair<String, String> {
+    private fun readSides(cells: List<Element>): Sides {
         var column = 0
         val left = StringBuilder()
         val right = StringBuilder()
+        var leftPath: String? = null
+        var rightPath: String? = null
         for (cell in cells) {
             val span = cell.attr("colspan").toIntOrNull() ?: 1
             val text = cell.text().trim()
@@ -118,8 +120,15 @@ object MatchLogParser {
                 if (side.isNotEmpty()) side.append(' ')
                 side.append(text)
             }
+            // Puolen viimeinen linkki voittaa: tanssin tyhjä siirtolinkki on sivun oma
+            // asema, joten tyhjyys ei hylkää sitä.
+            cell.selectFirst("a[href]")?.attr("href")
+                ?.takeIf { STATE_LINK.matches(it) }
+                ?.let { if (column < 2) leftPath = it else rightPath = it }
             column += span
         }
-        return left.toString() to right.toString()
+        return Sides(left.toString(), right.toString(), leftPath, rightPath)
     }
+
+    private class Sides(val left: String, val right: String, val leftPath: String?, val rightPath: String?)
 }

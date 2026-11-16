@@ -1,11 +1,13 @@
 package fi.tommi.dg.app.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -46,13 +48,33 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.positionChanged
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.calculateZoom
+import androidx.compose.foundation.gestures.calculateCentroid
+import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.LocalConfiguration
+import android.content.res.Configuration
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLinkStyles
+import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -60,6 +82,8 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import fi.tommi.dg.app.R
+import fi.tommi.dg.app.session.ProfileFoldStore
+import fi.tommi.dg.app.session.ProfileFolds
 import fi.tommi.dg.domain.EventEntry
 import fi.tommi.dg.domain.EventPage
 import fi.tommi.dg.domain.HallTournament
@@ -68,7 +92,10 @@ import fi.tommi.dg.domain.IgnoreForm
 import fi.tommi.dg.domain.InviteChoice
 import fi.tommi.dg.domain.InviteForm
 import fi.tommi.dg.domain.Match
+import fi.tommi.dg.domain.GameViewerPage
 import fi.tommi.dg.domain.MatchLogPage
+import fi.tommi.dg.domain.SiteBoardSettings
+import fi.tommi.dg.app.session.BoardStyle
 import fi.tommi.dg.domain.PlayerTournamentRow
 import fi.tommi.dg.domain.PlayerTournaments
 import fi.tommi.dg.domain.MatchId
@@ -148,15 +175,29 @@ fun PageScreen(
     onRemovePhrase: (String) -> Unit = {},
     /** Profiilin avautuvat osiot, ks. [PageViewModel.sections]. */
     sections: Map<String, SectionUiState> = emptyMap(),
+    /** Active games- ja Finished matches -otsikoiden muistettu taitto, ks. [ProfileFoldStore]. */
+    profileFolds: ProfileFoldStore = ProfileFoldStore.NONE,
     onOpenSection: (String) -> Unit = {},
+    // Katselulauta (8.11.2026): tyyli luetaan kutsujalta kuten lautaruudulla, ja askel
+    // vaihtaa aseman samassa ruudussa ([PageViewModel.step]).
+    boardStyle: BoardStyle = BoardStyle.SITE,
+    siteSettings: SiteBoardSettings = SiteBoardSettings.UNKNOWN,
+    checkersBySite: Boolean = false,
+    onStep: (String) -> Unit = {},
+    /** Kätisyys kuten pelilaudalla: vasenkätisellä katselulaudan paneeli on oikealla. */
+    panelOnRight: Boolean = false,
 ) {
+    // Vaakana katselulauta vie koko ruudun kuten pelilauta: yläpalkkia ei ole, ja paluu on
+    // järjestelmän Back (Tommin pyyntö 8.11.2026, pelilaudan vaaka-asettelu).
+    val viewerLandscape = (state as? PageUiState.Loaded)?.content is PageContent.GameViewer &&
+        LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
     Scaffold(
         modifier = modifier,
         // Läpinäkyvä, jotta ruudun tausta ja sen kuvio näkyvät läpi: ne
         // maalataan kerran `MainActivity`ssä (`Modifier.dgScreenBackground`).
         containerColor = Color.Transparent,
         topBar = {
-            TopAppBar(
+            if (!viewerLandscape) TopAppBar(
                 colors = dgTopAppBarColors(),
                 title = {
                     val event = ((state as? PageUiState.Loaded)?.content as? PageContent.Event)?.page
@@ -232,12 +273,23 @@ fun PageScreen(
                                 onRemovePhrase = onRemovePhrase,
                                 sections = sections,
                                 onOpenSection = onOpenSection,
+                                profileFolds = profileFolds,
                             )
                             is PageContent.Event -> EventContent(content.page, selfName, onOpenPath)
                             is PageContent.Tournaments -> TournamentsContent(content.page, onOpenPath)
                             is PageContent.SiteHelp -> SiteHelpContent(content.page)
                             is PageContent.SiteLinks -> SiteLinksContent(content.page)
-                            is PageContent.MatchLog -> MatchLogContent(content.page)
+                            is PageContent.MatchLog -> MatchLogContent(content.page, onOpenPath)
+                            is PageContent.GameViewer -> GameViewerContent(
+                                page = content.page,
+                                onOpenPath = onOpenPath,
+                                selfName = selfName,
+                                boardStyle = boardStyle,
+                                siteSettings = siteSettings,
+                                checkersBySite = checkersBySite,
+                                onStep = onStep,
+                                panelOnRight = panelOnRight,
+                            )
                             is PageContent.Hall -> HallContent(content.page, onOpenPath)
                             is PageContent.Resign -> ResignContent(
                                 page = content.page,
@@ -275,6 +327,10 @@ private fun title(state: PageUiState): String {
         is PageContent.SiteLinks -> stringResource(R.string.page_site_links_title)
         // Sivun oma h3 on turnaus ja kierros, eli juuri se konteksti jota linkillä haettiin.
         is PageContent.MatchLog -> content.page.heading.ifBlank { null }
+        // Sivun oma otsikko `Move 880`: asema on se mitä ruudulla selataan.
+        // Ei otsikkotekstiä: siirron numero, turnaus ja kierros ovat ottelukortissa kuten
+        // pelilaudalla (Tommin havainto 8.11.2026: ottelutiedot tuplana).
+        is PageContent.GameViewer -> ""
         is PageContent.Hall -> stringResource(R.string.page_hall_title)
         is PageContent.Resign -> stringResource(R.string.page_resign_title)
     } ?: stringResource(R.string.page_loading_title)
@@ -304,6 +360,7 @@ private fun ProfileContent(
     onRemovePhrase: (String) -> Unit,
     sections: Map<String, SectionUiState>,
     onOpenSection: (String) -> Unit,
+    profileFolds: ProfileFoldStore,
 ) {
     // Avain on lomakeosoite eikä pelaajan nimi: osoite on se joka kertoo kenelle viesti
     // menee, ja se on myös ainoa osa joka ei voi olla kahdella pelaajalla sama.
@@ -346,9 +403,12 @@ private fun ProfileContent(
         else -> stringResource(R.string.page_versus_you)
     }
     // Profiilin omat ottelulistat taittuvat kuten osiot (Tommin tilaus 2.11.2026). Auki
-    // oletuksena, koska ne ovat sivun pääsisältö; tila ei säily profiilin sulkemisen yli.
-    var activeFolded by rememberSaveable(page.player.name) { mutableStateOf(false) }
-    var finishedFolded by rememberSaveable(page.player.name) { mutableStateOf(false) }
+    // oletuksena, koska ne ovat sivun pääsisältö. Taitto muistetaan laitteella 12.11.2026
+    // alkaen (Tommin tilaus) ja koskee kaikkia profiileja, kuten Loungen otsikot.
+    var folds by remember(profileFolds) { mutableStateOf(profileFolds.get()) }
+    val activeFolded = folds.activeFolded
+    val finishedFolded = folds.finishedFolded
+    val saveFolds: (ProfileFolds) -> Unit = { folds = it; profileFolds.save(it) }
     // Avoimet osiot polkuina; lista eikä joukko, koska lista on valmiiksi tallennettava.
     var openSections by rememberSaveable(page.player.name) { mutableStateOf(listOf<String>()) }
     val toggle: (String) -> Unit = { path ->
@@ -403,15 +463,17 @@ private fun ProfileContent(
                 modifier = Modifier.fillMaxWidth().padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                Text(
-                    text = listOfNotNull(
-                        page.ratingText?.let { stringResource(R.string.players_rating, it) },
-                        page.experienceText?.let {
-                            stringResource(R.string.players_experience, it)
-                        },
-                    ).joinToString(", "),
-                    style = MaterialTheme.typography.bodyLarge,
-                )
+                SelectionContainer {
+                    Text(
+                        text = listOfNotNull(
+                            page.ratingText?.let { stringResource(R.string.players_rating, it) },
+                            page.experienceText?.let {
+                                stringResource(R.string.players_experience, it)
+                            },
+                        ).joinToString(", "),
+                        style = MaterialTheme.typography.bodyLarge,
+                    )
+                }
             }
         }
         savedMessages?.let { (text, name) ->
@@ -496,12 +558,13 @@ private fun ProfileContent(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(
-                        text = text,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.weight(1f),
-                    )
+                    SelectionContainer(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = text,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                     if (!actionBusy) {
                         TextButton(onClick = onDismissAction) {
                             Text(stringResource(R.string.page_action_dismiss))
@@ -511,17 +574,19 @@ private fun ProfileContent(
             }
         }
         items(page.fields, contentType = { DgStripedRow }) { field ->
-            Column(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
-            ) {
-                Text(
-                    text = field.label,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                // Kenttien sisältö on pelaajan itsensä kirjoittamaa ja voi olla mitä
-                // tahansa, myös linkkejä. Ruutu näyttää sen tekstinä eikä avaa mitään.
-                Text(text = field.text, style = MaterialTheme.typography.bodyMedium)
+            SelectionContainer {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
+                ) {
+                    Text(
+                        text = field.label,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    // Kenttien sisältö on pelaajan itsensä kirjoittamaa ja voi olla mitä
+                    // tahansa, myös linkkejä. Ruutu näyttää sen tekstinä eikä avaa mitään.
+                    Text(text = field.text, style = MaterialTheme.typography.bodyMedium)
+                }
             }
         }
         // Pelaajien kartta tämän pelaajan kohdalle (Tommin valinta 9.10.2026). Kenttien alla
@@ -596,7 +661,7 @@ private fun ProfileContent(
                 FoldHeading(
                     text = stringResource(R.string.page_active_matches, page.activeMatches.size),
                     folded = activeFolded,
-                    onToggle = { activeFolded = !activeFolded },
+                    onToggle = { saveFolds(folds.copy(activeFolded = !activeFolded)) },
                     modifier = Modifier.padding(vertical = 8.dp),
                 )
             }
@@ -611,7 +676,7 @@ private fun ProfileContent(
                 FoldHeading(
                     text = stringResource(R.string.page_finished_matches, page.finishedMatches.size),
                     folded = finishedFolded,
-                    onToggle = { finishedFolded = !finishedFolded },
+                    onToggle = { saveFolds(folds.copy(finishedFolded = !finishedFolded)) },
                     modifier = Modifier.padding(vertical = 8.dp),
                 )
             }
@@ -619,16 +684,18 @@ private fun ProfileContent(
                 item { FinishedDaysRow(days, onFinishedDays) }
                 if (page.finishedMatches.isEmpty()) {
                     item {
-                        Text(
-                            text = if (days > 0) {
-                                stringResource(R.string.page_finished_none, days)
-                            } else {
-                                stringResource(R.string.page_finished_none_all)
-                            },
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-                        )
+                        SelectionContainer {
+                            Text(
+                                text = if (days > 0) {
+                                    stringResource(R.string.page_finished_none, days)
+                                } else {
+                                    stringResource(R.string.page_finished_none_all)
+                                },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                            )
+                        }
                     }
                 }
             }
@@ -636,12 +703,14 @@ private fun ProfileContent(
             // pieleen. Onnistuminen ei näy tässä vaan jakovalikkona.
             exportNote?.let { text ->
                 item {
-                    Text(
-                        text = text,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-                    )
+                    SelectionContainer {
+                        Text(
+                            text = text,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                        )
+                    }
                 }
             }
             // Uusin ensin (Tommin valinta 31.10.2026). Sivu järjestää ottelunumeron mukaan
@@ -660,12 +729,14 @@ private fun ProfileContent(
             // 27.8.2026), mutta tavallisesti sillä on lajittelulinkki joka kantaa ne;
             // tämä varateksti näkyy vain kun sitäkään ei ole. Tyhjä sanotaan ääneen.
             item {
-                Text(
-                    text = stringResource(R.string.page_no_matches),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(16.dp),
-                )
+                SelectionContainer {
+                    Text(
+                        text = stringResource(R.string.page_no_matches),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(16.dp),
+                    )
+                }
             }
         }
     }
@@ -744,69 +815,97 @@ private fun MatchRow(
     /** Ottelun merkityt asemat tällä laitteella, ks. [PageViewModel.markCounts]. */
     marked: Int = 0,
 ) {
-    Column(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(2.dp),
-    ) {
-        val profilePath = match.opponent.profilePath
-        val eventPath = match.eventPath
-        Text(
-            text = match.eventName.ifEmpty { stringResource(R.string.page_no_event) },
-            style = MaterialTheme.typography.bodyLarge,
-            color = tournamentRarityColor(match.eventId, match.eventName, roundsFromText(match.round))
-                ?: Color.Unspecified,
-            modifier = if (eventPath != null) {
-                Modifier.clickable { onOpenPath(eventPath) }
-            } else {
-                Modifier
-            },
-        )
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
+    val shares = onExport != null && match.exportPath != null
+    val review = match.reviewPath
+    // Rivin napit ovat oikeassa laidassa pystysuunnassa koko rivin keskellä (Tommin valinta
+    // 8.11.2026), kuten turnausrivien `Active Game`. Vastustajan rivillä ne kasvattivat sen
+    // napin kosketusalueen korkuiseksi.
+    //
+    // **Kapealla ruudulla Share-napit tekstin alle** (Tommin valinta 8.11.2026, Pixel 8a
+    // `raakasivut/kuori-8-11-rivinapit/22-pixel-finished.png`): kolme pilleriä vievät noin
+    // 300 dp, ja 411 dp:n ruudulla ottelun nimi ja vastustaja katkesivat 3–4 riville. Raja
+    // [STACKED_ROW_BELOW] on se leveys, jolla tekstille jää vähintään puolet rivistä.
+    val text: @Composable (Modifier) -> Unit = { modifier ->
+        Column(
+            modifier = modifier,
+            verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
-            // Pitkä painallus vastustajan nimellä avaa pelaajavalikon (`PlayerMenu.kt`).
-            PlayerMenuBox(
-                name = match.opponent.name,
-                profilePath = profilePath,
-                eventPath = eventPath,
-                onClick = profilePath?.let { path -> { onOpenPath(path) } },
-                modifier = Modifier.weight(1f, fill = false),
-            ) {
+            val profilePath = match.opponent.profilePath
+            val eventPath = match.eventPath
             Text(
-                text = textWithPlayerColor(
-                    listOfNotNull(
-                        match.opponent.name?.takeIf { it.isNotEmpty() },
-                        match.round?.let { stringResource(R.string.page_round, it) },
-                        match.matchLength?.let { stringResource(R.string.lounge_length_label, it) },
-                    ).joinToString(", "),
-                    match.opponent.name,
-                    match.opponent.userId,
-                ),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                text = match.eventName.ifEmpty { stringResource(R.string.page_no_event) },
+                style = MaterialTheme.typography.bodyLarge,
+                color = tournamentRarityColor(match.eventId, match.eventName, roundsFromText(match.round))
+                    ?: Color.Unspecified,
+                modifier = if (eventPath != null) {
+                    Modifier.clickable { onOpenPath(eventPath) }
+                } else {
+                    Modifier
+                },
             )
-            }
-            // Vain päättyneillä, koska vain niillä on sivun oma `Export`-linkki
-            // (`docs/KOHDE.md`). Ehto luetaan rivistä eikä listasta, kuten muutkin rivin
-            // teot. Vastustajan rivillä eikä omalla (Tommin pyyntö 3.9.2026), koska omalla
-            // rivillään teko kasvatti riviä.
-            //
-            // **Napit eivätkä linkit** (Tommin valinta 27.9.2026, *"pelkkiä linkkejä
-            // paremmin toimisi share-napit"*, tekstit `Share .mat` ja `Share .sgf`). Jako on
-            // teko eikä porautuminen ja nappi sanoo sen muodollaan. Matala nappi, jotta
-            // rivi ei kasva kahden tekstirivin korkeutta enempää.
-            //
-            // Napit ovat yksi ryhmä, jotta `SpaceBetween` jakaa tilan kahden eikä kolmen
-            // lapsen kesken: kolmella `.mat` jäi leveällä ruudulla tekstin ja `.sgf`:n
-            // puoliväliin ja sen paikka vaihteli rivin tekstin pituuden mukaan (Tommin
-            // havainto 27.9.2026). Ryhmä tasautuu oikeaan reunaan, joten napit ovat samassa
-            // sarakkeessa joka rivillä.
-            if (onExport != null && match.exportPath != null) Row(
-                modifier = Modifier.padding(start = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
             ) {
+                // Pitkä painallus vastustajan nimellä avaa pelaajavalikon (`PlayerMenu.kt`).
+                PlayerMenuBox(
+                    name = match.opponent.name,
+                    profilePath = profilePath,
+                    eventPath = eventPath,
+                    onClick = profilePath?.let { path -> { onOpenPath(path) } },
+                    modifier = Modifier.weight(1f, fill = false),
+                ) {
+                Text(
+                    text = textWithPlayerColor(
+                        listOfNotNull(
+                            match.opponent.name?.takeIf { it.isNotEmpty() },
+                            match.round?.let { stringResource(R.string.page_round, it) },
+                            match.matchLength?.let { stringResource(R.string.lounge_length_label, it) },
+                        ).joinToString(", "),
+                        match.opponent.name,
+                        match.opponent.userId,
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                }
+            }
+            // Merkityt asemat kulkevat vain `.sgf`:ssä, joten rivi kertoo niistä ennen jakoa
+            // (Tommin pyyntö ja valinta A 31.10.2026). Ilman merkintöjä rivi on ennallaan.
+            if (onExport != null && match.exportPath != null && marked > 0) {
+                Text(
+                    text = pluralStringResource(R.plurals.page_finished_marked, marked, marked),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
+        }
+    }
+    val buttons: @Composable (Modifier) -> Unit = { modifier ->
+        // Vain päättyneillä, koska vain niillä on sivun oma `Export`-linkki
+        // (`docs/KOHDE.md`). Ehto luetaan rivistä eikä listasta, kuten muutkin rivin
+        // teot. Ei omalla rivillään (Tommin pyyntö 3.9.2026), koska se kasvatti riviä.
+        //
+        // **Napit eivätkä linkit** (Tommin valinta 27.9.2026, *"pelkkiä linkkejä
+        // paremmin toimisi share-napit"*, tekstit `Share .mat` ja `Share .sgf`). Jako on
+        // teko eikä porautuminen ja nappi sanoo sen muodollaan. Matala nappi, jotta
+        // rivi ei kasva kahden tekstirivin korkeutta enempää.
+        //
+        // Napit ovat yksi ryhmä, jotta `SpaceBetween` jakaa tilan kahden eikä kolmen
+        // lapsen kesken: kolmella `.mat` jäi leveällä ruudulla tekstin ja `.sgf`:n
+        // puoliväliin ja sen paikka vaihteli rivin tekstin pituuden mukaan (Tommin
+        // havainto 27.9.2026). Ryhmä tasautuu oikeaan reunaan, joten napit ovat samassa
+        // sarakkeessa joka rivillä.
+        //
+        // **`Review` samaan ryhmään** (Tommin valinta 8.11.2026, `docs/UI.md` › *Rivin
+        // teot ääriviivapillereinä*): sivun oma `/bg/game/`-linkki, käynnissä olevilla
+        // yksin ja päättyneillä Share-nappien perässä.
+        Row(
+            modifier = modifier,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            if (shares && onExport != null) {
                 ShareButton(stringResource(R.string.page_export_share)) { onExport(match, ExportFormat.MAT) }
                 // Toinen tiedosto samasta hausta: `.sgf`, jossa merkityt asemat kulkevat
                 // mukana GNU Backgammoniin ja BGBlitziin (Tommin päätös 15.9.2026,
@@ -814,30 +913,33 @@ private fun MatchRow(
                 // ja vastaanottaja valitaan vasta jakovalikossa.
                 ShareButton(stringResource(R.string.page_export_share_sgf)) { onExport(match, ExportFormat.SGF) }
             }
+            review?.let { path ->
+                RowPillButton(stringResource(R.string.top_review), { onOpenPath(path) })
+            }
         }
-        // Merkityt asemat kulkevat vain `.sgf`:ssä, joten rivi kertoo niistä ennen jakoa
-        // (Tommin pyyntö ja valinta A 31.10.2026). Ilman merkintöjä rivi on ennallaan.
-        if (onExport != null && match.exportPath != null && marked > 0) {
-            Text(
-                text = pluralStringResource(R.plurals.page_finished_marked, marked, marked),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.primary,
-            )
+    }
+    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+        val stacked = shares && maxWidth < STACKED_ROW_BELOW
+        val padded = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)
+        when {
+            stacked -> Column(modifier = padded) {
+                text(Modifier.fillMaxWidth())
+                buttons(Modifier.padding(top = 4.dp))
+            }
+            else -> Row(modifier = padded, verticalAlignment = Alignment.CenterVertically) {
+                text(Modifier.weight(1f))
+                if (shares || review != null) buttons(Modifier.padding(start = 12.dp))
+            }
         }
     }
 }
 
+/** Leveys jota kapeampi päättyneen ottelun rivi siirtää napit tekstin alle, ks. [MatchRow]. */
+private val STACKED_ROW_BELOW = 600.dp
+
 /** Päättyneen ottelun jakonappi: matala, jotta rivi ei kasva, ks. [MatchRow]. */
 @Composable
-private fun ShareButton(label: String, onClick: () -> Unit) {
-    OutlinedButton(
-        onClick = onClick,
-        modifier = Modifier.heightIn(min = 32.dp),
-        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
-    ) {
-        Text(label, style = MaterialTheme.typography.labelMedium, maxLines = 1)
-    }
-}
+private fun ShareButton(label: String, onClick: () -> Unit) = RowPillButton(label, onClick)
 
 /** Viennin tila sanoina, tai null kun mitään ei ole sanottavana. */
 @Composable
@@ -853,53 +955,273 @@ private fun exportText(export: ExportUiState): String? = when (export) {
     ExportUiState.SessionExpired -> stringResource(R.string.error_auth)
 }
 
+/** Ruudukon reunapehmuste, jonka kierrospalkki ja `Find me` laskevat mukaan sarakkeen paikkaan. */
+private val BRACKET_PAD_H = 16.dp
+private val BRACKET_PAD_V = 8.dp
+
+/** Kierrosotsikon arvioitu korkeus pehmusteineen, jolla `Find me` keskittää solun. */
+private val BRACKET_HEADER = 24.dp
+
+/** Pienin zoom: 512 pelaajan kaavio (18 432 dp) mahtuu silloin tabletin korkeuteen. */
+private const val BRACKET_MIN_SCALE = 0.05f
+
+/**
+ * Turnaussivu: ilmoittautuneet, säännöt ja kaavio, ja kaavion alla kiinteä kierrospalkki.
+ *
+ * **Suunnistus kaaviossa (Tommi 8.11.2026, *"turnauskaaviosivu kaipaa jotain jotta
+ * hahmottaisi paremmin missä mennään"*).** Iso kaavio vierii tuhansia dp:itä alas, ja
+ * kierrosten nimet jäivät sen yläreunaan. Tommi kokeili laitteella kolmea vaihtoehtoa
+ * (kiinnitetty kierrospalkki, nipistyszoomi ja hyppynapit `Find me` mukaan lukien) ja valitsi
+ * yhdistelmän: palkki ja zoomi, ja palkin päähän `Find me`. Hyppynapit jäivät pois.
+ *
+ * **Nipistys on koko näkymän ele eikä kaavion.** Ensimmäisessä versiossa tunnistin oli kaaviossa,
+ * ja loitonnettu kaavio kutistui niin pieneksi ettei lähennys osunut siihen (Tommin
+ * laitekokeilu 8.11.2026). Nyt tunnistin on luettelon päällä, ja se ottaa eleen alkuvaiheessa
+ * ennen vieritystä vain kun sormia on kaksi.
+ */
 @Composable
 private fun EventContent(page: EventPage, selfName: String?, onOpenPath: (String) -> Unit) {
-    DgLazyColumn(modifier = Modifier.fillMaxSize()) {
-        // Ilmoittautuneiden määrä sivun omasta rivistä, vain kun sivulla on sellainen
-        // (Michael R 19.10.2026). Sääntökohtien yläpuolella, koska se on se luku jonka perään
-        // kysytään ennen kuin ilmoittaudutaan.
-        page.registered?.let { count ->
+    val hasBracket = page.rows > 0 && page.rounds.isNotEmpty()
+    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+    val hScroll = rememberScrollState()
+    var scale by rememberSaveable { mutableStateOf(1f) }
+    var viewportWidth by remember { mutableStateOf(0) }
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    // Kaavion paikka luettelossa: ilmoittautuneet ja sääntökohdat ovat sen edellä.
+    val bracketIndex = (if (page.registered != null) 1 else 0) + page.conditions.size
+    val columnPx = with(density) { BRACKET_COLUMN.toPx() }
+    val padPx = with(density) { BRACKET_PAD_H.toPx() }
+    val selfCell = remember(page, selfName) { latestSelfCell(page, selfName) }
+
+    val onPinch: (Float, Offset) -> Unit = { zoom, centroid ->
+        val next = (scale * zoom).coerceIn(BRACKET_MIN_SCALE, 1f)
+        val ratio = next / scale
+        if (ratio != 1f) {
+            scale = next
+            // Nipistyksen keskipiste pysyy sormien alla: sisällön piste siirtyy suhteessa,
+            // joten vieritys siirtyy saman verran. Pystysuunnassa piste luetaan kaavion
+            // omasta yläreunasta, ja kun kaavio ei ole näkyvissä, pystyvieritys jää ennalleen.
+            hScroll.dispatchRawDelta((hScroll.value + centroid.x) * (ratio - 1f))
+            listState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == bracketIndex }?.let { item ->
+                val inside = centroid.y - item.offset
+                if (inside > 0f) listState.dispatchRawDelta(inside * (ratio - 1f))
+            }
+        }
+    }
+
+    val findMe: (() -> Unit)? = selfCell?.let { (index, entry) ->
+        {
+            val s = scale
+            val left = (padPx + index * columnPx) * s
+            val targetX = left + columnPx * s / 2 - viewportWidth / 2f
+            val span = page.rounds[index].span
+            val rowPx = with(density) { BRACKET_ROW.toPx() }
+            val headerPx = with(density) { (BRACKET_PAD_V + BRACKET_HEADER).toPx() }
+            val centreY = (headerPx + rowPx * (entry.top + span / 2f)) * s
+            val viewport = listState.layoutInfo.viewportSize.height
+            scope.launch { hScroll.animateScrollTo(targetX.toInt().coerceAtLeast(0)) }
+            scope.launch {
+                listState.animateScrollToItem(bracketIndex, (centreY - viewport / 2f).toInt().coerceAtLeast(0))
+            }
+        }
+    }
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        DgLazyColumn(
+            modifier = Modifier
+                .weight(1f)
+                .onSizeChanged { viewportWidth = it.width }
+                .then(if (hasBracket) Modifier.pinchToZoom(onPinch) else Modifier),
+            state = listState,
+        ) {
+            // Ilmoittautuneiden määrä sivun omasta rivistä, vain kun sivulla on sellainen
+            // (Michael R 19.10.2026). Sääntökohtien yläpuolella, koska se on se luku jonka perään
+            // kysytään ennen kuin ilmoittaudutaan.
+            page.registered?.let { count ->
+                item {
+                    SelectionContainer {
+                        Text(
+                            text = page.invited?.let { stringResource(R.string.page_registered_of_invited, count, it) }
+                                ?: pluralStringResource(R.plurals.page_registered_players, count, count),
+                            style = MaterialTheme.typography.titleSmall,
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                        )
+                    }
+                }
+            }
+            items(page.conditions, contentType = { DgStripedRow }) { condition ->
+                SelectionContainer {
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
+                    ) {
+                        Text(
+                            text = condition.heading,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Text(text = condition.text, style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
+            }
+            if (!hasBracket) {
+                item {
+                    SelectionContainer {
+                        Text(
+                            text = stringResource(R.string.page_no_brackets),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(16.dp),
+                        )
+                    }
+                }
+            } else {
+                item {
+                    BracketGrid(
+                        page = page,
+                        selfName = selfName,
+                        onOpenPath = onOpenPath,
+                        hScroll = hScroll,
+                        scale = { scale },
+                    )
+                }
+            }
             item {
-                Text(
-                    text = page.invited?.let { stringResource(R.string.page_registered_of_invited, count, it) }
-                        ?: pluralStringResource(R.plurals.page_registered_players, count, count),
-                    style = MaterialTheme.typography.titleSmall,
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                )
+                SelectionContainer {
+                    Text(
+                        text = stringResource(R.string.page_bracket_note),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(16.dp),
+                    )
+                }
             }
         }
-        items(page.conditions, contentType = { DgStripedRow }) { condition ->
-            Column(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
-            ) {
+        if (hasBracket) {
+            HorizontalDivider()
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                RoundBar(
+                    page = page,
+                    hScroll = hScroll,
+                    columnPx = columnPx,
+                    padPx = padPx,
+                    scale = { scale },
+                    modifier = Modifier.weight(1f),
+                )
+                if (findMe != null) {
+                    TextButton(onClick = findMe, modifier = Modifier.padding(end = 8.dp)) {
+                        Text(stringResource(R.string.page_bracket_find_me))
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Oman tunnuksen myöhäisin solu: se kierros johon asti oma reitti on edennyt. Null kun
+ * tunnusta ei tiedetä tai sitä ei ole kaaviossa, ja silloin `Find me` puuttuu palkista.
+ */
+private fun latestSelfCell(page: EventPage, selfName: String?): Pair<Int, EventEntry>? {
+    if (selfName == null) return null
+    for (index in page.rounds.indices.reversed()) {
+        val entry = page.rounds[index].entries.firstOrNull { it.label.equals(selfName, ignoreCase = true) }
+        if (entry != null) return index to entry
+    }
+    return null
+}
+
+/**
+ * Kierrosten nimet ruudun alareunassa, kukin oman sarakkeensa kohdalla. Palkki liikkuu vaakaan
+ * kaavion mukana ja kutistuu zoomin mukana, joten pystyyn vieritetty kaavio kertoo yhä mikä
+ * sarake on mikin kierros. Kapeaan sarakkeeseen nimi lyhenee numeroksi (`R4`) ja aivan
+ * kapeaan se jää pois. Paikka luetaan vierityksestä asettelussa eikä koostossa, jotta
+ * vieritys ei koosta palkkia joka kuvalle uudelleen.
+ */
+@Composable
+private fun RoundBar(
+    page: EventPage,
+    hScroll: androidx.compose.foundation.ScrollState,
+    columnPx: Float,
+    padPx: Float,
+    scale: () -> Float,
+    modifier: Modifier = Modifier,
+) {
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val gapPx = with(density) { BRACKET_GAP.toPx() }
+    val s = scale()
+    val labelWidth = (BRACKET_COLUMN - BRACKET_GAP) * s
+    Box(
+        modifier = modifier
+            .height(40.dp)
+            .clipToBounds(),
+    ) {
+        if (labelWidth >= 20.dp) {
+            page.rounds.forEachIndexed { index, round ->
                 Text(
-                    text = condition.heading,
-                    style = MaterialTheme.typography.labelMedium,
+                    text = if (labelWidth >= 72.dp) round.title else shortRoundTitle(round.title),
+                    style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Text(text = condition.text, style = MaterialTheme.typography.bodyMedium)
-            }
-        }
-        if (page.rows == 0 || page.rounds.isEmpty()) {
-            item {
-                Text(
-                    text = stringResource(R.string.page_no_brackets),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(16.dp),
+                    maxLines = 1,
+                    overflow = TextOverflow.Clip,
+                    modifier = Modifier
+                        .align(Alignment.CenterStart)
+                        .offset {
+                            val start = (padPx + index * columnPx + (if (index > 0) gapPx else 0f)) * scale()
+                            androidx.compose.ui.unit.IntOffset((start - hScroll.value).toInt(), 0)
+                        }
+                        .width(labelWidth),
                 )
             }
-        } else {
-            item { BracketGrid(page, selfName, onOpenPath) }
         }
-        item {
-            Text(
-                text = stringResource(R.string.page_bracket_note),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(16.dp),
-            )
+    }
+}
+
+/** `Round 4` lyhenee muotoon `R4`; muu otsikko (`Winner`) alkukirjaimeksi. */
+internal fun shortRoundTitle(title: String): String {
+    val number = Regex("""\d+""").find(title)?.value
+    return if (number != null) "R$number" else title.take(1)
+}
+
+/**
+ * Mittaa sisällön täydessä koossa ja ilmoittaa sen [scale]-kertaisena; piirto skaalataan
+ * kerroksessa vasemmasta yläkulmasta. Skaala luetaan asettelussa, joten nipistys ei koosta
+ * tuhatta solua uudelleen joka kuvalla.
+ */
+private fun Modifier.scaledContent(scale: () -> Float): Modifier = layout { measurable, constraints ->
+    val placeable = measurable.measure(
+        constraints.copy(maxWidth = Constraints.Infinity, maxHeight = Constraints.Infinity),
+    )
+    val s = scale()
+    layout((placeable.width * s).roundToInt(), (placeable.height * s).roundToInt()) {
+        placeable.placeWithLayer(0, 0) {
+            scaleX = s
+            scaleY = s
+            transformOrigin = TransformOrigin(0f, 0f)
+        }
+    }
+}
+
+/**
+ * Kahden sormen nipistys koko näkymässä. Tapahtumat luetaan alkuvaiheessa (`Initial`), joten
+ * ele ehtii ennen luettelon ja kaavion vieritystä; yhden sormen veto jää vieritykselle, koska
+ * tapahtumia kulutetaan vasta kun painettuja osoittimia on kaksi. [onPinch] luetaan
+ * [rememberUpdatedState]-tilasta, jotta tunnistin ei jää vanhaan sulkeumaan.
+ */
+@Composable
+private fun Modifier.pinchToZoom(onPinch: (Float, Offset) -> Unit): Modifier {
+    val current by androidx.compose.runtime.rememberUpdatedState(onPinch)
+    return pointerInput(Unit) {
+        awaitEachGesture {
+            awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+            do {
+                val event = awaitPointerEvent(PointerEventPass.Initial)
+                if (event.changes.count { it.pressed } >= 2) {
+                    val zoom = event.calculateZoom()
+                    if (zoom != 1f) current(zoom, event.calculateCentroid(useCurrent = true))
+                    event.changes.forEach { if (it.positionChanged()) it.consume() }
+                }
+            } while (event.changes.any { it.pressed })
         }
     }
 }
@@ -925,7 +1247,13 @@ private val BRACKET_GAP = 14.dp
  * määrä kertaa [BRACKET_ROW], ja 64 pelaajan kaavio vierii pystyyn luettelon mukana.
  */
 @Composable
-private fun BracketGrid(page: EventPage, selfName: String?, onOpenPath: (String) -> Unit) {
+private fun BracketGrid(
+    page: EventPage,
+    selfName: String?,
+    onOpenPath: (String) -> Unit,
+    hScroll: androidx.compose.foundation.ScrollState = rememberScrollState(),
+    scale: () -> Float = { 1f },
+) {
     val lineColor = MaterialTheme.colorScheme.outline
     // Myöhempien kierrosten voittajasolu on ottelulinkki eikä kanna käyttäjänumeroa, joten
     // numero luetaan saman nimen pelaajasolusta: väri seuraa pelaajaa koko reitin.
@@ -936,8 +1264,9 @@ private fun BracketGrid(page: EventPage, selfName: String?, onOpenPath: (String)
     }
     Row(
         modifier = Modifier
-            .horizontalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .horizontalScroll(hScroll)
+            .scaledContent(scale)
+            .padding(horizontal = BRACKET_PAD_H, vertical = BRACKET_PAD_V),
     ) {
         page.rounds.forEachIndexed { index, round ->
             val previousSpan = page.rounds.getOrNull(index - 1)?.span
@@ -1107,10 +1436,12 @@ private fun ResignContent(
         item { PageHeading(stringResource(R.string.page_resign_heading, page.rows.size)) }
         if (page.rows.isEmpty()) {
             item {
-                Text(
-                    text = stringResource(R.string.page_resign_empty),
-                    modifier = Modifier.padding(16.dp),
-                )
+                SelectionContainer {
+                    Text(
+                        text = stringResource(R.string.page_resign_empty),
+                        modifier = Modifier.padding(16.dp),
+                    )
+                }
             }
         }
         items(page.rows, contentType = { DgStripedRow }) { row ->
@@ -1152,9 +1483,12 @@ private fun ResignContent(
                     )
                 }
                 match.reviewPath?.let { path ->
-                    TextButton(onClick = { onOpenPath(path) }, enabled = !sending) {
-                        Text(stringResource(R.string.page_resign_review))
-                    }
+                    RowPillButton(
+                        label = stringResource(R.string.page_resign_review),
+                        onClick = { onOpenPath(path) },
+                        modifier = Modifier.padding(start = 8.dp),
+                        enabled = !sending,
+                    )
                 }
             }
             HorizontalDivider()
@@ -1192,22 +1526,25 @@ private fun ResignContent(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text(
-                            text = note,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.weight(1f),
-                        )
+                        SelectionContainer(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = note,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
                         if (!sending) {
                             TextButton(onClick = onDismiss) { Text(stringResource(R.string.page_action_dismiss)) }
                         }
                     }
                 } else {
-                    Text(
-                        text = stringResource(R.string.page_resign_note),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    SelectionContainer {
+                        Text(
+                            text = stringResource(R.string.page_resign_note),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             }
         }
@@ -1233,10 +1570,12 @@ private fun TournamentsContent(page: PlayerTournaments, onOpenPath: (String) -> 
     DgLazyColumn(modifier = Modifier.fillMaxSize()) {
         if (page.rows.isEmpty()) {
             item {
-                Text(
-                    text = stringResource(R.string.page_no_tournaments),
-                    modifier = Modifier.padding(16.dp),
-                )
+                SelectionContainer {
+                    Text(
+                        text = stringResource(R.string.page_no_tournaments),
+                        modifier = Modifier.padding(16.dp),
+                    )
+                }
             }
         }
         items(page.rows, contentType = { DgStripedRow }) { row ->
@@ -1261,10 +1600,12 @@ private fun HallContent(hall: TournamentHall, onOpenPath: (String) -> Unit) {
             item { PageHeading(stringResource(R.string.hall_active_heading, hall.active.size)) }
             if (hall.active.isEmpty()) {
                 item {
-                    Text(
-                        text = stringResource(R.string.hall_empty),
-                        modifier = Modifier.padding(16.dp),
-                    )
+                    SelectionContainer {
+                        Text(
+                            text = stringResource(R.string.hall_empty),
+                            modifier = Modifier.padding(16.dp),
+                        )
+                    }
                 }
             }
             items(hall.active, contentType = { DgStripedRow }) { tournament ->
@@ -1277,12 +1618,14 @@ private fun HallContent(hall: TournamentHall, onOpenPath: (String) -> Unit) {
                 HorizontalDivider()
             }
         }
-        Text(
-            text = stringResource(R.string.hall_note),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-        )
+        SelectionContainer {
+            Text(
+                text = stringResource(R.string.hall_note),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            )
+        }
     }
 }
 
@@ -1341,11 +1684,22 @@ internal fun PlayerTournamentRowView(
     rounds: Int? = null,
 ) {
     val path = row.eventPath
-    Column(
+    // **`Active Game` rivin oikeassa laidassa napiksi** (Tommin pyyntö 8.11.2026: *"samalla
+    // tavalla kuin Forum/General otsikkosolun Hide"*). Sama rakenne kuin `ThreadRow`issa:
+    // teksti vie leveyden ja nappi on lopussa, ja reunapehmuste kapenee napin kohdalla.
+    // Nappi on kaikilla riveillä 8.11.2026 alkaen (Tommin valinta, `docs/UI.md` › *Rivin
+    // teot ääriviivapillereinä*), myös Matches-välilehdellä, jossa kierros ja vastustaja
+    // olivat ennen itse linkki katselulaudalle.
+    val siteGame = row.activeMatchPath
+    Row(
         modifier = Modifier
             .fillMaxWidth()
             .then(if (path != null) Modifier.clickable { onOpenPath(path) } else Modifier)
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .padding(start = 16.dp, end = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+    Column(
+        modifier = Modifier.weight(1f).padding(vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         Text(
@@ -1353,10 +1707,10 @@ internal fun PlayerTournamentRowView(
             style = MaterialTheme.typography.bodyLarge,
             color = tournamentRarityColor(row.eventId, row.name, rounds) ?: Color.Unspecified,
         )
+        // Kuvaus on tekstiä eikä linkki: katselulaudan avaa `Active Game` -nappi (8.11.2026).
+        // Muu rivi avaa yhä turnaussivun, ja kuvauksen pelaajanimi pelaajakortin.
         val parts = listOfNotNull(
-            row.activeMatchPath?.let {
-                activeGameText ?: AnnotatedString(stringResource(R.string.page_your_turn_waiting))
-            },
+            activeGameText,
             row.winsText?.takeIf { showWins }?.let { AnnotatedString(stringResource(R.string.page_wins, it)) },
             row.whenText?.let(::AnnotatedString),
         )
@@ -1377,6 +1731,14 @@ internal fun PlayerTournamentRowView(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
+    siteGame?.let { gamePath ->
+        RowPillButton(
+            label = stringResource(R.string.page_active_game_link),
+            onClick = { onOpenPath(gamePath) },
+            modifier = Modifier.padding(start = 8.dp),
+        )
+    }
+    }
 }
 
 /**
@@ -1392,17 +1754,19 @@ private fun SiteHelpContent(page: SiteHelpPage) {
         page.sections.forEach { section ->
             item { PageHeading(section.title) }
             items(section.entries, contentType = { DgStripedRow }) { entry ->
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    Text(
-                        text = entry.question,
-                        style = MaterialTheme.typography.titleSmall,
-                    )
-                    Text(text = entry.answer, style = MaterialTheme.typography.bodyMedium)
+                SelectionContainer {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        Text(
+                            text = entry.question,
+                            style = MaterialTheme.typography.titleSmall,
+                        )
+                        Text(text = entry.answer, style = MaterialTheme.typography.bodyMedium)
+                    }
                 }
             }
             item { HorizontalDivider() }
@@ -1418,15 +1782,17 @@ private fun SiteHelpContent(page: SiteHelpPage) {
  * yksittäisen aseman sivu on lautasivu jota tämä ruutu ei piirrä.
  */
 @Composable
-private fun MatchLogContent(page: MatchLogPage) {
+private fun MatchLogContent(page: MatchLogPage, onOpenPath: (String) -> Unit) {
     DgLazyColumn(modifier = Modifier.fillMaxSize()) {
         page.matchLengthText?.let { length ->
             item {
-                Text(
-                    text = length,
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                )
+                SelectionContainer {
+                    Text(
+                        text = length,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    )
+                }
             }
         }
         page.games.forEach { game ->
@@ -1462,20 +1828,80 @@ private fun MatchLogContent(page: MatchLogPage) {
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.width(TURN_NUMBER_WIDTH),
                     )
-                    Text(
-                        text = turn.left,
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.weight(1f),
-                    )
-                    Text(
-                        text = turn.right,
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.weight(1f),
-                    )
+                    // Puolen napautus avaa katselulaudan sen siirron jälkeiseen asemaan
+                    // (8.11.2026). Osoite on solun oma linkki, ks. `MatchLogTurn.leftPath`.
+                    LogSide(turn.left, turn.leftPath, onOpenPath, Modifier.weight(1f))
+                    LogSide(turn.right, turn.rightPath, onOpenPath, Modifier.weight(1f))
                 }
             }
             item { HorizontalDivider() }
         }
+    }
+}
+
+/** Siirtolistan puoli: teksti sivun sanoin, ja linkillinen puoli avaa katselulaudan. */
+@Composable
+private fun LogSide(text: String, path: String?, onOpenPath: (String) -> Unit, modifier: Modifier) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodySmall,
+        modifier = modifier
+            .then(if (path != null) Modifier.clickable { onOpenPath(path) } else Modifier)
+            .padding(vertical = 2.dp),
+    )
+}
+
+/**
+ * Katselulauta (8.11.2026, Tommin suunta A): sivun oma asema sovelluksen laudalla valitulla
+ * tyylillä, ja alla sivun neljä navigointisanaa. Tekoja ei ole, koska sivulla ei ole
+ * lomaketta. Reunan sana on sivulla pelkkää tekstiä, ja nappi on silloin himmeä.
+ * Siirtolistaan palataan Backilla, koska lauta avataan aina siirtolistalta.
+ */
+@Composable
+private fun GameViewerContent(
+    page: GameViewerPage,
+    selfName: String?,
+    boardStyle: BoardStyle,
+    siteSettings: SiteBoardSettings,
+    checkersBySite: Boolean,
+    onStep: (String) -> Unit,
+    onOpenPath: (String) -> Unit,
+    panelOnRight: Boolean,
+) {
+    // Turnaus, kierros ja siirto ovat ottelukortissa, joten erillistä otsikkoriviä ei
+    // ole (Tommin havainto 8.11.2026: ottelutiedot näkyivät kahdesti).
+    ViewerBoard(
+        board = page.board,
+        selfName = selfName,
+        style = boardStyle,
+        siteSettings = siteSettings,
+        checkersBySite = checkersBySite,
+        onOpenPage = onOpenPath,
+        panelOnRight = panelOnRight,
+        navigation = { ViewerNavigation(page, onStep) },
+        modifier = Modifier.fillMaxSize().padding(8.dp),
+    )
+}
+
+/** Sivun neljä navigointisanaa rivinä. */
+@Composable
+private fun ViewerNavigation(page: GameViewerPage, onStep: (String) -> Unit) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+        ViewerStep(R.string.viewer_first, page.firstPath, onStep)
+        ViewerStep(R.string.viewer_prev, page.prevPath, onStep)
+        ViewerStep(R.string.viewer_next, page.nextPath, onStep)
+        ViewerStep(R.string.viewer_last, page.lastPath, onStep)
+    }
+}
+
+@Composable
+private fun ViewerStep(label: Int, path: String?, onStep: (String) -> Unit) {
+    OutlinedButton(
+        onClick = { path?.let(onStep) },
+        // Reunan sana on sivulla tekstiä eikä linkkiä, joten nappi on himmeä.
+        enabled = path != null,
+    ) {
+        Text(stringResource(label))
     }
 }
 
@@ -1908,12 +2334,14 @@ private fun LazyListScope.expandableSection(
 
 @Composable
 private fun SectionEmpty(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-    )
+    SelectionContainer {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+        )
+    }
 }
 
 @Composable
@@ -1925,13 +2353,15 @@ private fun LinkRow(text: String, onClick: () -> Unit) {
 
 @Composable
 private fun PageHeading(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.titleSmall,
-        // Aksenttiväri erottaa osaston sen omista riveistä. Väri on rakennetta eikä
-        // toimintaa: tähän ei voi napauttaa, eikä otsikkoa siksi alleviivata.
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-    )
+    SelectionContainer {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.titleSmall,
+            // Aksenttiväri erottaa osaston sen omista riveistä. Väri on rakennetta eikä
+            // toimintaa: tähän ei voi napauttaa, eikä otsikkoa siksi alleviivata.
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+        )
+    }
 }
 

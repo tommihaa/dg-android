@@ -4,6 +4,7 @@ import fi.tommi.dg.domain.PlayerRef
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -467,18 +468,19 @@ private fun ThreadRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 16.dp, end = if (onHide != null) 4.dp else 16.dp),
+            .padding(start = 16.dp, end = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         ThreadRowText(thread = thread, modifier = Modifier.weight(1f).padding(vertical = 8.dp))
         onHide?.let {
-            TextButton(onClick = it, enabled = hideEnabled) {
-                Text(
-                    stringResource(
-                        if (hiding) R.string.discussion_hiding else R.string.discussion_hide
-                    )
-                )
-            }
+            RowPillButton(
+                label = stringResource(
+                    if (hiding) R.string.discussion_hiding else R.string.discussion_hide
+                ),
+                onClick = it,
+                modifier = Modifier.padding(start = 8.dp),
+                enabled = hideEnabled,
+            )
         }
     }
     }
@@ -863,18 +865,22 @@ private fun PreviewView(
                     .verticalScroll(rememberScrollState())
                     .dgReadingSurface(),
             ) {
-                Text(
-                    text = stringResource(R.string.discussion_preview_note),
-                    modifier = Modifier.padding(16.dp),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                SelectionContainer {
+                    Text(
+                        text = stringResource(R.string.discussion_preview_note),
+                        modifier = Modifier.padding(16.dp),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 HorizontalDivider()
-                Text(
-                    text = forumBodyText(preview.preview.body, preview.preview.links, onOpenPage),
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                    style = MaterialTheme.typography.bodyMedium,
-                )
+                SelectionContainer {
+                    Text(
+                        text = forumBodyText(preview.preview.body, preview.preview.links, onOpenPage),
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
                 HorizontalDivider()
                 Column(
                     modifier = Modifier.padding(16.dp),
@@ -911,11 +917,13 @@ private fun HideNote(hide: HideUiState, onDismiss: () -> Unit) {
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.error,
-        )
+        SelectionContainer {
+            Text(
+                text = text,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.error,
+            )
+        }
         TextButton(onClick = onDismiss) { Text(stringResource(R.string.page_action_dismiss)) }
     }
     HorizontalDivider()
@@ -941,15 +949,17 @@ private fun PostNote(post: PostUiState, onDismiss: () -> Unit) {
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.bodyMedium,
-            color = if (post is PostUiState.Failed || post is PostUiState.Unconfirmed) {
-                MaterialTheme.colorScheme.error
-            } else {
-                MaterialTheme.colorScheme.onSurface
-            },
-        )
+        SelectionContainer {
+            Text(
+                text = text,
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (post is PostUiState.Failed || post is PostUiState.Unconfirmed) {
+                    MaterialTheme.colorScheme.error
+                } else {
+                    MaterialTheme.colorScheme.onSurface
+                },
+            )
+        }
         if (post !is PostUiState.Sending) {
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.page_action_dismiss)) }
         }
@@ -974,8 +984,11 @@ private fun PostView(post: ForumPost, onOpenPage: (String) -> Unit) {
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         // `LinkAnnotation.Url` avaa osoitteen `LocalUriHandler`in kautta, sama reitti
-        // kuin Infon Links-sivulla.
-        Text(text = body, style = MaterialTheme.typography.bodyMedium)
+        // kuin Infon Links-sivulla. Runko on maalattavissa (Tommin tilaus 8.11.2026), ja
+        // linkin napautus toimii valinnan sisälläkin.
+        SelectionContainer {
+            Text(text = body, style = MaterialTheme.typography.bodyMedium)
+        }
         // Tekijä ja aika sivun omana allekirjoituksena rungon alla, kuten sivullakin.
         // Pitkä painallus allekirjoituksella avaa pelaajavalikon (`PlayerMenu.kt`), ja napautus
         // avaa kirjoittajan profiilin (Tommin tilaus 2.11.2026). Ilman polkua napautus ei tee mitään.
@@ -1048,7 +1061,9 @@ private fun CenteredNote(text: String) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Text(text = text, style = MaterialTheme.typography.bodyLarge)
+        SelectionContainer {
+            Text(text = text, style = MaterialTheme.typography.bodyLarge)
+        }
     }
 }
 

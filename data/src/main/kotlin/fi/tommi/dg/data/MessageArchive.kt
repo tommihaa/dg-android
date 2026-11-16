@@ -61,8 +61,13 @@ interface MessageArchive {
      *
      * Sama kirjoitus kuin [archive]lla ja sama sääntö (tunniste on sisältötiiviste, törmäys
      * ohitetaan), mutta paluuarvo on määrä eikä lista, koska tuonnin ruutu kertoo kuinka
-     * moni oli uusi. Jo kannassa oleva rivi ei muutu: ei tili, ei aika, ei mikään (Tommin
+     * moni oli uusi. Jo kannassa oleva rivi ei muutu: ei tili, ei aika, ei teksti (Tommin
      * päätös 16.9.2026: tuonti vain lisää eikä koskaan korvaa).
+     *
+     * **Yksi poikkeus 8.11.2026 (Tommin valinta):** puuttuva vastauslomake täydennetään
+     * tiedostosta jo kannassa olevaan viestiin. Se on lisäys eikä korvaus: lomake kirjoitetaan
+     * vain riville jolla sitä ei ole. Ilman tätä ennen versiota 7 tuotuun viestiin ei voisi
+     * koskaan vastata, koska uusi tuonti ohittaisi rivin kaksoiskappaleena.
      *
      * @return kuinka monta viestiä kirjoitettiin.
      */
@@ -146,7 +151,14 @@ class RoomMessageArchive(
     override suspend fun addMissing(messages: List<Message>, account: String?): Int {
         if (messages.isEmpty()) return 0
         // Room palauttaa ohitetulle riville -1, joten kirjoitetut ovat ne joilla on rivinumero.
-        return dao.insertIfNew(messages.map { it.toEntity(account) }).count { it != -1L }
+        val rows = dao.insertIfNew(messages.map { it.toEntity(account) })
+        messages.zip(rows).forEach { (message, row) ->
+            val form = message.replyForm
+            if (row == -1L && form != null) {
+                dao.fillReplyForm(message.id, form.action, form.method.name, form.field, form.maxLength)
+            }
+        }
+        return rows.count { it != -1L }
     }
 
     override fun observeAll(account: String?): Flow<List<Message>> =

@@ -3,12 +3,18 @@ package fi.tommi.dg.app.ui
 import android.content.Intent
 import androidx.annotation.StringRes
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.withFrameNanos
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -122,6 +128,9 @@ fun SettingsScreen(
     /** Ottelukohtainen lauta ja sen arvontajoukko (Tommi 27.9.2026). Ks. `BoardShuffle.kt`. */
     boardShuffle: Boolean = false,
     onBoardShuffleChange: (Boolean) -> Unit = {},
+    /** Nappulan vaalea ja tumma sivuston puolen mukaan (8.11.2026), ks. `BoardStyleStore`. */
+    checkersBySite: Boolean = false,
+    onCheckersBySiteChange: (Boolean) -> Unit = {},
     shufflePool: Set<BoardStyle> = emptySet(),
     onShufflePoolChange: (Set<BoardStyle>) -> Unit = {},
     /** Noppien ja pisteiden esitys, omat kytkimensä (Tommi 27.8.2026). Ks. [DeviceSection]. */
@@ -173,6 +182,10 @@ fun SettingsScreen(
     onNextOnDiceChange: (Boolean) -> Unit,
     boardExtras: Boolean,
     onBoardExtrasChange: (Boolean) -> Unit,
+    swapDiceShown: Boolean = true,
+    onSwapDiceShownChange: (Boolean) -> Unit = {},
+    skipGameShown: Boolean = true,
+    onSkipGameShownChange: (Boolean) -> Unit = {},
     /** Lukuruutujen pystylukko (Tommi 2.9.2026), lauta on vaakaan aina. Ks. [DeviceSection]. */
     portraitLock: Boolean,
     onPortraitLockChange: (Boolean) -> Unit,
@@ -370,6 +383,8 @@ fun SettingsScreen(
                                 onBoardStyleChange = onBoardStyleChange,
                                 boardShuffle = boardShuffle,
                                 onBoardShuffleChange = onBoardShuffleChange,
+                                checkersBySite = checkersBySite,
+                                onCheckersBySiteChange = onCheckersBySiteChange,
                                 shufflePool = shufflePool,
                                 onShufflePoolChange = onShufflePoolChange,
                                 diceStyle = diceStyle,
@@ -402,6 +417,10 @@ fun SettingsScreen(
                                 onNextOnDiceChange = onNextOnDiceChange,
                                 boardExtras = boardExtras,
                                 onBoardExtrasChange = onBoardExtrasChange,
+                                swapDiceShown = swapDiceShown,
+                                onSwapDiceShownChange = onSwapDiceShownChange,
+                                skipGameShown = skipGameShown,
+                                onSkipGameShownChange = onSkipGameShownChange,
                                 portraitLock = portraitLock,
                                 onPortraitLockChange = onPortraitLockChange,
                                 fullScreen = fullScreen,
@@ -460,10 +479,12 @@ private fun SiteOnlyNote() {
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
-        Text(
-            text = stringResource(R.string.settings_site_only),
-            style = MaterialTheme.typography.bodyMedium,
-        )
+        SelectionContainer {
+            Text(
+                text = stringResource(R.string.settings_site_only),
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        }
         Text(
             text = stringResource(R.string.settings_site_only_link),
             style = MaterialTheme.typography.bodyLarge,
@@ -504,6 +525,8 @@ private fun DeviceSection(
     onBoardStyleChange: (BoardStyle) -> Unit,
     boardShuffle: Boolean,
     onBoardShuffleChange: (Boolean) -> Unit,
+    checkersBySite: Boolean,
+    onCheckersBySiteChange: (Boolean) -> Unit,
     shufflePool: Set<BoardStyle>,
     onShufflePoolChange: (Set<BoardStyle>) -> Unit,
     diceStyle: DiceStyle,
@@ -536,6 +559,10 @@ private fun DeviceSection(
     onNextOnDiceChange: (Boolean) -> Unit,
     boardExtras: Boolean,
     onBoardExtrasChange: (Boolean) -> Unit,
+    swapDiceShown: Boolean = true,
+    onSwapDiceShownChange: (Boolean) -> Unit = {},
+    skipGameShown: Boolean = true,
+    onSkipGameShownChange: (Boolean) -> Unit = {},
     portraitLock: Boolean,
     onPortraitLockChange: (Boolean) -> Unit,
     fullScreen: Boolean,
@@ -566,13 +593,27 @@ private fun DeviceSection(
     onToggleFold: (DeviceSettingsGroup) -> Unit,
 ) {
     // Osion nimi on segmenttirivillä (22.9.2026), joten tässä on vain sen sääntö.
+    // Swap Dicen selitteen linkki Playing-ryhmän noppakytkimeen (Tommin tilaus 12.11.2026).
+    // Taitettu ryhmä avataan ensin, ja vieritys odottaa kaksi ruutua, jotta kytkin on
+    // koostettu ennen kuin pyyntö etsii sen.
+    val swapTapRequester = remember { BringIntoViewRequester() }
+    var swapTapJumps by remember { mutableStateOf(0) }
+    LaunchedEffect(swapTapJumps) {
+        if (swapTapJumps > 0) {
+            withFrameNanos { }
+            withFrameNanos { }
+            swapTapRequester.bringIntoView()
+        }
+    }
     Column(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
-        Text(
-            text = stringResource(R.string.settings_device_explain),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 4.dp),
-        )
+        SelectionContainer {
+            Text(
+                text = stringResource(R.string.settings_device_explain),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 4.dp),
+            )
+        }
         // Teema ylimpänä, koska se kirjoittaa alempia valintoja: lauta ja ilmaisimen
         // viimeistely vaihtuvat sen mukana ja jäävät sen jälkeen säädettäviksi (22.9.2026).
         val situation = rememberPreviewSituation()
@@ -700,6 +741,14 @@ private fun DeviceSection(
                     checked = boardShuffle,
                     onChange = onBoardShuffleChange,
                 )
+                // Arvonnan alla, koska kumpikin koskee sovelluksen omia lautoja eikä ole lauta
+                // itse (jebediasmien toive 7.11.2026, Tommin valinta 8.11.2026).
+                DeviceToggle(
+                    label = stringResource(R.string.settings_checkers_by_site_toggle),
+                    explain = stringResource(R.string.settings_checkers_by_site_explain),
+                    checked = checkersBySite,
+                    onChange = onCheckersBySiteChange,
+                )
             }
             // Nopat ja pisteet ovat omia kytkimiään eivätkä lautatilan mukana (Tommin päätös
             // 27.8.2026): X-22-laudalla on voitava pitää sivuston noppaesitys. Vaihtoehtojen
@@ -763,6 +812,26 @@ private fun DeviceSection(
                     checked = boardExtras,
                     onChange = onBoardExtrasChange,
                 )
+                // Sivun napit omilla kytkimillään (Tommin päätös 12.11.2026, `docs/UI.md` ›
+                // *Swap Dice ja Skip Game omille kytkimilleen*). Selite kertoo yhteyden Playing-
+                // ryhmän noppakytkimeen eikä sido niitä toisiinsa.
+                DeviceToggle(
+                    label = stringResource(R.string.settings_swap_dice_toggle),
+                    explain = stringResource(R.string.settings_swap_dice_explain),
+                    checked = swapDiceShown,
+                    onChange = onSwapDiceShownChange,
+                    linkLabel = stringResource(R.string.settings_swap_dice_link),
+                    onLink = {
+                        if (DeviceSettingsGroup.PLAYING in folds) onToggleFold(DeviceSettingsGroup.PLAYING)
+                        swapTapJumps++
+                    },
+                )
+                DeviceToggle(
+                    label = stringResource(R.string.settings_skip_game_toggle),
+                    explain = stringResource(R.string.settings_skip_game_explain),
+                    checked = skipGameShown,
+                    onChange = onSkipGameShownChange,
+                )
             }
             // Kätisyys on ensimmäinen laitekytkin joka kuvaa pelaajaa eikä sovellusta (Tommin
             // päätös 9.9.2026). Selite sanoo syyn eikä vain seurausta: paneeli menee toisen
@@ -805,12 +874,14 @@ private fun DeviceSection(
                         }
                     }
                 }
-                Text(
-                    text = stringResource(R.string.settings_left_handed_explain),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 4.dp),
-                )
+                SelectionContainer {
+                    Text(
+                        text = stringResource(R.string.settings_left_handed_explain),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 4.dp),
+                    )
+                }
             }
         }
 
@@ -885,6 +956,7 @@ private fun DeviceSection(
                 )
                 DeviceToggle(
                     label = stringResource(R.string.settings_dice_swap_toggle),
+                    modifier = Modifier.bringIntoViewRequester(swapTapRequester),
                     explain = stringResource(R.string.settings_dice_swap_explain),
                     checked = diceSwapTap,
                     onChange = onDiceSwapTapChange,
@@ -938,12 +1010,14 @@ private fun DeviceSection(
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
                 )
-                Text(
-                    text = stringResource(R.string.settings_wallpaper_explain),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 4.dp),
-                )
+                SelectionContainer {
+                    Text(
+                        text = stringResource(R.string.settings_wallpaper_explain),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 4.dp),
+                    )
+                }
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -969,6 +1043,9 @@ private fun DeviceSection(
                 DeviceToggle(
                     label = stringResource(R.string.settings_rarity_toggle),
                     explain = stringResource(R.string.settings_rarity_explain),
+                    // Värisanat samalla sävyllä kuin App Helpin C.2:ssa (Tommin tilaus 8.11.2026).
+                    explainStyled = LocalContext.current.resources.getText(R.string.settings_rarity_explain)
+                        .helpStyled(SpanStyle(), SpanStyle(), dgDark()),
                     checked = rarity,
                     onChange = onRarityChange,
                 )
@@ -1160,8 +1237,14 @@ private fun DeviceToggle(
     checked: Boolean,
     onChange: (Boolean) -> Unit,
     enabled: Boolean = true,
+    /** Muotoiltu selite, kun selitteessä on värisanoja (`<annotation rarity>`); voittaa [explain]in. */
+    explainStyled: AnnotatedString? = null,
+    /** Linkki toiseen asetukseen selitteen alla (12.11.2026), tai null. */
+    linkLabel: String? = null,
+    onLink: (() -> Unit)? = null,
+    modifier: Modifier = Modifier,
 ) {
-    Column(modifier = Modifier.fillMaxWidth()) {
+    Column(modifier = modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1176,12 +1259,19 @@ private fun DeviceToggle(
                 modifier = Modifier.padding(start = 12.dp),
             )
         }
-        Text(
-            text = explain,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 4.dp),
-        )
+        SelectionContainer {
+            Text(
+                text = explainStyled ?: AnnotatedString(explain),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 4.dp),
+            )
+        }
+        if (linkLabel != null && onLink != null) {
+            TextButton(onClick = onLink, modifier = Modifier.padding(horizontal = 8.dp)) {
+                Text(linkLabel)
+            }
+        }
     }
 }
 
@@ -1386,12 +1476,14 @@ private fun SettingsForm(
         // Ennen asetuksia eikä niiden jälkeen, sama paikka kuin lukutilan ilmoituksella oli:
         // lukija saa tietää miten lähetys käyttäytyy ennen kuin hän koskee ensimmäiseen
         // ruutuun, eikä vasta kun hän etsii nappia.
-        Text(
-            text = stringResource(R.string.settings_whole_form),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 12.dp),
-        )
+        SelectionContainer {
+            Text(
+                text = stringResource(R.string.settings_whole_form),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 12.dp),
+            )
+        }
 
         HorizontalDivider()
 
@@ -1449,10 +1541,12 @@ private fun SettingsForm(
         }
 
         if (!hasFields) {
-            Text(
-                text = stringResource(R.string.settings_empty),
-                modifier = Modifier.padding(16.dp),
-            )
+            SelectionContainer {
+                Text(
+                    text = stringResource(R.string.settings_empty),
+                    modifier = Modifier.padding(16.dp),
+                )
+            }
         }
     }
         if (hasFields) Column(modifier = Modifier.fillMaxWidth().dgReadingSurface()) {
@@ -1592,12 +1686,14 @@ private fun ToggleRow(
         }
 
         if (affectsQueue(toggle.label)) {
-            Text(
-                text = stringResource(R.string.settings_queue_explain),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = 60.dp, end = 16.dp, bottom = 8.dp),
-            )
+            SelectionContainer {
+                Text(
+                    text = stringResource(R.string.settings_queue_explain),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = 60.dp, end = 16.dp, bottom = 8.dp),
+                )
+            }
         }
     }
 }

@@ -1,6 +1,7 @@
 package fi.tommi.dg.app.ui
 
 import android.graphics.Typeface
+import android.text.Annotation
 import android.text.Spanned
 import android.text.style.StyleSpan
 import androidx.annotation.StringRes
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -21,19 +23,28 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import fi.tommi.dg.app.R
 
@@ -78,7 +89,62 @@ import fi.tommi.dg.app.R
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HelpScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
+fun HelpScreen(
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier,
+    /** Ruudun nimen linkki: välilehti, Infon rivi tai Settings. Jaksoviittaukset hoidetaan täällä. */
+    onOpenLink: (HelpLink) -> Unit = {},
+) {
+    val context = LocalContext.current
+    // Nimet luetaan kerran kaikista merkkijonoista, jotta linkin kohde ratkeaa samasta
+    // lähteestä kuin ruudun nimi (`lihavoidutNimetOvatRuudulla` vartioi samaa lähdettä).
+    val names = remember(context) {
+        val res = context.resources
+        val strings = R.string::class.java.fields.mapNotNull { f ->
+            runCatching { f.name to res.getString(f.getInt(null)) }.getOrNull()
+        }.toMap()
+        helpNameLinks(strings)
+    }
+    val scroll = rememberScrollState()
+    var viewport by remember { mutableStateOf<LayoutCoordinates?>(null) }
+    val itemCoords = remember { mutableMapOf<Int, LayoutCoordinates>() }
+    var open by rememberSaveable { mutableStateOf<Int?>(null) }
+    var scrollTo by remember { mutableStateOf<Int?>(null) }
+    // Jaksoviittaus avaa jakson ja vierittää sen kysymysrivin ruudun ylälaitaan. Vieritys
+    // odottaa että edellisen jakson sulkeutuminen on animoitu, koska se siirtää kohdetta.
+    LaunchedEffect(scrollTo) {
+        val q = scrollTo ?: return@LaunchedEffect
+        var last = Float.NaN
+        var stable = 0
+        repeat(90) {
+            withFrameNanos {}
+            val view = viewport ?: return@repeat
+            val item = itemCoords[q]?.takeIf { it.isAttached } ?: return@repeat
+            val y = view.localPositionOf(item, Offset.Zero).y + scroll.value
+            stable = if (y == last) stable + 1 else 0
+            last = y
+            if (stable >= 3) {
+                scroll.animateScrollTo(y.toInt().coerceAtLeast(0))
+                scrollTo = null
+                return@LaunchedEffect
+            }
+        }
+        scrollTo = null
+    }
+    val links = HelpLinks(
+        names = names,
+        style = helpLinkStyles(),
+        onOpen = { link ->
+            if (link is HelpLink.Section) {
+                questionFor(link.code)?.let { q ->
+                    open = q
+                    scrollTo = q
+                }
+            } else {
+                onOpenLink(link)
+            }
+        },
+    )
     Scaffold(
         modifier = modifier,
         // Läpinäkyvä, jotta ruudun tausta ja sen kuvio näkyvät läpi: ne
@@ -104,7 +170,8 @@ fun HelpScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .verticalScroll(rememberScrollState())
+                    .onGloballyPositioned { viewport = it }
+                    .verticalScroll(scroll)
                     .dgReadingSurface(),
                 contentAlignment = Alignment.TopCenter,
             ) {
@@ -126,13 +193,14 @@ fun HelpScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
                     // uusiksi" ja "ryhmät ehkä numeroinnin sijaan aakkosilla"). Juokseva
                     // numero olisi siirtänyt kaikki seuraavat; ryhmäkohtainen siirtää vain
                     // saman ryhmän loppupään, ja kirjain erottaa ryhmän kohdasta (B.7).
-                    var open by rememberSaveable { mutableStateOf<Int?>(null) }
                     HELP_GROUPS.forEachIndexed { g, group ->
                         HelpGroupView(
                             group = group,
                             groupLetter = ('A' + g).toString(),
                             openQuestion = open,
                             onToggle = { q -> open = if (open == q) null else q },
+                            links = links,
+                            onPlaced = { q, c -> itemCoords[q] = c },
                         )
                     }
                 }
@@ -143,6 +211,64 @@ fun HelpScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
 
 /** Noin 80 merkkiä `bodyMedium`-tekstiä; sama luokka kuin kirjan palsta. */
 private val READING_WIDTH = 640.dp
+
+/**
+ * Mihin App Helpin korostus vie (Tommin tilaus 8.11.2026, *"app help korostukset linkeiksi"*,
+ * valinta: molemmat). Jaksoviittaus avaa jakson, ja ruudun nimi vie ruutuun silloin kun kohde
+ * on yksiselitteinen: välilehti, Infon oma rivi tai Settings. Napit ja muut teot (Refresh,
+ * Double, Log Out) jäävät linkittä, koska nimi kertoo mitä painetaan eikä mihin mennään.
+ */
+sealed interface HelpLink {
+    data class Section(val code: String) : HelpLink
+    data class Tab(val tab: DgTab) : HelpLink
+    data class Info(val section: InfoSection) : HelpLink
+    data object Settings : HelpLink
+}
+
+/**
+ * Ruudun nimet linkkeineen, avaimena näkyvä teksti. Puhdas funktio, jotta `HelpConsistencyTest`
+ * voi ajaa sen `strings.xml`:ää vasten.
+ *
+ * Settings-linkki tulee nimelle jonka **jokainen** merkkijono on `settings_`-avaimella: Board
+ * on sekä laudan otsikko että asetusryhmä, joten se jää linkittä. `settings_submit` on
+ * DailyGammon-segmentin nappi, ja Settings avautuu laiteosioon.
+ */
+internal fun helpNameLinks(strings: Map<String, String>): Map<String, HelpLink> {
+    val out = mutableMapOf<String, HelpLink>()
+    strings.entries.groupBy({ it.value }, { it.key }).forEach { (value, keys) ->
+        if (keys.all { it.startsWith("settings_") && it !in SITE_SEGMENT_KEYS }) out[value] = HelpLink.Settings
+    }
+    val fixed = mapOf(
+        "tab_matches" to HelpLink.Tab(DgTab.Matches),
+        "tab_lounge" to HelpLink.Tab(DgTab.Lounge),
+        "tab_discussion" to HelpLink.Tab(DgTab.Discussion),
+        "tab_messages" to HelpLink.Tab(DgTab.Messages),
+        "tab_info" to HelpLink.Tab(DgTab.Info),
+        "info_drops_label" to HelpLink.Info(InfoSection.Drops),
+        "players_links_label" to HelpLink.Info(InfoSection.PlayersLinks),
+        "settings_title" to HelpLink.Settings,
+    )
+    fixed.forEach { (key, link) -> strings[key]?.let { out[it] = link } }
+    return out
+}
+
+private val SITE_SEGMENT_KEYS = setOf("settings_submit")
+
+/** Jaksoviittaus muodossa *F.4 How do I …?*, sama muoto jota `jaksoviittauksenKoodiOsuuKysymykseen` vartioi. */
+internal val SECTION_REFERENCE = Regex("""\b([A-H]\.\d+) ([^?.]+\?)""")
+
+/** Koodista kysymykseksi samalla laskulla kuin ruudun numerointi. */
+internal fun questionFor(code: String): Int? {
+    val group = code.firstOrNull()?.let { it - 'A' } ?: return null
+    val item = code.substringAfter('.').toIntOrNull() ?: return null
+    return HELP_GROUPS.getOrNull(group)?.items?.getOrNull(item - 1)?.question
+}
+
+internal class HelpLinks(
+    val names: Map<String, HelpLink>,
+    val style: TextLinkStyles,
+    val onOpen: (HelpLink) -> Unit,
+)
 
 internal data class HelpItem(@StringRes val question: Int, @StringRes val answer: Int)
 
@@ -182,6 +308,9 @@ internal val HELP_GROUPS = listOf(
             // Värit omana kohtanaan 6.10.2026 (Tommin tilaus): ne koskevat jokaista välilehteä,
             // ja aiemmin säännöt olivat laudan paneelin vastauksessa.
             HelpItem(R.string.help_q_colours, R.string.help_a_colours),
+            // Kopioinnin rajat omana kohtanaan (Tommin tilaus 8.11.2026): maalaus koskee
+            // jokaista välilehteä kuten värit.
+            HelpItem(R.string.help_q_copy, R.string.help_a_copy),
         ),
     ),
     HelpGroup(
@@ -204,6 +333,7 @@ internal val HELP_GROUPS = listOf(
             HelpItem(R.string.help_q_beside, R.string.help_a_beside),
             HelpItem(R.string.help_q_skip, R.string.help_a_skip),
             HelpItem(R.string.help_q_look, R.string.help_a_look),
+            HelpItem(R.string.help_q_small_screen, R.string.help_a_small_screen),
         ),
     ),
     HelpGroup(
@@ -234,6 +364,8 @@ private fun HelpGroupView(
     groupLetter: String,
     openQuestion: Int?,
     onToggle: (Int) -> Unit,
+    links: HelpLinks? = null,
+    onPlaced: (Int, LayoutCoordinates) -> Unit = { _, _ -> },
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(
@@ -248,6 +380,8 @@ private fun HelpGroupView(
                 item = item,
                 open = openQuestion == item.question,
                 onToggle = { onToggle(item.question) },
+                links = links,
+                modifier = Modifier.onGloballyPositioned { onPlaced(item.question, it) },
             )
         }
     }
@@ -271,10 +405,21 @@ private fun HelpGroupView(
  * `HelpConsistencyTest` vartioi. Haku (`InfoScreen`) käyttää
  * tätä samaa funktiota, jotta osuma näyttää samalta kuin manuaalissa.
  */
-internal fun CharSequence.helpStyled(bold: SpanStyle, heading: SpanStyle): AnnotatedString {
+internal fun CharSequence.helpStyled(
+    bold: SpanStyle,
+    heading: SpanStyle,
+    dark: Boolean? = null,
+    links: HelpLinks? = null,
+): AnnotatedString {
     val source = this
     return buildAnnotatedString {
         append(source.toString())
+        if (links != null) {
+            for (m in SECTION_REFERENCE.findAll(source)) {
+                val link = HelpLink.Section(m.groupValues[1])
+                addLink(LinkAnnotation.Clickable(m.value, links.style) { links.onOpen(link) }, m.range.first, m.range.last + 1)
+            }
+        }
         if (source is Spanned) {
             for (span in source.getSpans(0, source.length, StyleSpan::class.java)) {
                 val style = when (span.style) {
@@ -282,7 +427,29 @@ internal fun CharSequence.helpStyled(bold: SpanStyle, heading: SpanStyle): Annot
                     Typeface.ITALIC -> heading
                     else -> continue
                 }
-                addStyle(style, source.getSpanStart(span), source.getSpanEnd(span))
+                val start = source.getSpanStart(span)
+                val end = source.getSpanEnd(span)
+                addStyle(style, start, end)
+                if (span.style == Typeface.BOLD && links != null) {
+                    val name = source.subSequence(start, end).toString()
+                    links.names[name]?.let { link ->
+                        addLink(LinkAnnotation.Clickable(name, links.style) { links.onOpen(link) }, start, end)
+                    }
+                }
+            }
+            // Värisana omalla värillään (Tommin tilaus 8.11.2026, C.2): `<annotation
+            // rarity="0">grey</annotation>` saa portaan 0 sävyn samasta [Rarity]-taulukosta
+            // kuin nimet, joten ohjeen sana ja ruudun nimi ovat aina samaa väriä.
+            if (dark != null) {
+                for (span in source.getSpans(0, source.length, Annotation::class.java)) {
+                    if (span.key != "rarity") continue
+                    val tier = span.value.toIntOrNull() ?: continue
+                    addStyle(
+                        SpanStyle(color = Rarity.color(tier, dark)),
+                        source.getSpanStart(span),
+                        source.getSpanEnd(span),
+                    )
+                }
             }
         }
     }
@@ -293,16 +460,30 @@ internal fun CharSequence.helpStyled(bold: SpanStyle, heading: SpanStyle): Annot
 internal fun helpBoldStyle(): SpanStyle =
     SpanStyle(color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
 
+/** Linkki on nimen korostus alleviivattuna, jotta se erottuu linkittömästä nimestä. */
+@Composable
+internal fun helpLinkStyles(): TextLinkStyles =
+    TextLinkStyles(style = helpBoldStyle().copy(textDecoration = TextDecoration.Underline))
+
 @Composable
 internal fun helpHeadingStyle(): SpanStyle =
     MaterialTheme.typography.titleMedium.toSpanStyle().copy(color = MaterialTheme.colorScheme.onSurface)
 
 @Composable
-private fun HelpItemView(number: String, item: HelpItem, open: Boolean, onToggle: () -> Unit) {
+private fun HelpItemView(
+    number: String,
+    item: HelpItem,
+    open: Boolean,
+    onToggle: () -> Unit,
+    links: HelpLinks? = null,
+    modifier: Modifier = Modifier,
+) {
+    // Napautus kuuluu vain kysymysriville, ja vastaus on maalattavissa (Tommin havainto
+    // 8.11.2026: pitkä painallus vastauksessa sulki jakson, koska koko sarake oli yksi
+    // `clickable` ja se laukaisee napautuksen myös pitkän painalluksen lopussa).
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .clickable(onClick = onToggle)
             .animateContentSize()
             .padding(vertical = 6.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -311,17 +492,20 @@ private fun HelpItemView(number: String, item: HelpItem, open: Boolean, onToggle
             text = "$number  " + stringResource(item.question),
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.fillMaxWidth().clickable(onClick = onToggle).padding(vertical = 4.dp),
         )
         if (open) {
             val context = LocalContext.current
             val bold = helpBoldStyle()
             val heading = helpHeadingStyle()
-            Text(
-                text = context.resources.getText(item.answer).helpStyled(bold, heading),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = 24.dp),
-            )
+            SelectionContainer {
+                Text(
+                    text = context.resources.getText(item.answer).helpStyled(bold, heading, dgDark(), links),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = 24.dp),
+                )
+            }
         }
     }
 }

@@ -50,6 +50,16 @@ interface BoardStyleStore {
     fun get(): BoardStyle
 
     fun save(style: BoardStyle)
+
+    /**
+     * Nappulan vaalea ja tumma sivuston puolen mukaan eikä roolin (jebediasmien toive
+     * 7.11.2026, Tommin valinta 8.11.2026: kytkin, oletus ennallaan). Koskee sovelluksen
+     * omia lautoja; `Follow my DailyGammon settings` piirtää sivun värit joka tapauksessa.
+     * Samassa tiedostossa kuin tyyli, joten asetusten siirto kattaa sen.
+     */
+    fun checkersBySite(): Boolean = false
+
+    fun saveCheckersBySite(on: Boolean) {}
 }
 
 class SharedPrefsBoardStyle(private val prefs: SharedPreferences) : BoardStyleStore {
@@ -68,8 +78,15 @@ class SharedPrefsBoardStyle(private val prefs: SharedPreferences) : BoardStyleSt
         prefs.edit().putString(KEY_STYLE, style.name).apply()
     }
 
+    override fun checkersBySite(): Boolean = prefs.getBoolean(KEY_CHECKERS_BY_SITE, false)
+
+    override fun saveCheckersBySite(on: Boolean) {
+        prefs.edit().putBoolean(KEY_CHECKERS_BY_SITE, on).apply()
+    }
+
     private companion object {
         const val FILE_NAME = "dg_board_style"
         const val KEY_STYLE = "board_style"
+        const val KEY_CHECKERS_BY_SITE = "checkers_by_site"
     }
 }

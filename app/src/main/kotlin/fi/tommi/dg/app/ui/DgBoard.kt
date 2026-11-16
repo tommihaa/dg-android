@@ -370,7 +370,8 @@ object DgBoard {
      *
      * Käytössä vain kirjoitushetken pystyasennossa (19.9.2026, `docs/UI.md` › Suunta
      * lukittiin › Poikkeus): siellä lauta on kuva eikä pelipinta, ja koko ruudun korkeus
-     * venyttäisi kiilat moninkertaisiksi. Kaava on [checkerFromHeight] toisin päin, ja
+     * venyttäisi kiilat moninkertaisiksi. Toinen käyttäjä 8.11.2026 alkaen on katselulauta
+     * (`ViewerBoard`), samasta syystä. Kaava on [checkerFromHeight] toisin päin, ja
      * nappula johdetaan leveydestä samalla ketjulla kuin [contentWidth]issa.
      */
     fun frameHeight(frameWidth: Dp, numberRowHeight: Dp): Dp {

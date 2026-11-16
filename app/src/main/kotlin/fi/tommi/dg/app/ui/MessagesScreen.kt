@@ -2,6 +2,7 @@ package fi.tommi.dg.app.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -309,11 +310,13 @@ fun MessagesScreen(
 
                 if (visible.isEmpty()) {
                     item {
-                        Text(
-                            text = stringResource(R.string.messages_filter_empty),
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.padding(16.dp),
-                        )
+                        SelectionContainer {
+                            Text(
+                                text = stringResource(R.string.messages_filter_empty),
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(16.dp),
+                            )
+                        }
                     }
                     return@DgLazyColumn
                 }
@@ -511,12 +514,14 @@ private fun BackupLine(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.weight(1f, fill = false),
-        )
+        SelectionContainer {
+            Text(
+                text = text,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f, fill = false),
+            )
+        }
         when (backup) {
             // **Kaksi tekoa eikä yksi (1.9.2026, Tommin havainto).** Ensimmäinen versio
             // näytti käytössä ollessaan vain `Save now`n, ja silloin kohdetta ei päässyt
@@ -568,12 +573,14 @@ private fun ImportLine(state: ImportUiState, onDismiss: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.weight(1f, fill = false),
-        )
+        SelectionContainer {
+            Text(
+                text = text,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f, fill = false),
+            )
+        }
         TextButton(onClick = onDismiss) {
             Text(stringResource(R.string.import_dismiss))
         }
@@ -610,11 +617,13 @@ private fun LazyListScope.conversationList(
 ) {
     if (messages.isEmpty()) {
         item {
-            Text(
-                text = stringResource(R.string.messages_archive_empty),
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(16.dp),
-            )
+            SelectionContainer {
+                Text(
+                    text = stringResource(R.string.messages_archive_empty),
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(16.dp),
+                )
+            }
         }
         return
     }
@@ -761,11 +770,11 @@ private fun ConversationRow(
             )
         }
         if (onReply != null) {
-            TextButton(onClick = onReply) {
-                Text(
-                    stringResource(if (replyOpen) R.string.messages_list_reply_close else R.string.messages_list_reply),
-                )
-            }
+            RowPillButton(
+                label = stringResource(if (replyOpen) R.string.messages_list_reply_close else R.string.messages_list_reply),
+                onClick = onReply,
+                modifier = Modifier.padding(start = 8.dp),
+            )
         }
     }
 }
@@ -965,12 +974,14 @@ private fun LazyListScope.trashSection(trash: List<TrashGroup>, onRestore: (List
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp),
             )
-            Text(
-                text = stringResource(R.string.messages_trash_explain),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-            )
+            SelectionContainer {
+                Text(
+                    text = stringResource(R.string.messages_trash_explain),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                )
+            }
         }
     }
     trash.forEach { group ->
@@ -1081,18 +1092,22 @@ private fun QueueCard(
                 )
             }
             if (explaining) {
-                Text(
-                    text = stringResource(R.string.messages_queue_explain),
-                    style = MaterialTheme.typography.bodySmall,
-                )
+                SelectionContainer {
+                    Text(
+                        text = stringResource(R.string.messages_queue_explain),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
             }
 
             if (queuePath == null) {
-                Text(
-                    text = stringResource(R.string.messages_queue_no_link),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                SelectionContainer {
+                    Text(
+                        text = stringResource(R.string.messages_queue_no_link),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             } else {
                 Button(
                     onClick = onFetchNext,
@@ -1113,11 +1128,13 @@ private fun QueueCard(
             // hausta. Tallennetun viestin kohdalla vastaavaa ei tarvita: se on listalla
             // alempana.
             (queue as? QueueUiState.Announcement)?.let { state ->
-                Text(
-                    text = state.message.body,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                SelectionContainer {
+                    Text(
+                        text = state.message.body,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
 
             // Kutsu kortissa samasta syystä kuin ilmoitus: se ei ole kannassa eikä listalla.
@@ -1152,11 +1169,12 @@ private fun InvitationOutcomeRow(action: InvitationActionUiState, onDismiss: () 
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                text = text,
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.weight(1f),
-            )
+            SelectionContainer(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = text,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
             if (!sending) {
                 TextButton(onClick = onDismiss) { Text(stringResource(R.string.page_action_dismiss)) }
             }
@@ -1355,12 +1373,14 @@ private fun ReplyField(
         )
     }
     if (quote) {
-        Text(
-            text = MessagesViewModel.quoteForReply(original.body),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(bottom = 4.dp),
-        )
+        SelectionContainer {
+            Text(
+                text = MessagesViewModel.quoteForReply(original.body),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 4.dp),
+            )
+        }
     }
 
     // Kenttä, fraasit ja nappi yhtenä ryhmänä näppäimistön yläpuolelle
@@ -1410,11 +1430,13 @@ private fun ReplyField(
 
     // Lopputulos napin alla (Tommin päätös 14.9.2026, kaikki lomakkeet).
     replyOutcome(reply)?.let { text ->
-        Text(
-            text = text,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        SelectionContainer {
+            Text(
+                text = text,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }
 
@@ -1598,7 +1620,14 @@ private fun MessageRow(
 
         // Loppurivinvaihto pois vain näytöstä: se jätti kuplan alareunaan tyhjän rivin
         // (puhelin 24.9.2026). Arkistoon tallennettu teksti ei muutu.
-        Text(text = message.body.trimEnd(), style = MaterialTheme.typography.bodyMedium)
+        //
+        // Runko on maalattavissa (Tommin tilaus 8.11.2026: jebediasmien viesti piti kaapata
+        // kuvana). ⋮-valikon *Copy text* kopioi koko viestin, maalaus osan siitä. Valinta
+        // kattaa vain rungon, koska nimi ja laji ovat linkkejä ja kuplan napautus avaa
+        // vastauskentän.
+        SelectionContainer {
+            Text(text = message.body.trimEnd(), style = MaterialTheme.typography.bodyMedium)
+        }
 
         // Toinen puoli samasta tiedosta, ja se on tässä siksi että kysymys esitetään
         // useammin näin päin: onko tähän jo vastattu.

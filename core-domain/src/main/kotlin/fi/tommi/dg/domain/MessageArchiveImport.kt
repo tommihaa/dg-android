@@ -77,7 +77,21 @@ private fun readMessage(item: Map<*, *>?): Message? {
         source = MessageSource.entries.firstOrNull { it.name == sourceName } ?: MessageSource.UNKNOWN,
         receivedAtEpochMillis = receivedAt,
         replyTo = item["replyTo"] as? String,
+        replyForm = readReplyForm(item),
     )
+}
+
+/**
+ * Vastauslomake (versio 7, 8.11.2026), tai null vanhasta tiedostosta. Sama sääntö kuin
+ * kannasta luettaessa (`MessageMapper`): puuttuva tai tuntematon kenttä kaataa lomakkeen
+ * eikä viestiä, koska vastauskyky on lisä jonka voi menettää menettämättä viestiä.
+ */
+private fun readReplyForm(item: Map<*, *>): ReplyForm? {
+    val action = item["replyAction"] as? String ?: return null
+    val field = item["replyField"] as? String ?: return null
+    val method = FormMethod.entries.firstOrNull { it.name == item["replyMethod"] } ?: return null
+    val maxLength = (item["replyMaxLength"] as? Long)?.toInt()
+    return ReplyForm(action = action, method = method, field = field, maxLength = maxLength)
 }
 
 private fun readReminder(item: Map<*, *>?): Reminder? {

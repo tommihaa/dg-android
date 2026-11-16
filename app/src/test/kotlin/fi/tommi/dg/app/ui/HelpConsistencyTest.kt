@@ -83,6 +83,21 @@ class HelpConsistencyTest {
     }
 
     @Test
+    fun ahtaanNaytonKytkimetSanotaan() {
+        // Tommin tilaus 12.11.2026: palstan pelaajalle luvataan App Helpiin jakso ahtaan näytön
+        // kytkimistä. Nimet luetaan ruudun merkkijonoista, joten uudelleennimetty kytkin
+        // kaatuu tähän eikä jää vanhalla nimellä lupaukseksi.
+        assertMentions(
+            listOf("small_screen"),
+            listOf(
+                "settings_device_section", "settings_fold_board", "settings_board_extras",
+                "settings_board_extras_toggle", "settings_swap_dice_toggle", "settings_skip_game_toggle",
+                "settings_fold_playing", "settings_dice_swap_toggle", "board_players_link",
+            ).map { strings.getValue(it) } + listOf("Back", "Refresh"),
+        )
+    }
+
+    @Test
     fun tilinLuontiSanotaan() {
         // Tommin päätös 27.9.2026: tili luodaan sivustolla, ja manuaalin on sanottava se.
         // 1.10.2026 linkki Create Account -sivulle poistettiin (Play Consolen Data safety
@@ -157,8 +172,11 @@ class HelpConsistencyTest {
         // Donations puuttuu tarkoituksella, ks. kommentti strings.xml:ssä.
         assertMentions(
             listOf("site_only"),
-            listOf("Create Account", "Change Password", "Public Profile", "Mini", "Background Color", "Active Game"),
+            listOf("Create Account", "Change Password", "Public Profile", "Mini", "Background Color"),
         )
+        // Active Game tuli sovellukseen 8.11.2026 (katselulauta), joten se ei saa enää olla
+        // sivustolle jäävien joukossa.
+        assertTrue("help_a_site_only mainitsee Active Gamen", "Active Game" !in answers("site_only"))
         assertTrue("help_a_site_only mainitsee lahjoitukset", "Donat" !in answers("site_only"))
     }
 
@@ -180,6 +198,8 @@ class HelpConsistencyTest {
         assertMentions(listOf("order"), cols + listOf(strings.getValue("top_sort_by")))
         assertMentions(listOf("d_sort"), cols + listOf(strings.getValue("top_sort_by")))
         assertMentions(listOf("open"), listOf(strings.getValue("top_refresh")))
+        // Katselulaudan napit nimeltä (8.11.2026).
+        assertMentions(listOf("open"), listOf("viewer_first", "viewer_prev", "viewer_next", "viewer_last").map { strings.getValue(it) })
     }
 
     @Test
@@ -296,5 +316,67 @@ class HelpConsistencyTest {
         val archive = answers("archive")
         assertTrue("archive ei sano ettei tuonti korvaa", "nothing already here is changed" in archive.lowercase())
         assertTrue("archive ei luettele tiedoston sisältöä", "messages, reminders, phrases and marked positions" in archive)
+    }
+
+    /**
+     * Viittaus toiseen jaksoon kantaa jakson koodin ja kysymyksen (Tommin tilaus 8.11.2026:
+     * *"E.6 Rating colours sisältö pitäisi viitata C.2"*). Koodi lasketaan ruudulla
+     * `HelpScreen.kt`:n järjestyksestä, joten uusi kysymys voi siirtää sitä. Tämä kaatuu, jos
+     * koodin perässä oleva kysymys ei ole se jonka ruutu sille koodille numeroi.
+     */
+    @Test
+    fun jaksoviittauksenKoodiOsuuKysymykseen() {
+        val numbering = mutableMapOf<String, String>()
+        var group = -1
+        var item = 0
+        for (line in helpScreen.lines()) {
+            if ("HelpGroup(" in line && "data class" !in line) {
+                group++
+                item = 0
+            }
+            Regex("""HelpItem\(R\.string\.(help_q_\w+)""").findAll(line).forEach {
+                item++
+                numbering["${'A' + group}.$item"] = it.groupValues[1]
+            }
+        }
+        assertEquals("C.2 on värien kysymys", "help_q_colours", numbering["C.2"])
+        var found = 0
+        for ((key, text) in strings) {
+            for (m in Regex("""\b([A-H]\.\d+) ([^?.]+\?)""").findAll(text)) {
+                val code = m.groupValues[1]
+                val expected = numbering[code]?.let { strings[it] }
+                assertEquals("$key: $code ei ole kysymys ${m.groupValues[2]}", expected, m.groupValues[2])
+                found++
+            }
+        }
+        assertTrue("viittauksia löytyi $found", found >= 4)
+    }
+
+    /**
+     * Korostus linkkinä (Tommin tilaus 8.11.2026): ruudun nimi vie ruutuun vain kun kohde on
+     * yksiselitteinen, ja teon nimi (nappi) jää linkittä. Jokainen jaksoviittaus osuu jaksoon.
+     */
+    @Test
+    fun korostuksenLinkkiOsuuOikeaanKohteeseen() {
+        val plain = strings.mapValues { it.value.replace(Regex("<[^>]+>"), "") }
+        val links = helpNameLinks(plain)
+        assertEquals(HelpLink.Tab(DgTab.Matches), links["Top Page"])
+        assertEquals(HelpLink.Tab(DgTab.Info), links["Info"])
+        assertEquals(HelpLink.Info(InfoSection.Drops), links["Connection drops"])
+        assertEquals(HelpLink.Info(InfoSection.PlayersLinks), links["Players' links"])
+        assertEquals(HelpLink.Settings, links["Settings"])
+        assertEquals(HelpLink.Settings, links["This device"])
+        assertEquals(HelpLink.Settings, links["Game sounds"])
+        for (action in listOf("Refresh", "Log Out", "Double", "Board", "Update Preferences", "DailyGammon", "Play")) {
+            assertEquals("$action ei ole ruutu", null, links[action])
+        }
+        val bold = strings.filterKeys { it.startsWith("help_a_") }.values
+            .flatMap { Regex("<b>([^<]+)</b>").findAll(it).map { m -> m.groupValues[1] }.toList() }
+            .toSet()
+        assertTrue("linkkejä ${bold.count { it in links }}", bold.count { it in links } >= 40)
+        val refs = strings.filterKeys { it.startsWith("help_a_") }.values
+            .flatMap { SECTION_REFERENCE.findAll(it).map { m -> m.groupValues[1] }.toList() }
+        assertTrue(refs.isNotEmpty())
+        refs.forEach { assertTrue("$it ei ole jakso", questionFor(it) != null) }
     }
 }

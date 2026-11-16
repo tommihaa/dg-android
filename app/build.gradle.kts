@@ -23,8 +23,8 @@ android {
         applicationId = "fi.tommi.dg"
         minSdk = 26
         targetSdk = 36
-        versionCode = 13
-        versionName = "1.9"
+        versionCode = 16
+        versionName = "2.1"
 
         // Kielivalikoima on tässä eikä pelkästään res-kansioiden olemassaolossa: näin
         // kääntämättä jäänyt kieli ei pääse mukaan puolivalmiina.

@@ -2,6 +2,7 @@ package fi.tommi.dg.app.ui
 
 import fi.tommi.dg.domain.PlayerRef
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -482,11 +483,13 @@ private fun SubHeading(text: String) {
 /** Jakson huomautus otsikon alla; ei keskitetä koko ruutuun, koska jakso on listan osa. */
 @Composable
 private fun SectionNote(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.bodyMedium,
-        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-    )
+    SelectionContainer {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+        )
+    }
 }
 
 /** Jakson latausmerkki otsikon alla, samasta syystä listan osana eikä keskellä ruutua. */
@@ -834,7 +837,9 @@ private fun SignupResultNotice(signup: SignupUiState, onDismiss: () -> Unit) {
         colors = CardDefaults.cardColors(containerColor = container),
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(text = text, style = MaterialTheme.typography.bodySmall)
+            SelectionContainer {
+                Text(text = text, style = MaterialTheme.typography.bodySmall)
+            }
             TextButton(onClick = onDismiss, modifier = Modifier.padding(top = 4.dp)) {
                 Text(stringResource(R.string.lounge_dismiss))
             }
@@ -901,7 +906,9 @@ private fun JoinResultNotice(join: JoinUiState, onDismiss: () -> Unit) {
         colors = CardDefaults.cardColors(containerColor = container),
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(text = text, style = MaterialTheme.typography.bodySmall)
+            SelectionContainer {
+                Text(text = text, style = MaterialTheme.typography.bodySmall)
+            }
             TextButton(onClick = onDismiss, modifier = Modifier.padding(top = 4.dp)) {
                 Text(stringResource(R.string.lounge_dismiss))
             }
@@ -952,9 +959,12 @@ private fun InvitationRow(
             }
         }
         if (onJoin != null) {
-            Button(onClick = onJoin, enabled = !joining) {
-                Text(stringResource(R.string.lounge_join))
-            }
+            RowPillButton(
+                label = stringResource(R.string.lounge_join),
+                onClick = onJoin,
+                modifier = Modifier.padding(start = 8.dp),
+                enabled = !joining,
+            )
         }
     }
 }
@@ -1021,12 +1031,20 @@ private fun TournamentRow(
         // Sivun oma sana napissa: Sign Up tai Cancel Signup, kumpi rivillä on. Ei
         // kumpaakaan kun rivillä ei ole linkkiä (ilmoittautuminen ei auki).
         when {
-            onSignUp != null -> Button(onClick = onSignUp, enabled = !sending) {
-                Text(stringResource(R.string.lounge_signup))
-            }
-            onCancel != null -> TextButton(onClick = onCancel, enabled = !sending) {
-                Text(stringResource(R.string.lounge_signup_cancel))
-            }
+            // Sama ääriviivapilleri kuin muissa rivin teoissa (Tommin valinta 8.11.2026,
+            // `docs/UI.md` › *Rivin teot ääriviivapillereinä*). Paino on vahvistusdialogissa.
+            onSignUp != null -> RowPillButton(
+                label = stringResource(R.string.lounge_signup),
+                onClick = onSignUp,
+                modifier = Modifier.padding(start = 8.dp),
+                enabled = !sending,
+            )
+            onCancel != null -> RowPillButton(
+                label = stringResource(R.string.lounge_signup_cancel),
+                onClick = onCancel,
+                modifier = Modifier.padding(start = 8.dp),
+                enabled = !sending,
+            )
         }
     }
 }
@@ -1038,7 +1056,9 @@ private fun CenteredNote(text: String) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Text(text = text, style = MaterialTheme.typography.bodyLarge)
+        SelectionContainer {
+            Text(text = text, style = MaterialTheme.typography.bodyLarge)
+        }
     }
 }
 

@@ -28,8 +28,14 @@ const val ARCHIVE_EXPORT_FORMAT = "fi.tommi.dg.archive"
  * Asetusten siirto hylättiin reittinä, koska se korvaa tiedostot kokonaan eikä yhdistä.
  * 6 (20.10.2026, Tommin vahvistus) `phrases` olioina tekstistä ja lisäyshetkestä, jotta
  * kahden laitteen fraasit yhdistyvät samaan järjestykseen ([Phrase]).
+ * 7 (8.11.2026, Tommin tilaus) viestin vastauslomake neljänä tasaisena kenttänä
+ * (`replyAction`, `replyMethod`, `replyField`, `replyMaxLength`). 30.8.2026 se jäi pois
+ * kykynä eikä sisältönä, ja `docs/AVOIMET.md` kirjasi sen tilattavaksi erikseen. Tilaus tuli
+ * kun jebediasmien viesteihin ei voinut vastata toiselta laitteelta. Lomakkeen osoite on
+ * kohdistettu pelaajalle eikä viestille ([ReplyForm]), joten se toimii millä laitteella
+ * tahansa samalla tilillä.
  */
-const val ARCHIVE_EXPORT_VERSION = 6
+const val ARCHIVE_EXPORT_VERSION = 7
 
 /**
  * Tiedoston sisältö kokonaisuutena, sama olio kirjoitettaessa ja luettaessa.
@@ -98,7 +104,16 @@ fun ArchiveFile.toJson(): String {
                 append("      \"receivedAtEpochMillis\": ")
                     .append(message.receivedAtEpochMillis).append(",\n")
                 append("      \"replyTo\": ")
-                    .append(message.replyTo?.let(::jsonString) ?: "null").append('\n')
+                    .append(message.replyTo?.let(::jsonString) ?: "null").append(",\n")
+                val form = message.replyForm
+                append("      \"replyAction\": ")
+                    .append(form?.action?.let(::jsonString) ?: "null").append(",\n")
+                append("      \"replyMethod\": ")
+                    .append(form?.method?.name?.let(::jsonString) ?: "null").append(",\n")
+                append("      \"replyField\": ")
+                    .append(form?.field?.let(::jsonString) ?: "null").append(",\n")
+                append("      \"replyMaxLength\": ")
+                    .append(form?.maxLength?.toString() ?: "null").append('\n')
                 append("    }")
                 append(if (index != file.messages.lastIndex) ",\n" else "\n")
             }

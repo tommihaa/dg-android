@@ -37,4 +37,18 @@ data class MarkedPosition(
     val createdAtEpochMillis: Long,
     /** Asema merkintähetkellä, tai null kun sitä ei tallennettu. */
     val position: CheckerPosition? = null,
-)
+) {
+    /**
+     * Sivuston katselulauta tässä asemassa (Tommin pyyntö 9.11.2026: merkin rivi
+     * `Active Game` -tyylisenä linkkinä juuri siihen asemaan).
+     *
+     * **Polku kootaan eikä lueta**, ja se on nimetty poikkeus sääntöön "osoite luetaan"
+     * samoin perustein kuin listalta pudonneen ottelun `/bg/game/<id>/0/list`
+     * (`MainActivity`, 30.8.2026). Muoto `/bg/game/<id>/0/<laskuri>` on mitattu 8.11.2026
+     * (`docs/KOHDE.md` › *`Active Game` osoittaa katselulaudalle*): siirtolistan solut
+     * osoittavat siihen, ja laskuri on sama `Move N` jonka [moveNumber] tallentaa
+     * (`/bg/game/<id>/1/916` sanoi `Move 916`). Haku on kuluttamaton GET ilman lomaketta,
+     * joten väärä laskuri näyttää väärän aseman eikä tee mitään.
+     */
+    val viewerPath: String get() = "/bg/game/${game.matchId.value}/0/$moveNumber"
+}

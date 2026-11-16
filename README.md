@@ -150,7 +150,7 @@ see what a parser expects.
 ## Status
 
 [On Google Play](https://play.google.com/store/apps/details?id=fi.tommi.dg) since 5 November
-2026. The current version is 1.9. Bugs, missing things and questions go to the
+2026. Bugs, missing things and questions go to the
 [Google group](https://groups.google.com/g/dg-android-testers). More on the
 [app's page](https://tommihaa.github.io/dg-android/).
 
